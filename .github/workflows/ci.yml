@@ -74,10 +74,31 @@ jobs:
           restore-keys: ${{ runner.os }}-pods-
       - run: bundle exec pod install
         working-directory: ios
+      # Runner images change which simulators ship pre-built (e.g. "iPhone 15"
+      # was dropped in favor of newer devices), so pick whatever iPhone
+      # simulator is actually available instead of hardcoding a name.
+      - name: Select iOS simulator
+        id: simulator
+        run: |
+          NAME=$(xcrun simctl list devices available -j |
+            node -e '
+              const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
+              const device = Object.values(data.devices)
+                .flat()
+                .find(d => d.name.startsWith("iPhone"));
+              if (device) process.stdout.write(device.name);
+            ')
+          if [ -z "$NAME" ]; then
+            echo "::error::No available iPhone simulator found"
+            xcrun simctl list devices available
+            exit 1
+          fi
+          echo "Using simulator: $NAME"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
       # Smoke build only (compiles + boots the simulator, does not exercise
       # the app) — macOS runners are slow/expensive, so full E2E/screenshot
       # testing is out of scope here (M1.2, via Maestro).
-      - run: yarn ios --simulator "iPhone 15"
+      - run: yarn ios --no-packager --simulator "${{ steps.simulator.outputs.name }}"
 
   android-build:
     name: android-build
@@ -109,6 +130,21 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('android/gradle/wrapper/gradle-wrapper.properties', 'android/build.gradle', 'android/app/build.gradle') }}
           restore-keys: ${{ runner.os }}-gradle-
       - uses: android-actions/setup-android@v3
+      - name: Enable KVM for the emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
       # Jetifier is obsolete on current React Native (AndroidX is the
       # default; the CLI no longer exposes a --no-jetifier flag).
-      - run: yarn android --no-packager
+      # Smoke build only (compiles + installs on a booted emulator, does not
+      # exercise the app) — mirrors the ios-build scope; full E2E/screenshot
+      # testing is out of scope here (M1.2, via Maestro).
+      - name: Run yarn android --no-packager on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          script: yarn android --no-packager
