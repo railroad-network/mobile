@@ -1,0 +1,114 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Cache yarn
+        uses: actions/cache@v4
+        with:
+          path: |
+            .yarn/cache
+            ~/.yarn/berry/cache
+          key: ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}
+          restore-keys: ${{ runner.os }}-yarn-
+      - run: yarn install --immutable
+      - run: yarn lint
+      - run: yarn tsc --noEmit
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Cache yarn
+        uses: actions/cache@v4
+        with:
+          path: |
+            .yarn/cache
+            ~/.yarn/berry/cache
+          key: ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}
+          restore-keys: ${{ runner.os }}-yarn-
+      - run: yarn install --immutable
+      - run: yarn test --coverage
+
+  ios-build:
+    name: ios-build
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Cache yarn
+        uses: actions/cache@v4
+        with:
+          path: |
+            .yarn/cache
+            ~/.yarn/berry/cache
+          key: ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}
+          restore-keys: ${{ runner.os }}-yarn-
+      - run: yarn install --immutable
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4'
+          bundler-cache: true
+          working-directory: .
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: ios/Pods
+          key: ${{ runner.os }}-pods-${{ hashFiles('ios/Podfile.lock') }}
+          restore-keys: ${{ runner.os }}-pods-
+      - run: bundle exec pod install
+        working-directory: ios
+      # Smoke build only (compiles + boots the simulator, does not exercise
+      # the app) — macOS runners are slow/expensive, so full E2E/screenshot
+      # testing is out of scope here (M1.2, via Maestro).
+      - run: yarn ios --simulator "iPhone 15"
+
+  android-build:
+    name: android-build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Cache yarn
+        uses: actions/cache@v4
+        with:
+          path: |
+            .yarn/cache
+            ~/.yarn/berry/cache
+          key: ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}
+          restore-keys: ${{ runner.os }}-yarn-
+      - run: yarn install --immutable
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('android/gradle/wrapper/gradle-wrapper.properties', 'android/build.gradle', 'android/app/build.gradle') }}
+          restore-keys: ${{ runner.os }}-gradle-
+      - uses: android-actions/setup-android@v3
+      # Jetifier is obsolete on current React Native (AndroidX is the
+      # default; the CLI no longer exposes a --no-jetifier flag).
+      - run: yarn android --no-packager
