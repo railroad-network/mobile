@@ -1,0 +1,11 @@
+# uniffi-bindgen-react-native config (ADR-0007). Points at the rrn-mobile-ffi
+# crate in the sibling station repo — the single FFI contract — and emits the
+# JSI TypeScript + C++ turbo-module glue the app consumes.
+name: RrnMobileFfi
+rust:
+  # The station workspace root; manifestPath selects the FFI crate within it.
+  directory: ../station
+  manifestPath: crates/rrn-mobile-ffi/Cargo.toml
+bindings:
+  cpp: cpp
+  ts: src/generated

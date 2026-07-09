@@ -2,6 +2,20 @@
   "name": "railroad-network-mobile",
   "version": "0.0.1",
   "private": true,
+  "description": "Railroad Network mobile client.",
+  "summary": "Railroad Network mobile client.",
+  "homepage": "https://github.com/railroad-network/mobile",
+  "license": "(Apache-2.0 OR MIT)",
+  "author": "Railroad Network contributors",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/railroad-network/mobile.git"
+  },
+  "codegenConfig": {
+    "name": "RrnMobileFfiSpec",
+    "type": "modules",
+    "jsSrcsDir": "src"
+  },
   "scripts": {
     "android": "react-native run-android",
     "ios": "react-native run-ios",
@@ -35,7 +49,8 @@
     "jest": "^29.6.3",
     "prettier": "2.8.8",
     "react-test-renderer": "19.2.3",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "uniffi-bindgen-react-native": "0.31.0-3"
   },
   "engines": {
     "node": ">= 22.11.0"

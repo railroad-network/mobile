@@ -17,6 +17,10 @@ end
 target 'RailroadMobile' do
   config = use_native_modules!
 
+  # The uniffi-generated Rust crypto turbo-module (ADR-0007). Its podspec lives
+  # at the repo root; it vendors the RailroadNetworkMobileFramework.xcframework.
+  pod 'RrnMobileFfi', :path => '..'
+
   use_react_native!(
     :path => config[:reactNativePath],
     # An absolute path to your application root.

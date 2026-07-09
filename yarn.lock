@@ -7202,6 +7202,7 @@ __metadata:
     react-native-safe-area-context: "npm:^5.5.2"
     react-test-renderer: "npm:19.2.3"
     typescript: "npm:^5.8.3"
+    uniffi-bindgen-react-native: "npm:0.31.0-3"
   languageName: unknown
   linkType: soft
 
@@ -8389,6 +8390,16 @@ __metadata:
   version: 2.2.0
   resolution: "unicode-property-aliases-ecmascript@npm:2.2.0"
   checksum: b338529831c988ac696f2bdbcd4579d1c5cc844b24eda7269973c457fa81989bdb49a366af37a448eb1a60f1dae89559ea2a5854db2797e972a0162eee0778c6
+  languageName: node
+  linkType: hard
+
+"uniffi-bindgen-react-native@npm:0.31.0-3":
+  version: 0.31.0-3
+  resolution: "uniffi-bindgen-react-native@npm:0.31.0-3"
+  bin:
+    ubrn: bin/cli.cjs
+    uniffi-bindgen-react-native: bin/cli.cjs
+  checksum: 6b61a7affb83f89f50170c8729e1477ffbc38fd6cbb6fa69a3ecf39da53dfc922f6e3376b3b77ca4170dd6a615d632208dae0ed8410333ff34e6b6081217fbee
   languageName: node
   linkType: hard
 
