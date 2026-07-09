@@ -125,6 +125,19 @@ const fakeFfi: RrnCryptoFfi = {
   isValidAddress: () => {
     throw new Error('not exercised by sign tests');
   },
+  WalletContents: {
+    createNew: () => {
+      throw new Error('not exercised by sign tests');
+    },
+  },
+  EncryptedWallet: {
+    encrypt: () => {
+      throw new Error('not exercised by sign tests');
+    },
+    fromBytes: () => {
+      throw new Error('not exercised by sign tests');
+    },
+  },
 };
 
 beforeAll(() => registerRrnCryptoFfi(fakeFfi));

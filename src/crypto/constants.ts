@@ -6,8 +6,12 @@
  * The `rrn.` prefix namespaces our entries within the app's keychain domain.
  */
 export const SecureStoreKeys = {
-  /** The wallet's secret key material (the passphrase-encrypted `.rrnwallet`
-   * bytes land here in T1.1.5 — see WALLET_FILE, added then). */
+  /** The passphrase-encrypted `.rrnwallet` bytes (T1.1.5). Double protection:
+   * these bytes are already passphrase-encrypted, and the keychain/keystore
+   * adds OS-level at-rest protection on top. */
+  WALLET_FILE: 'rrn.wallet.file',
+  /** Reserved for raw wallet secret material stored outside the `.rrnwallet`
+   * envelope. Unused today — the wallet lives under WALLET_FILE. */
   WALLET_SECRET: 'rrn.wallet.secret',
   /** Token proving this device is paired with a station. */
   STATION_PAIRING_TOKEN: 'rrn.station.pairing_token',

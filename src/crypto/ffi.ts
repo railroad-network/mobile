@@ -46,6 +46,33 @@ export interface Hash {
 }
 
 /**
+ * Opaque handle to a decrypted wallet's contents: one identity plus metadata.
+ * The secret seed never crosses this boundary — signing is reached through
+ * {@link WalletContents.keypair}, which keeps the secret inside Rust.
+ */
+export interface WalletContents {
+  publicKey(): PublicKey;
+  /** The bech32m `rrn1…` address of this identity. */
+  address(): string;
+  /** Unix seconds when the identity was created. */
+  createdAt(): number;
+  /** Arbitrary, non-secret user metadata. */
+  metadata(): Record<string, string>;
+  /** The keypair for this identity, for signing. Secret stays in Rust. */
+  keypair(): Keypair;
+}
+
+/**
+ * Opaque handle to a sealed wallet. {@link EncryptedWallet.toBytes} is the
+ * canonical-CBOR `.rrnwallet` file content.
+ */
+export interface EncryptedWallet {
+  /** Opens the wallet; throws (wallet error) on wrong passphrase or tampering. */
+  decrypt(passphrase: string): WalletContents;
+  toBytes(): Uint8Array;
+}
+
+/**
  * The native module surface. Mirrors the shape uniffi generates: static
  * constructors grouped under each type, plus free functions. Fallible
  * constructors (`fromBytes`, `fromAddress`) throw on invalid input.
@@ -59,6 +86,13 @@ export interface RrnCryptoFfi {
   Signature: {fromBytes(data: Uint8Array): Signature};
   Hash: {of(data: Uint8Array): Hash};
   isValidAddress(address: string): boolean;
+  WalletContents: {createNew(): WalletContents};
+  EncryptedWallet: {
+    /** Seals `contents` under `passphrase`; throws (wallet error) on failure. */
+    encrypt(contents: WalletContents, passphrase: string): EncryptedWallet;
+    /** Parses `.rrnwallet` bytes; throws if they are not a valid wallet file. */
+    fromBytes(data: Uint8Array): EncryptedWallet;
+  };
 }
 
 let registered: RrnCryptoFfi | null = null;
