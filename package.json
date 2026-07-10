@@ -21,7 +21,8 @@
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "start": "react-native start",
-    "test": "jest"
+    "test": "jest",
+    "ubrn:ios": "uniffi-bindgen-react-native build ios --sim-only"
   },
   "dependencies": {
     "@react-native/new-app-screen": "0.86.0",

@@ -61,6 +61,33 @@ jobs:
           key: ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}
           restore-keys: ${{ runner.os }}-yarn-
       - run: yarn install --immutable
+      # The Rust FFI crate (ADR-0007) lives in the sibling `station` repo, not
+      # here. ubrn.config.yaml points at ../station, so check it out at the
+      # same relative path, pinned to the commit recorded in .station-version
+      # (bump that file to pick up newer station changes).
+      - name: Read pinned station commit
+        id: station-version
+        run: echo "sha=$(cat .station-version)" >> "$GITHUB_OUTPUT"
+      - name: Checkout station (pinned FFI source)
+        uses: actions/checkout@v4
+        with:
+          repository: railroad-network/station
+          ref: ${{ steps.station-version.outputs.sha }}
+          path: ../station
+      - name: Cache Cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-${{ hashFiles('.station-version') }}
+          restore-keys: ${{ runner.os }}-cargo-
+      - run: rustup target add aarch64-apple-ios-sim
+      # Builds the Rust crate and assembles RailroadNetworkMobileFramework.xcframework
+      # (gitignored build artifact) that RrnMobileFfi.podspec vendors. Simulator-only
+      # since this job only ever boots a simulator (see below) — matches the
+      # "smoke build only" scope, not a device build.
+      - run: yarn ubrn:ios
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.4'
@@ -130,6 +157,10 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('android/gradle/wrapper/gradle-wrapper.properties', 'android/build.gradle', 'android/app/build.gradle') }}
           restore-keys: ${{ runner.os }}-gradle-
       - uses: android-actions/setup-android@v3
+      # NOTE: unlike iOS, the Rust FFI (ADR-0007) has no Android turbo-module
+      # glue wired up yet (no ubrn `android:` config, no generated Kotlin/JNI
+      # bridge in android/app) — this job doesn't build or exercise the FFI at
+      # all yet. Wiring that is separate follow-up work, not a CI-only fix.
       - name: Enable KVM for the emulator
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
