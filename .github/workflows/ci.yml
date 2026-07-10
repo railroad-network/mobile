@@ -73,7 +73,12 @@ jobs:
         with:
           repository: railroad-network/station
           ref: ${{ steps.station-version.outputs.sha }}
-          path: ../station
+          # actions/checkout refuses a `path` that escapes GITHUB_WORKSPACE
+          # (e.g. `../station`), so check out inside the workspace and move
+          # it to the sibling location ubrn.config.yaml's `../station` expects.
+          path: station-checkout
+      - name: Move station checkout next to the mobile repo
+        run: mv station-checkout ../station
       - name: Cache Cargo registry
         uses: actions/cache@v4
         with:
