@@ -19,6 +19,8 @@ import {
   FfiConverterArrayBuffer,
   FfiConverterBool,
   FfiConverterInt32,
+  FfiConverterInt64,
+  FfiConverterMap,
   FfiConverterObject,
   FfiConverterUInt8,
   RustBuffer,
@@ -42,6 +44,32 @@ const uniffiIsDebug =
   false;
 
 // Public interface members begin here.
+
+export function canonicalBytes(payloadJson: string): ArrayBuffer /*throws*/ {
+  return ((__rb: Uint8Array) => {
+    try {
+      return FfiConverterArrayBuffer.lift(__rb);
+    } finally {
+      nativeModule().rustbuffer_free(__rb);
+    }
+  })(
+    uniffiCaller.rustCallWithError(
+      /*liftError:*/ FfiConverterTypePayloadError.lift.bind(
+        FfiConverterTypePayloadError,
+      ),
+      /*caller:*/ callStatus => {
+        return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_func_canonical_bytes(
+          FfiConverterString.lower(
+            payloadJson,
+            nativeModule().rustbuffer_alloc,
+          ),
+          callStatus,
+        );
+      },
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+    ),
+  );
+}
 
 export function isValidAddress(address: string): boolean {
   return FfiConverterBool.lift(
@@ -212,6 +240,338 @@ const FfiConverterTypeCryptoError = (() => {
   return new FfiConverter();
 })();
 
+// Flat error type: PayloadError
+export enum PayloadError_Tags {
+  InvalidJson = 'InvalidJson',
+  MalformedNode = 'MalformedNode',
+  FloatForbidden = 'FloatForbidden',
+  InvalidInt = 'InvalidInt',
+  InvalidBytes = 'InvalidBytes',
+}
+export const PayloadError = (() => {
+  class InvalidJson extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = 'PayloadError';
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 1;
+
+    readonly tag = PayloadError_Tags.InvalidJson;
+
+    constructor(message: string) {
+      super('PayloadError', 'InvalidJson', message);
+    }
+
+    static instanceOf(e: any): e is InvalidJson {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 1;
+    }
+  }
+  class MalformedNode extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = 'PayloadError';
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 2;
+
+    readonly tag = PayloadError_Tags.MalformedNode;
+
+    constructor(message: string) {
+      super('PayloadError', 'MalformedNode', message);
+    }
+
+    static instanceOf(e: any): e is MalformedNode {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 2;
+    }
+  }
+  class FloatForbidden extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = 'PayloadError';
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 3;
+
+    readonly tag = PayloadError_Tags.FloatForbidden;
+
+    constructor(message: string) {
+      super('PayloadError', 'FloatForbidden', message);
+    }
+
+    static instanceOf(e: any): e is FloatForbidden {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 3;
+    }
+  }
+  class InvalidInt extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = 'PayloadError';
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 4;
+
+    readonly tag = PayloadError_Tags.InvalidInt;
+
+    constructor(message: string) {
+      super('PayloadError', 'InvalidInt', message);
+    }
+
+    static instanceOf(e: any): e is InvalidInt {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 4;
+    }
+  }
+  class InvalidBytes extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = 'PayloadError';
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 5;
+
+    readonly tag = PayloadError_Tags.InvalidBytes;
+
+    constructor(message: string) {
+      super('PayloadError', 'InvalidBytes', message);
+    }
+
+    static instanceOf(e: any): e is InvalidBytes {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 5;
+    }
+  }
+
+  // Utility function which does not rely on instanceof.
+  function instanceOf(e: any): e is PayloadError {
+    return (e as any)[uniffiTypeNameSymbol] === 'PayloadError';
+  }
+  return {
+    InvalidJson,
+    MalformedNode,
+    FloatForbidden,
+    InvalidInt,
+    InvalidBytes,
+    instanceOf,
+  };
+})();
+
+// Union type for PayloadError error type.
+export type PayloadError = InstanceType<
+  (typeof PayloadError)[
+    | 'InvalidJson'
+    | 'MalformedNode'
+    | 'FloatForbidden'
+    | 'InvalidInt'
+    | 'InvalidBytes']
+>;
+
+const FfiConverterTypePayloadError = (() => {
+  const intConverter = FfiConverterInt32;
+  type TypeName = PayloadError;
+  class FfiConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      switch (intConverter.read(from)) {
+        case 1:
+          return new PayloadError.InvalidJson(FfiConverterString.read(from));
+
+        case 2:
+          return new PayloadError.MalformedNode(FfiConverterString.read(from));
+
+        case 3:
+          return new PayloadError.FloatForbidden(FfiConverterString.read(from));
+
+        case 4:
+          return new PayloadError.InvalidInt(FfiConverterString.read(from));
+
+        case 5:
+          return new PayloadError.InvalidBytes(FfiConverterString.read(from));
+
+        default:
+          throw new UniffiInternalError.UnexpectedEnumCase();
+      }
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      const obj = value as any;
+      const index = obj[variantOrdinalSymbol] as number;
+      intConverter.write(index, into);
+    }
+    allocationSize(value: TypeName): number {
+      return intConverter.allocationSize(0);
+    }
+  }
+  return new FfiConverter();
+})();
+
+// Flat error type: WalletError
+export enum WalletError_Tags {
+  Decrypt = 'Decrypt',
+  UnsupportedVersion = 'UnsupportedVersion',
+  Corrupt = 'Corrupt',
+  Kdf = 'Kdf',
+}
+export const WalletError = (() => {
+  class Decrypt extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = 'WalletError';
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 1;
+
+    readonly tag = WalletError_Tags.Decrypt;
+
+    constructor(message: string) {
+      super('WalletError', 'Decrypt', message);
+    }
+
+    static instanceOf(e: any): e is Decrypt {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 1;
+    }
+  }
+  class UnsupportedVersion extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = 'WalletError';
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 2;
+
+    readonly tag = WalletError_Tags.UnsupportedVersion;
+
+    constructor(message: string) {
+      super('WalletError', 'UnsupportedVersion', message);
+    }
+
+    static instanceOf(e: any): e is UnsupportedVersion {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 2;
+    }
+  }
+  class Corrupt extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = 'WalletError';
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 3;
+
+    readonly tag = WalletError_Tags.Corrupt;
+
+    constructor(message: string) {
+      super('WalletError', 'Corrupt', message);
+    }
+
+    static instanceOf(e: any): e is Corrupt {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 3;
+    }
+  }
+  class Kdf extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = 'WalletError';
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 4;
+
+    readonly tag = WalletError_Tags.Kdf;
+
+    constructor(message: string) {
+      super('WalletError', 'Kdf', message);
+    }
+
+    static instanceOf(e: any): e is Kdf {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 4;
+    }
+  }
+
+  // Utility function which does not rely on instanceof.
+  function instanceOf(e: any): e is WalletError {
+    return (e as any)[uniffiTypeNameSymbol] === 'WalletError';
+  }
+  return {
+    Decrypt,
+    UnsupportedVersion,
+    Corrupt,
+    Kdf,
+    instanceOf,
+  };
+})();
+
+// Union type for WalletError error type.
+export type WalletError = InstanceType<
+  (typeof WalletError)['Decrypt' | 'UnsupportedVersion' | 'Corrupt' | 'Kdf']
+>;
+
+const FfiConverterTypeWalletError = (() => {
+  const intConverter = FfiConverterInt32;
+  type TypeName = WalletError;
+  class FfiConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      switch (intConverter.read(from)) {
+        case 1:
+          return new WalletError.Decrypt(FfiConverterString.read(from));
+
+        case 2:
+          return new WalletError.UnsupportedVersion(
+            FfiConverterString.read(from),
+          );
+
+        case 3:
+          return new WalletError.Corrupt(FfiConverterString.read(from));
+
+        case 4:
+          return new WalletError.Kdf(FfiConverterString.read(from));
+
+        default:
+          throw new UniffiInternalError.UnexpectedEnumCase();
+      }
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      const obj = value as any;
+      const index = obj[variantOrdinalSymbol] as number;
+      intConverter.write(index, into);
+    }
+    allocationSize(value: TypeName): number {
+      return intConverter.allocationSize(0);
+    }
+  }
+  return new FfiConverter();
+})();
+
 // Hermes (React Native ≥ 0.74) ships TextEncoder and encodeInto, but not
 // TextDecoder. For single-string decode (bytesToString), we polyfill via the
 // C++ string_from_buffer helper using a duck-typed object matching the
@@ -273,164 +633,6 @@ const stringConverter = (() => {
   };
 })();
 const FfiConverterString = uniffiCreateFfiConverterString(stringConverter);
-
-export interface HashLike {
-  toBytes(): ArrayBuffer;
-  toHex(): string;
-}
-/**
- * @deprecated Use `HashLike` instead.
- */
-export type HashInterface = HashLike;
-
-export class Hash extends UniffiAbstractObject implements HashLike {
-  readonly [uniffiTypeNameSymbol] = 'Hash';
-  readonly [destructorGuardSymbol]: UniffiGcObject;
-  readonly [pointerLiteralSymbol]: UniffiHandle;
-  // No primary constructor declared for this class.
-  private constructor(pointer: UniffiHandle) {
-    super();
-    this[pointerLiteralSymbol] = pointer;
-    this[destructorGuardSymbol] = uniffiTypeHashObjectFactory.bless(pointer);
-  }
-
-  static of(data: ArrayBuffer): HashLike {
-    return FfiConverterTypeHash.lift(
-      uniffiCaller.rustCall(
-        /*caller:*/ callStatus => {
-          return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_constructor_hash_of(
-            FfiConverterArrayBuffer.lower(
-              data,
-              nativeModule().rustbuffer_alloc,
-            ),
-            callStatus,
-          );
-        },
-        /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
-      ),
-    );
-  }
-
-  toBytes(): ArrayBuffer {
-    return ((__rb: Uint8Array) => {
-      try {
-        return FfiConverterArrayBuffer.lift(__rb);
-      } finally {
-        nativeModule().rustbuffer_free(__rb);
-      }
-    })(
-      uniffiCaller.rustCall(
-        /*caller:*/ callStatus => {
-          return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_method_hash_to_bytes(
-            uniffiTypeHashObjectFactory.clonePointer(this),
-            callStatus,
-          );
-        },
-        /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
-      ),
-    );
-  }
-
-  toHex(): string {
-    return ((__rb: Uint8Array) => {
-      try {
-        return FfiConverterString.lift(__rb);
-      } finally {
-        nativeModule().rustbuffer_free(__rb);
-      }
-    })(
-      uniffiCaller.rustCall(
-        /*caller:*/ callStatus => {
-          return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_method_hash_to_hex(
-            uniffiTypeHashObjectFactory.clonePointer(this),
-            callStatus,
-          );
-        },
-        /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
-      ),
-    );
-  }
-
-  uniffiDestroy(): void {
-    const ptr = (this as any)[destructorGuardSymbol];
-    if (ptr !== undefined) {
-      const pointer = uniffiTypeHashObjectFactory.pointer(this);
-      uniffiTypeHashObjectFactory.freePointer(pointer);
-      uniffiTypeHashObjectFactory.unbless(ptr);
-      delete (this as any)[destructorGuardSymbol];
-    }
-  }
-
-  static instanceOf(obj_: any): obj_ is Hash {
-    return uniffiTypeHashObjectFactory.isConcreteType(obj_);
-  }
-}
-
-const uniffiTypeHashObjectFactory: UniffiObjectFactory<HashLike> = (() => {
-  return {
-    create(pointer: UniffiHandle): HashLike {
-      const instance = Object.create(Hash.prototype);
-      instance[pointerLiteralSymbol] = pointer;
-      instance[destructorGuardSymbol] = this.bless(pointer);
-      instance[uniffiTypeNameSymbol] = 'Hash';
-      return instance;
-    },
-
-    bless(p: UniffiHandle): UniffiGcObject {
-      return uniffiCaller.rustCall(
-        /*caller:*/ status =>
-          nativeModule().ubrn_uniffi_internal_fn_method_hash_ffi__bless_pointer(
-            p,
-            status,
-          ),
-        /*liftString:*/ FfiConverterString.lift,
-      );
-    },
-
-    unbless(ptr_: UniffiGcObject) {
-      ptr_.markDestroyed();
-    },
-
-    pointer(obj_: HashLike): UniffiHandle {
-      if ((obj_ as any)[destructorGuardSymbol] === undefined) {
-        throw new UniffiInternalError.UnexpectedNullPointer();
-      }
-      return (obj_ as any)[pointerLiteralSymbol];
-    },
-
-    clonePointer(obj_: HashLike): UniffiHandle {
-      const pointer = this.pointer(obj_);
-      return uniffiCaller.rustCall(
-        /*caller:*/ callStatus =>
-          nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_clone_hash(
-            pointer,
-            callStatus,
-          ),
-        /*liftString:*/ FfiConverterString.lift,
-      );
-    },
-
-    freePointer(pointer: UniffiHandle): void {
-      uniffiCaller.rustCall(
-        /*caller:*/ callStatus =>
-          nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_free_hash(
-            pointer,
-            callStatus,
-          ),
-        /*liftString:*/ FfiConverterString.lift,
-      );
-    },
-
-    isConcreteType(obj_: any): obj_ is HashLike {
-      return (
-        obj_[destructorGuardSymbol] && obj_[uniffiTypeNameSymbol] === 'Hash'
-      );
-    },
-  };
-})();
-const FfiConverterTypeHash = new FfiConverterObject(
-  uniffiTypeHashObjectFactory,
-);
 
 export interface SignatureLike {
   toBytes(): ArrayBuffer;
@@ -927,6 +1129,570 @@ const FfiConverterTypeKeypair = new FfiConverterObject(
   uniffiTypeKeypairObjectFactory,
 );
 
+export interface WalletContentsLike {
+  address(): string;
+  createdAt(): bigint;
+  keypair(): KeypairLike;
+  metadata(): Map<string, string>;
+  publicKey(): PublicKeyLike;
+}
+/**
+ * @deprecated Use `WalletContentsLike` instead.
+ */
+export type WalletContentsInterface = WalletContentsLike;
+
+export class WalletContents
+  extends UniffiAbstractObject
+  implements WalletContentsLike
+{
+  readonly [uniffiTypeNameSymbol] = 'WalletContents';
+  readonly [destructorGuardSymbol]: UniffiGcObject;
+  readonly [pointerLiteralSymbol]: UniffiHandle;
+  // No primary constructor declared for this class.
+  private constructor(pointer: UniffiHandle) {
+    super();
+    this[pointerLiteralSymbol] = pointer;
+    this[destructorGuardSymbol] =
+      uniffiTypeWalletContentsObjectFactory.bless(pointer);
+  }
+
+  static createNew(): WalletContentsLike {
+    return FfiConverterTypeWalletContents.lift(
+      uniffiCaller.rustCall(
+        /*caller:*/ callStatus => {
+          return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_constructor_walletcontents_create_new(
+            callStatus,
+          );
+        },
+        /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      ),
+    );
+  }
+
+  address(): string {
+    return ((__rb: Uint8Array) => {
+      try {
+        return FfiConverterString.lift(__rb);
+      } finally {
+        nativeModule().rustbuffer_free(__rb);
+      }
+    })(
+      uniffiCaller.rustCall(
+        /*caller:*/ callStatus => {
+          return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_method_walletcontents_address(
+            uniffiTypeWalletContentsObjectFactory.clonePointer(this),
+            callStatus,
+          );
+        },
+        /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      ),
+    );
+  }
+
+  createdAt(): bigint {
+    return FfiConverterInt64.lift(
+      uniffiCaller.rustCall(
+        /*caller:*/ callStatus => {
+          return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_method_walletcontents_created_at(
+            uniffiTypeWalletContentsObjectFactory.clonePointer(this),
+            callStatus,
+          );
+        },
+        /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      ),
+    );
+  }
+
+  keypair(): KeypairLike {
+    return FfiConverterTypeKeypair.lift(
+      uniffiCaller.rustCall(
+        /*caller:*/ callStatus => {
+          return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_method_walletcontents_keypair(
+            uniffiTypeWalletContentsObjectFactory.clonePointer(this),
+            callStatus,
+          );
+        },
+        /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      ),
+    );
+  }
+
+  metadata(): Map<string, string> {
+    return ((__rb: Uint8Array) => {
+      try {
+        return FfiConverterMapStringString.lift(__rb);
+      } finally {
+        nativeModule().rustbuffer_free(__rb);
+      }
+    })(
+      uniffiCaller.rustCall(
+        /*caller:*/ callStatus => {
+          return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_method_walletcontents_metadata(
+            uniffiTypeWalletContentsObjectFactory.clonePointer(this),
+            callStatus,
+          );
+        },
+        /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      ),
+    );
+  }
+
+  publicKey(): PublicKeyLike {
+    return FfiConverterTypePublicKey.lift(
+      uniffiCaller.rustCall(
+        /*caller:*/ callStatus => {
+          return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_method_walletcontents_public_key(
+            uniffiTypeWalletContentsObjectFactory.clonePointer(this),
+            callStatus,
+          );
+        },
+        /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      ),
+    );
+  }
+
+  uniffiDestroy(): void {
+    const ptr = (this as any)[destructorGuardSymbol];
+    if (ptr !== undefined) {
+      const pointer = uniffiTypeWalletContentsObjectFactory.pointer(this);
+      uniffiTypeWalletContentsObjectFactory.freePointer(pointer);
+      uniffiTypeWalletContentsObjectFactory.unbless(ptr);
+      delete (this as any)[destructorGuardSymbol];
+    }
+  }
+
+  static instanceOf(obj_: any): obj_ is WalletContents {
+    return uniffiTypeWalletContentsObjectFactory.isConcreteType(obj_);
+  }
+}
+
+const uniffiTypeWalletContentsObjectFactory: UniffiObjectFactory<WalletContentsLike> =
+  (() => {
+    return {
+      create(pointer: UniffiHandle): WalletContentsLike {
+        const instance = Object.create(WalletContents.prototype);
+        instance[pointerLiteralSymbol] = pointer;
+        instance[destructorGuardSymbol] = this.bless(pointer);
+        instance[uniffiTypeNameSymbol] = 'WalletContents';
+        return instance;
+      },
+
+      bless(p: UniffiHandle): UniffiGcObject {
+        return uniffiCaller.rustCall(
+          /*caller:*/ status =>
+            nativeModule().ubrn_uniffi_internal_fn_method_walletcontents_ffi__bless_pointer(
+              p,
+              status,
+            ),
+          /*liftString:*/ FfiConverterString.lift,
+        );
+      },
+
+      unbless(ptr_: UniffiGcObject) {
+        ptr_.markDestroyed();
+      },
+
+      pointer(obj_: WalletContentsLike): UniffiHandle {
+        if ((obj_ as any)[destructorGuardSymbol] === undefined) {
+          throw new UniffiInternalError.UnexpectedNullPointer();
+        }
+        return (obj_ as any)[pointerLiteralSymbol];
+      },
+
+      clonePointer(obj_: WalletContentsLike): UniffiHandle {
+        const pointer = this.pointer(obj_);
+        return uniffiCaller.rustCall(
+          /*caller:*/ callStatus =>
+            nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_clone_walletcontents(
+              pointer,
+              callStatus,
+            ),
+          /*liftString:*/ FfiConverterString.lift,
+        );
+      },
+
+      freePointer(pointer: UniffiHandle): void {
+        uniffiCaller.rustCall(
+          /*caller:*/ callStatus =>
+            nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_free_walletcontents(
+              pointer,
+              callStatus,
+            ),
+          /*liftString:*/ FfiConverterString.lift,
+        );
+      },
+
+      isConcreteType(obj_: any): obj_ is WalletContentsLike {
+        return (
+          obj_[destructorGuardSymbol] &&
+          obj_[uniffiTypeNameSymbol] === 'WalletContents'
+        );
+      },
+    };
+  })();
+const FfiConverterTypeWalletContents = new FfiConverterObject(
+  uniffiTypeWalletContentsObjectFactory,
+);
+
+export interface EncryptedWalletLike {
+  decrypt(passphrase: string): /*throws*/ WalletContentsLike;
+  toBytes(): ArrayBuffer;
+}
+/**
+ * @deprecated Use `EncryptedWalletLike` instead.
+ */
+export type EncryptedWalletInterface = EncryptedWalletLike;
+
+export class EncryptedWallet
+  extends UniffiAbstractObject
+  implements EncryptedWalletLike
+{
+  readonly [uniffiTypeNameSymbol] = 'EncryptedWallet';
+  readonly [destructorGuardSymbol]: UniffiGcObject;
+  readonly [pointerLiteralSymbol]: UniffiHandle;
+  // No primary constructor declared for this class.
+  private constructor(pointer: UniffiHandle) {
+    super();
+    this[pointerLiteralSymbol] = pointer;
+    this[destructorGuardSymbol] =
+      uniffiTypeEncryptedWalletObjectFactory.bless(pointer);
+  }
+
+  static encrypt(
+    contents: WalletContentsLike,
+    passphrase: string,
+  ): EncryptedWalletLike /*throws*/ {
+    return FfiConverterTypeEncryptedWallet.lift(
+      uniffiCaller.rustCallWithError(
+        /*liftError:*/ FfiConverterTypeWalletError.lift.bind(
+          FfiConverterTypeWalletError,
+        ),
+        /*caller:*/ callStatus => {
+          return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_constructor_encryptedwallet_encrypt(
+            FfiConverterTypeWalletContents.lower(
+              contents,
+              nativeModule().rustbuffer_alloc,
+            ),
+            FfiConverterString.lower(
+              passphrase,
+              nativeModule().rustbuffer_alloc,
+            ),
+            callStatus,
+          );
+        },
+        /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      ),
+    );
+  }
+
+  static fromBytes(data: ArrayBuffer): EncryptedWalletLike /*throws*/ {
+    return FfiConverterTypeEncryptedWallet.lift(
+      uniffiCaller.rustCallWithError(
+        /*liftError:*/ FfiConverterTypeWalletError.lift.bind(
+          FfiConverterTypeWalletError,
+        ),
+        /*caller:*/ callStatus => {
+          return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_constructor_encryptedwallet_from_bytes(
+            FfiConverterArrayBuffer.lower(
+              data,
+              nativeModule().rustbuffer_alloc,
+            ),
+            callStatus,
+          );
+        },
+        /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      ),
+    );
+  }
+
+  decrypt(passphrase: string): WalletContentsLike /*throws*/ {
+    return FfiConverterTypeWalletContents.lift(
+      uniffiCaller.rustCallWithError(
+        /*liftError:*/ FfiConverterTypeWalletError.lift.bind(
+          FfiConverterTypeWalletError,
+        ),
+        /*caller:*/ callStatus => {
+          return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_method_encryptedwallet_decrypt(
+            uniffiTypeEncryptedWalletObjectFactory.clonePointer(this),
+            FfiConverterString.lower(
+              passphrase,
+              nativeModule().rustbuffer_alloc,
+            ),
+            callStatus,
+          );
+        },
+        /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      ),
+    );
+  }
+
+  toBytes(): ArrayBuffer {
+    return ((__rb: Uint8Array) => {
+      try {
+        return FfiConverterArrayBuffer.lift(__rb);
+      } finally {
+        nativeModule().rustbuffer_free(__rb);
+      }
+    })(
+      uniffiCaller.rustCall(
+        /*caller:*/ callStatus => {
+          return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_method_encryptedwallet_to_bytes(
+            uniffiTypeEncryptedWalletObjectFactory.clonePointer(this),
+            callStatus,
+          );
+        },
+        /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      ),
+    );
+  }
+
+  uniffiDestroy(): void {
+    const ptr = (this as any)[destructorGuardSymbol];
+    if (ptr !== undefined) {
+      const pointer = uniffiTypeEncryptedWalletObjectFactory.pointer(this);
+      uniffiTypeEncryptedWalletObjectFactory.freePointer(pointer);
+      uniffiTypeEncryptedWalletObjectFactory.unbless(ptr);
+      delete (this as any)[destructorGuardSymbol];
+    }
+  }
+
+  static instanceOf(obj_: any): obj_ is EncryptedWallet {
+    return uniffiTypeEncryptedWalletObjectFactory.isConcreteType(obj_);
+  }
+}
+
+const uniffiTypeEncryptedWalletObjectFactory: UniffiObjectFactory<EncryptedWalletLike> =
+  (() => {
+    return {
+      create(pointer: UniffiHandle): EncryptedWalletLike {
+        const instance = Object.create(EncryptedWallet.prototype);
+        instance[pointerLiteralSymbol] = pointer;
+        instance[destructorGuardSymbol] = this.bless(pointer);
+        instance[uniffiTypeNameSymbol] = 'EncryptedWallet';
+        return instance;
+      },
+
+      bless(p: UniffiHandle): UniffiGcObject {
+        return uniffiCaller.rustCall(
+          /*caller:*/ status =>
+            nativeModule().ubrn_uniffi_internal_fn_method_encryptedwallet_ffi__bless_pointer(
+              p,
+              status,
+            ),
+          /*liftString:*/ FfiConverterString.lift,
+        );
+      },
+
+      unbless(ptr_: UniffiGcObject) {
+        ptr_.markDestroyed();
+      },
+
+      pointer(obj_: EncryptedWalletLike): UniffiHandle {
+        if ((obj_ as any)[destructorGuardSymbol] === undefined) {
+          throw new UniffiInternalError.UnexpectedNullPointer();
+        }
+        return (obj_ as any)[pointerLiteralSymbol];
+      },
+
+      clonePointer(obj_: EncryptedWalletLike): UniffiHandle {
+        const pointer = this.pointer(obj_);
+        return uniffiCaller.rustCall(
+          /*caller:*/ callStatus =>
+            nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_clone_encryptedwallet(
+              pointer,
+              callStatus,
+            ),
+          /*liftString:*/ FfiConverterString.lift,
+        );
+      },
+
+      freePointer(pointer: UniffiHandle): void {
+        uniffiCaller.rustCall(
+          /*caller:*/ callStatus =>
+            nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_free_encryptedwallet(
+              pointer,
+              callStatus,
+            ),
+          /*liftString:*/ FfiConverterString.lift,
+        );
+      },
+
+      isConcreteType(obj_: any): obj_ is EncryptedWalletLike {
+        return (
+          obj_[destructorGuardSymbol] &&
+          obj_[uniffiTypeNameSymbol] === 'EncryptedWallet'
+        );
+      },
+    };
+  })();
+const FfiConverterTypeEncryptedWallet = new FfiConverterObject(
+  uniffiTypeEncryptedWalletObjectFactory,
+);
+
+export interface HashLike {
+  toBytes(): ArrayBuffer;
+  toHex(): string;
+}
+/**
+ * @deprecated Use `HashLike` instead.
+ */
+export type HashInterface = HashLike;
+
+export class Hash extends UniffiAbstractObject implements HashLike {
+  readonly [uniffiTypeNameSymbol] = 'Hash';
+  readonly [destructorGuardSymbol]: UniffiGcObject;
+  readonly [pointerLiteralSymbol]: UniffiHandle;
+  // No primary constructor declared for this class.
+  private constructor(pointer: UniffiHandle) {
+    super();
+    this[pointerLiteralSymbol] = pointer;
+    this[destructorGuardSymbol] = uniffiTypeHashObjectFactory.bless(pointer);
+  }
+
+  static of(data: ArrayBuffer): HashLike {
+    return FfiConverterTypeHash.lift(
+      uniffiCaller.rustCall(
+        /*caller:*/ callStatus => {
+          return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_constructor_hash_of(
+            FfiConverterArrayBuffer.lower(
+              data,
+              nativeModule().rustbuffer_alloc,
+            ),
+            callStatus,
+          );
+        },
+        /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      ),
+    );
+  }
+
+  toBytes(): ArrayBuffer {
+    return ((__rb: Uint8Array) => {
+      try {
+        return FfiConverterArrayBuffer.lift(__rb);
+      } finally {
+        nativeModule().rustbuffer_free(__rb);
+      }
+    })(
+      uniffiCaller.rustCall(
+        /*caller:*/ callStatus => {
+          return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_method_hash_to_bytes(
+            uniffiTypeHashObjectFactory.clonePointer(this),
+            callStatus,
+          );
+        },
+        /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      ),
+    );
+  }
+
+  toHex(): string {
+    return ((__rb: Uint8Array) => {
+      try {
+        return FfiConverterString.lift(__rb);
+      } finally {
+        nativeModule().rustbuffer_free(__rb);
+      }
+    })(
+      uniffiCaller.rustCall(
+        /*caller:*/ callStatus => {
+          return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_method_hash_to_hex(
+            uniffiTypeHashObjectFactory.clonePointer(this),
+            callStatus,
+          );
+        },
+        /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      ),
+    );
+  }
+
+  uniffiDestroy(): void {
+    const ptr = (this as any)[destructorGuardSymbol];
+    if (ptr !== undefined) {
+      const pointer = uniffiTypeHashObjectFactory.pointer(this);
+      uniffiTypeHashObjectFactory.freePointer(pointer);
+      uniffiTypeHashObjectFactory.unbless(ptr);
+      delete (this as any)[destructorGuardSymbol];
+    }
+  }
+
+  static instanceOf(obj_: any): obj_ is Hash {
+    return uniffiTypeHashObjectFactory.isConcreteType(obj_);
+  }
+}
+
+const uniffiTypeHashObjectFactory: UniffiObjectFactory<HashLike> = (() => {
+  return {
+    create(pointer: UniffiHandle): HashLike {
+      const instance = Object.create(Hash.prototype);
+      instance[pointerLiteralSymbol] = pointer;
+      instance[destructorGuardSymbol] = this.bless(pointer);
+      instance[uniffiTypeNameSymbol] = 'Hash';
+      return instance;
+    },
+
+    bless(p: UniffiHandle): UniffiGcObject {
+      return uniffiCaller.rustCall(
+        /*caller:*/ status =>
+          nativeModule().ubrn_uniffi_internal_fn_method_hash_ffi__bless_pointer(
+            p,
+            status,
+          ),
+        /*liftString:*/ FfiConverterString.lift,
+      );
+    },
+
+    unbless(ptr_: UniffiGcObject) {
+      ptr_.markDestroyed();
+    },
+
+    pointer(obj_: HashLike): UniffiHandle {
+      if ((obj_ as any)[destructorGuardSymbol] === undefined) {
+        throw new UniffiInternalError.UnexpectedNullPointer();
+      }
+      return (obj_ as any)[pointerLiteralSymbol];
+    },
+
+    clonePointer(obj_: HashLike): UniffiHandle {
+      const pointer = this.pointer(obj_);
+      return uniffiCaller.rustCall(
+        /*caller:*/ callStatus =>
+          nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_clone_hash(
+            pointer,
+            callStatus,
+          ),
+        /*liftString:*/ FfiConverterString.lift,
+      );
+    },
+
+    freePointer(pointer: UniffiHandle): void {
+      uniffiCaller.rustCall(
+        /*caller:*/ callStatus =>
+          nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_free_hash(
+            pointer,
+            callStatus,
+          ),
+        /*liftString:*/ FfiConverterString.lift,
+      );
+    },
+
+    isConcreteType(obj_: any): obj_ is HashLike {
+      return (
+        obj_[destructorGuardSymbol] && obj_[uniffiTypeNameSymbol] === 'Hash'
+      );
+    },
+  };
+})();
+const FfiConverterTypeHash = new FfiConverterObject(
+  uniffiTypeHashObjectFactory,
+);
+
+// FfiConverter for Map<string, string>
+const FfiConverterMapStringString = new FfiConverterMap(
+  FfiConverterString,
+  FfiConverterString,
+);
+
 /**
  * This should be called before anything else.
  *
@@ -950,11 +1716,51 @@ function uniffiEnsureInitialized() {
     );
   }
   if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_func_canonical_bytes() !==
+    55743
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_func_canonical_bytes',
+    );
+  }
+  if (
     nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_func_is_valid_address() !==
     25471
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       'uniffi_rrn_mobile_ffi_checksum_func_is_valid_address',
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_constructor_encryptedwallet_encrypt() !==
+    26809
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_constructor_encryptedwallet_encrypt',
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_constructor_encryptedwallet_from_bytes() !==
+    61200
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_constructor_encryptedwallet_from_bytes',
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_method_encryptedwallet_decrypt() !==
+    42326
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_method_encryptedwallet_decrypt',
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_method_encryptedwallet_to_bytes() !==
+    5325
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_method_encryptedwallet_to_bytes',
     );
   }
   if (
@@ -1061,15 +1867,67 @@ function uniffiEnsureInitialized() {
       'uniffi_rrn_mobile_ffi_checksum_method_signature_to_bytes',
     );
   }
+  if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_constructor_walletcontents_create_new() !==
+    51897
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_constructor_walletcontents_create_new',
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_method_walletcontents_address() !==
+    758
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_method_walletcontents_address',
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_method_walletcontents_created_at() !==
+    57049
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_method_walletcontents_created_at',
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_method_walletcontents_keypair() !==
+    9014
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_method_walletcontents_keypair',
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_method_walletcontents_metadata() !==
+    36948
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_method_walletcontents_metadata',
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_method_walletcontents_public_key() !==
+    17029
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_method_walletcontents_public_key',
+    );
+  }
 }
 
 export default Object.freeze({
   initialize: uniffiEnsureInitialized,
   converters: {
     FfiConverterTypeCryptoError,
+    FfiConverterTypeEncryptedWallet,
     FfiConverterTypeHash,
     FfiConverterTypeKeypair,
+    FfiConverterTypePayloadError,
     FfiConverterTypePublicKey,
     FfiConverterTypeSignature,
+    FfiConverterTypeWalletContents,
+    FfiConverterTypeWalletError,
   },
 });

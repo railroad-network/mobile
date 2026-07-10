@@ -2261,7 +2261,7 @@ SPEC CHECKSUMS:
   ReactCommon: d5c1bb4427bf51c443de5926aac332c89ddd9363
   ReactNativeDependencies: fa0a54b3f5319ae0e3b9aff32bfee7a424b88e66
   RNKeychain: 6778b35b5bd067c322f8479526ac09b1d61f31d0
-  RrnMobileFfi: c702f1b708625a8e6a6059250f977c67fe854ff3
+  RrnMobileFfi: f8e9865453541a4c0ed0bf52531f6cc2fc92d85f
   uniffi-bindgen-react-native: 5a59022841548d4c890e8f259016bdb8a797208a
   Yoga: fe50ab299e578f397fef753cf309c6703a4db29b
 

@@ -9,3 +9,9 @@ rust:
 bindings:
   cpp: cpp
   ts: src/generated
+ios:
+  # Default ios.directory is "ios", which collides with the app's own
+  # ios/RailroadMobile sources (the podspec's source_files glob would sweep
+  # up AppDelegate.swift into the RrnMobileFfi pod target). Isolate ubrn's
+  # generated native glue in its own subdirectory instead.
+  directory: ios/rrn-ffi

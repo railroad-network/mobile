@@ -164,6 +164,14 @@ interface NativeModuleInterface {
     uniffi_out_err: UniffiRustCallStatus,
   ): void;
   ubrn_ffi_rrn_mobile_ffi_rust_future_free_void(handle: bigint): void;
+  ubrn_uniffi_rrn_mobile_ffi_fn_clone_encryptedwallet(
+    ptr: bigint,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): bigint;
+  ubrn_uniffi_rrn_mobile_ffi_fn_free_encryptedwallet(
+    ptr: bigint,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): void;
   ubrn_uniffi_rrn_mobile_ffi_fn_clone_hash(
     ptr: bigint,
     uniffi_out_err: UniffiRustCallStatus,
@@ -196,10 +204,40 @@ interface NativeModuleInterface {
     ptr: bigint,
     uniffi_out_err: UniffiRustCallStatus,
   ): void;
+  ubrn_uniffi_rrn_mobile_ffi_fn_clone_walletcontents(
+    ptr: bigint,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): bigint;
+  ubrn_uniffi_rrn_mobile_ffi_fn_free_walletcontents(
+    ptr: bigint,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): void;
+  ubrn_uniffi_rrn_mobile_ffi_fn_func_canonical_bytes(
+    payloadJson: Uint8Array,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): Uint8Array;
   ubrn_uniffi_rrn_mobile_ffi_fn_func_is_valid_address(
     address: Uint8Array,
     uniffi_out_err: UniffiRustCallStatus,
   ): number;
+  ubrn_uniffi_rrn_mobile_ffi_fn_constructor_encryptedwallet_encrypt(
+    contents: bigint,
+    passphrase: Uint8Array,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): bigint;
+  ubrn_uniffi_rrn_mobile_ffi_fn_constructor_encryptedwallet_from_bytes(
+    data: Uint8Array,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): bigint;
+  ubrn_uniffi_rrn_mobile_ffi_fn_method_encryptedwallet_decrypt(
+    uniffiSelf: bigint,
+    passphrase: Uint8Array,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): bigint;
+  ubrn_uniffi_rrn_mobile_ffi_fn_method_encryptedwallet_to_bytes(
+    uniffiSelf: bigint,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): Uint8Array;
   ubrn_uniffi_rrn_mobile_ffi_fn_constructor_hash_of(
     data: Uint8Array,
     uniffi_out_err: UniffiRustCallStatus,
@@ -254,8 +292,36 @@ interface NativeModuleInterface {
     uniffiSelf: bigint,
     uniffi_out_err: UniffiRustCallStatus,
   ): Uint8Array;
+  ubrn_uniffi_rrn_mobile_ffi_fn_constructor_walletcontents_create_new(
+    uniffi_out_err: UniffiRustCallStatus,
+  ): bigint;
+  ubrn_uniffi_rrn_mobile_ffi_fn_method_walletcontents_address(
+    uniffiSelf: bigint,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): Uint8Array;
+  ubrn_uniffi_rrn_mobile_ffi_fn_method_walletcontents_created_at(
+    uniffiSelf: bigint,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): bigint;
+  ubrn_uniffi_rrn_mobile_ffi_fn_method_walletcontents_keypair(
+    uniffiSelf: bigint,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): bigint;
+  ubrn_uniffi_rrn_mobile_ffi_fn_method_walletcontents_metadata(
+    uniffiSelf: bigint,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): Uint8Array;
+  ubrn_uniffi_rrn_mobile_ffi_fn_method_walletcontents_public_key(
+    uniffiSelf: bigint,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): bigint;
   ubrn_ffi_rrn_mobile_ffi_uniffi_contract_version(): number;
+  ubrn_uniffi_rrn_mobile_ffi_checksum_func_canonical_bytes(): number;
   ubrn_uniffi_rrn_mobile_ffi_checksum_func_is_valid_address(): number;
+  ubrn_uniffi_rrn_mobile_ffi_checksum_constructor_encryptedwallet_encrypt(): number;
+  ubrn_uniffi_rrn_mobile_ffi_checksum_constructor_encryptedwallet_from_bytes(): number;
+  ubrn_uniffi_rrn_mobile_ffi_checksum_method_encryptedwallet_decrypt(): number;
+  ubrn_uniffi_rrn_mobile_ffi_checksum_method_encryptedwallet_to_bytes(): number;
   ubrn_uniffi_rrn_mobile_ffi_checksum_constructor_hash_of(): number;
   ubrn_uniffi_rrn_mobile_ffi_checksum_method_hash_to_bytes(): number;
   ubrn_uniffi_rrn_mobile_ffi_checksum_method_hash_to_hex(): number;
@@ -269,10 +335,12 @@ interface NativeModuleInterface {
   ubrn_uniffi_rrn_mobile_ffi_checksum_method_publickey_verify(): number;
   ubrn_uniffi_rrn_mobile_ffi_checksum_constructor_signature_from_bytes(): number;
   ubrn_uniffi_rrn_mobile_ffi_checksum_method_signature_to_bytes(): number;
-  ubrn_uniffi_internal_fn_method_hash_ffi__bless_pointer(
-    pointer: bigint,
-    uniffi_out_err: UniffiRustCallStatus,
-  ): UniffiGcObject;
+  ubrn_uniffi_rrn_mobile_ffi_checksum_constructor_walletcontents_create_new(): number;
+  ubrn_uniffi_rrn_mobile_ffi_checksum_method_walletcontents_address(): number;
+  ubrn_uniffi_rrn_mobile_ffi_checksum_method_walletcontents_created_at(): number;
+  ubrn_uniffi_rrn_mobile_ffi_checksum_method_walletcontents_keypair(): number;
+  ubrn_uniffi_rrn_mobile_ffi_checksum_method_walletcontents_metadata(): number;
+  ubrn_uniffi_rrn_mobile_ffi_checksum_method_walletcontents_public_key(): number;
   ubrn_uniffi_internal_fn_method_signature_ffi__bless_pointer(
     pointer: bigint,
     uniffi_out_err: UniffiRustCallStatus,
@@ -282,6 +350,18 @@ interface NativeModuleInterface {
     uniffi_out_err: UniffiRustCallStatus,
   ): UniffiGcObject;
   ubrn_uniffi_internal_fn_method_keypair_ffi__bless_pointer(
+    pointer: bigint,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): UniffiGcObject;
+  ubrn_uniffi_internal_fn_method_walletcontents_ffi__bless_pointer(
+    pointer: bigint,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): UniffiGcObject;
+  ubrn_uniffi_internal_fn_method_encryptedwallet_ffi__bless_pointer(
+    pointer: bigint,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): UniffiGcObject;
+  ubrn_uniffi_internal_fn_method_hash_ffi__bless_pointer(
     pointer: bigint,
     uniffi_out_err: UniffiRustCallStatus,
   ): UniffiGcObject;

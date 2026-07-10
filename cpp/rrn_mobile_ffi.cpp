@@ -129,6 +129,32 @@ extern "C" {
     uint64_t callback_data, 
     UniffiForeignFutureResultVoid result
     );
+    /*handle*/ uint64_t uniffi_rrn_mobile_ffi_fn_clone_encryptedwallet(
+        /*handle*/ uint64_t handle, 
+        RustCallStatus *uniffi_out_err
+    );
+    void uniffi_rrn_mobile_ffi_fn_free_encryptedwallet(
+        /*handle*/ uint64_t handle, 
+        RustCallStatus *uniffi_out_err
+    );
+    /*handle*/ uint64_t uniffi_rrn_mobile_ffi_fn_constructor_encryptedwallet_encrypt(
+        /*handle*/ uint64_t contents, 
+        RustBuffer passphrase, 
+        RustCallStatus *uniffi_out_err
+    );
+    /*handle*/ uint64_t uniffi_rrn_mobile_ffi_fn_constructor_encryptedwallet_from_bytes(
+        RustBuffer data, 
+        RustCallStatus *uniffi_out_err
+    );
+    /*handle*/ uint64_t uniffi_rrn_mobile_ffi_fn_method_encryptedwallet_decrypt(
+        /*handle*/ uint64_t ptr, 
+        RustBuffer passphrase, 
+        RustCallStatus *uniffi_out_err
+    );
+    RustBuffer uniffi_rrn_mobile_ffi_fn_method_encryptedwallet_to_bytes(
+        /*handle*/ uint64_t ptr, 
+        RustCallStatus *uniffi_out_err
+    );
     /*handle*/ uint64_t uniffi_rrn_mobile_ffi_fn_clone_hash(
         /*handle*/ uint64_t handle, 
         RustCallStatus *uniffi_out_err
@@ -212,6 +238,40 @@ extern "C" {
     );
     RustBuffer uniffi_rrn_mobile_ffi_fn_method_signature_to_bytes(
         /*handle*/ uint64_t ptr, 
+        RustCallStatus *uniffi_out_err
+    );
+    /*handle*/ uint64_t uniffi_rrn_mobile_ffi_fn_clone_walletcontents(
+        /*handle*/ uint64_t handle, 
+        RustCallStatus *uniffi_out_err
+    );
+    void uniffi_rrn_mobile_ffi_fn_free_walletcontents(
+        /*handle*/ uint64_t handle, 
+        RustCallStatus *uniffi_out_err
+    );
+    /*handle*/ uint64_t uniffi_rrn_mobile_ffi_fn_constructor_walletcontents_create_new(RustCallStatus *uniffi_out_err
+    );
+    RustBuffer uniffi_rrn_mobile_ffi_fn_method_walletcontents_address(
+        /*handle*/ uint64_t ptr, 
+        RustCallStatus *uniffi_out_err
+    );
+    int64_t uniffi_rrn_mobile_ffi_fn_method_walletcontents_created_at(
+        /*handle*/ uint64_t ptr, 
+        RustCallStatus *uniffi_out_err
+    );
+    /*handle*/ uint64_t uniffi_rrn_mobile_ffi_fn_method_walletcontents_keypair(
+        /*handle*/ uint64_t ptr, 
+        RustCallStatus *uniffi_out_err
+    );
+    RustBuffer uniffi_rrn_mobile_ffi_fn_method_walletcontents_metadata(
+        /*handle*/ uint64_t ptr, 
+        RustCallStatus *uniffi_out_err
+    );
+    /*handle*/ uint64_t uniffi_rrn_mobile_ffi_fn_method_walletcontents_public_key(
+        /*handle*/ uint64_t ptr, 
+        RustCallStatus *uniffi_out_err
+    );
+    RustBuffer uniffi_rrn_mobile_ffi_fn_func_canonical_bytes(
+        RustBuffer payload_json, 
         RustCallStatus *uniffi_out_err
     );
     int8_t uniffi_rrn_mobile_ffi_fn_func_is_valid_address(
@@ -415,7 +475,13 @@ extern "C" {
         /*handle*/ uint64_t handle, 
         RustCallStatus *uniffi_out_err
     );
+    uint16_t uniffi_rrn_mobile_ffi_checksum_func_canonical_bytes(
+    );
     uint16_t uniffi_rrn_mobile_ffi_checksum_func_is_valid_address(
+    );
+    uint16_t uniffi_rrn_mobile_ffi_checksum_method_encryptedwallet_decrypt(
+    );
+    uint16_t uniffi_rrn_mobile_ffi_checksum_method_encryptedwallet_to_bytes(
     );
     uint16_t uniffi_rrn_mobile_ffi_checksum_method_hash_to_bytes(
     );
@@ -433,6 +499,20 @@ extern "C" {
     );
     uint16_t uniffi_rrn_mobile_ffi_checksum_method_signature_to_bytes(
     );
+    uint16_t uniffi_rrn_mobile_ffi_checksum_method_walletcontents_address(
+    );
+    uint16_t uniffi_rrn_mobile_ffi_checksum_method_walletcontents_created_at(
+    );
+    uint16_t uniffi_rrn_mobile_ffi_checksum_method_walletcontents_keypair(
+    );
+    uint16_t uniffi_rrn_mobile_ffi_checksum_method_walletcontents_metadata(
+    );
+    uint16_t uniffi_rrn_mobile_ffi_checksum_method_walletcontents_public_key(
+    );
+    uint16_t uniffi_rrn_mobile_ffi_checksum_constructor_encryptedwallet_encrypt(
+    );
+    uint16_t uniffi_rrn_mobile_ffi_checksum_constructor_encryptedwallet_from_bytes(
+    );
     uint16_t uniffi_rrn_mobile_ffi_checksum_constructor_hash_of(
     );
     uint16_t uniffi_rrn_mobile_ffi_checksum_constructor_keypair_generate(
@@ -442,6 +522,8 @@ extern "C" {
     uint16_t uniffi_rrn_mobile_ffi_checksum_constructor_publickey_from_bytes(
     );
     uint16_t uniffi_rrn_mobile_ffi_checksum_constructor_signature_from_bytes(
+    );
+    uint16_t uniffi_rrn_mobile_ffi_checksum_constructor_walletcontents_create_new(
     );
     uint32_t ffi_rrn_mobile_ffi_uniffi_contract_version(
     );
@@ -1903,6 +1985,54 @@ NativeRrnMobileFfi::NativeRrnMobileFfi(
             return this->cpp_uniffi_internal_fn_func_ffi__read_string_from_buffer(rt, thisVal, args, count);
         }
     );
+    props["ubrn_uniffi_rrn_mobile_ffi_fn_clone_encryptedwallet"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_fn_clone_encryptedwallet"),
+        1,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_fn_clone_encryptedwallet(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_rrn_mobile_ffi_fn_free_encryptedwallet"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_fn_free_encryptedwallet"),
+        1,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_fn_free_encryptedwallet(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_rrn_mobile_ffi_fn_constructor_encryptedwallet_encrypt"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_fn_constructor_encryptedwallet_encrypt"),
+        2,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_fn_constructor_encryptedwallet_encrypt(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_rrn_mobile_ffi_fn_constructor_encryptedwallet_from_bytes"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_fn_constructor_encryptedwallet_from_bytes"),
+        1,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_fn_constructor_encryptedwallet_from_bytes(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_rrn_mobile_ffi_fn_method_encryptedwallet_decrypt"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_fn_method_encryptedwallet_decrypt"),
+        2,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_fn_method_encryptedwallet_decrypt(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_rrn_mobile_ffi_fn_method_encryptedwallet_to_bytes"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_fn_method_encryptedwallet_to_bytes"),
+        1,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_fn_method_encryptedwallet_to_bytes(rt, thisVal, args, count);
+        }
+    );
     props["ubrn_uniffi_rrn_mobile_ffi_fn_clone_hash"] = jsi::Function::createFromHostFunction(
         rt,
         jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_fn_clone_hash"),
@@ -2071,6 +2201,78 @@ NativeRrnMobileFfi::NativeRrnMobileFfi(
             return this->cpp_uniffi_rrn_mobile_ffi_fn_method_signature_to_bytes(rt, thisVal, args, count);
         }
     );
+    props["ubrn_uniffi_rrn_mobile_ffi_fn_clone_walletcontents"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_fn_clone_walletcontents"),
+        1,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_fn_clone_walletcontents(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_rrn_mobile_ffi_fn_free_walletcontents"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_fn_free_walletcontents"),
+        1,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_fn_free_walletcontents(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_rrn_mobile_ffi_fn_constructor_walletcontents_create_new"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_fn_constructor_walletcontents_create_new"),
+        0,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_fn_constructor_walletcontents_create_new(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_rrn_mobile_ffi_fn_method_walletcontents_address"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_fn_method_walletcontents_address"),
+        1,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_fn_method_walletcontents_address(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_rrn_mobile_ffi_fn_method_walletcontents_created_at"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_fn_method_walletcontents_created_at"),
+        1,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_fn_method_walletcontents_created_at(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_rrn_mobile_ffi_fn_method_walletcontents_keypair"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_fn_method_walletcontents_keypair"),
+        1,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_fn_method_walletcontents_keypair(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_rrn_mobile_ffi_fn_method_walletcontents_metadata"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_fn_method_walletcontents_metadata"),
+        1,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_fn_method_walletcontents_metadata(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_rrn_mobile_ffi_fn_method_walletcontents_public_key"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_fn_method_walletcontents_public_key"),
+        1,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_fn_method_walletcontents_public_key(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_rrn_mobile_ffi_fn_func_canonical_bytes"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_fn_func_canonical_bytes"),
+        1,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_fn_func_canonical_bytes(rt, thisVal, args, count);
+        }
+    );
     props["ubrn_uniffi_rrn_mobile_ffi_fn_func_is_valid_address"] = jsi::Function::createFromHostFunction(
         rt,
         jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_fn_func_is_valid_address"),
@@ -2079,12 +2281,36 @@ NativeRrnMobileFfi::NativeRrnMobileFfi(
             return this->cpp_uniffi_rrn_mobile_ffi_fn_func_is_valid_address(rt, thisVal, args, count);
         }
     );
+    props["ubrn_uniffi_rrn_mobile_ffi_checksum_func_canonical_bytes"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_checksum_func_canonical_bytes"),
+        0,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_checksum_func_canonical_bytes(rt, thisVal, args, count);
+        }
+    );
     props["ubrn_uniffi_rrn_mobile_ffi_checksum_func_is_valid_address"] = jsi::Function::createFromHostFunction(
         rt,
         jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_checksum_func_is_valid_address"),
         0,
         [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
             return this->cpp_uniffi_rrn_mobile_ffi_checksum_func_is_valid_address(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_rrn_mobile_ffi_checksum_method_encryptedwallet_decrypt"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_checksum_method_encryptedwallet_decrypt"),
+        0,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_checksum_method_encryptedwallet_decrypt(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_rrn_mobile_ffi_checksum_method_encryptedwallet_to_bytes"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_checksum_method_encryptedwallet_to_bytes"),
+        0,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_checksum_method_encryptedwallet_to_bytes(rt, thisVal, args, count);
         }
     );
     props["ubrn_uniffi_rrn_mobile_ffi_checksum_method_hash_to_bytes"] = jsi::Function::createFromHostFunction(
@@ -2151,6 +2377,62 @@ NativeRrnMobileFfi::NativeRrnMobileFfi(
             return this->cpp_uniffi_rrn_mobile_ffi_checksum_method_signature_to_bytes(rt, thisVal, args, count);
         }
     );
+    props["ubrn_uniffi_rrn_mobile_ffi_checksum_method_walletcontents_address"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_checksum_method_walletcontents_address"),
+        0,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_checksum_method_walletcontents_address(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_rrn_mobile_ffi_checksum_method_walletcontents_created_at"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_checksum_method_walletcontents_created_at"),
+        0,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_checksum_method_walletcontents_created_at(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_rrn_mobile_ffi_checksum_method_walletcontents_keypair"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_checksum_method_walletcontents_keypair"),
+        0,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_checksum_method_walletcontents_keypair(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_rrn_mobile_ffi_checksum_method_walletcontents_metadata"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_checksum_method_walletcontents_metadata"),
+        0,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_checksum_method_walletcontents_metadata(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_rrn_mobile_ffi_checksum_method_walletcontents_public_key"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_checksum_method_walletcontents_public_key"),
+        0,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_checksum_method_walletcontents_public_key(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_rrn_mobile_ffi_checksum_constructor_encryptedwallet_encrypt"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_checksum_constructor_encryptedwallet_encrypt"),
+        0,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_checksum_constructor_encryptedwallet_encrypt(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_rrn_mobile_ffi_checksum_constructor_encryptedwallet_from_bytes"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_checksum_constructor_encryptedwallet_from_bytes"),
+        0,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_checksum_constructor_encryptedwallet_from_bytes(rt, thisVal, args, count);
+        }
+    );
     props["ubrn_uniffi_rrn_mobile_ffi_checksum_constructor_hash_of"] = jsi::Function::createFromHostFunction(
         rt,
         jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_checksum_constructor_hash_of"),
@@ -2191,12 +2473,28 @@ NativeRrnMobileFfi::NativeRrnMobileFfi(
             return this->cpp_uniffi_rrn_mobile_ffi_checksum_constructor_signature_from_bytes(rt, thisVal, args, count);
         }
     );
+    props["ubrn_uniffi_rrn_mobile_ffi_checksum_constructor_walletcontents_create_new"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_checksum_constructor_walletcontents_create_new"),
+        0,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_checksum_constructor_walletcontents_create_new(rt, thisVal, args, count);
+        }
+    );
     props["ubrn_ffi_rrn_mobile_ffi_uniffi_contract_version"] = jsi::Function::createFromHostFunction(
         rt,
         jsi::PropNameID::forAscii(rt, "ubrn_ffi_rrn_mobile_ffi_uniffi_contract_version"),
         0,
         [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
             return this->cpp_ffi_rrn_mobile_ffi_uniffi_contract_version(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_internal_fn_method_encryptedwallet_ffi__bless_pointer"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_internal_fn_method_encryptedwallet_ffi__bless_pointer"),
+        1,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_internal_fn_method_encryptedwallet_ffi__bless_pointer(rt, thisVal, args, count);
         }
     );
     props["ubrn_uniffi_internal_fn_method_hash_ffi__bless_pointer"] = jsi::Function::createFromHostFunction(
@@ -2229,6 +2527,14 @@ NativeRrnMobileFfi::NativeRrnMobileFfi(
         1,
         [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
             return this->cpp_uniffi_internal_fn_method_signature_ffi__bless_pointer(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_internal_fn_method_walletcontents_ffi__bless_pointer"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_internal_fn_method_walletcontents_ffi__bless_pointer"),
+        1,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_internal_fn_method_walletcontents_ffi__bless_pointer(rt, thisVal, args, count);
         }
     );
 
@@ -2368,6 +2674,15 @@ jsi::Value NativeRrnMobileFfi::cpp_uniffi_internal_fn_func_ffi__string_from_buff
 
 jsi::Value NativeRrnMobileFfi::cpp_uniffi_internal_fn_func_ffi__read_string_from_buffer(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
     return uniffi_jsi::Bridging<std::string>::read_string_from_buffer(rt, args[0], args[1], args[2]);
+}jsi::Value NativeRrnMobileFfi::cpp_uniffi_internal_fn_method_encryptedwallet_ffi__bless_pointer(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+    auto pointer = uniffi_jsi::Bridging<uint64_t>::fromJs(rt, callInvoker, args[0]);
+    auto static destructor = [](uint64_t p) {
+        RustCallStatus status = {0};
+        uniffi_rrn_mobile_ffi_fn_free_encryptedwallet(p, &status);
+    };
+    auto ptrObj = std::make_shared<uniffi_jsi::DestructibleObject>(pointer, destructor);
+    auto obj = jsi::Object::createFromHostObject(rt, ptrObj);
+    return jsi::Value(rt, obj);
 }jsi::Value NativeRrnMobileFfi::cpp_uniffi_internal_fn_method_hash_ffi__bless_pointer(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
     auto pointer = uniffi_jsi::Bridging<uint64_t>::fromJs(rt, callInvoker, args[0]);
     auto static destructor = [](uint64_t p) {
@@ -2404,9 +2719,78 @@ jsi::Value NativeRrnMobileFfi::cpp_uniffi_internal_fn_func_ffi__read_string_from
     auto ptrObj = std::make_shared<uniffi_jsi::DestructibleObject>(pointer, destructor);
     auto obj = jsi::Object::createFromHostObject(rt, ptrObj);
     return jsi::Value(rt, obj);
+}jsi::Value NativeRrnMobileFfi::cpp_uniffi_internal_fn_method_walletcontents_ffi__bless_pointer(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+    auto pointer = uniffi_jsi::Bridging<uint64_t>::fromJs(rt, callInvoker, args[0]);
+    auto static destructor = [](uint64_t p) {
+        RustCallStatus status = {0};
+        uniffi_rrn_mobile_ffi_fn_free_walletcontents(p, &status);
+    };
+    auto ptrObj = std::make_shared<uniffi_jsi::DestructibleObject>(pointer, destructor);
+    auto obj = jsi::Object::createFromHostObject(rt, ptrObj);
+    return jsi::Value(rt, obj);
 }
 
 // Methods calling directly into the uniffi generated C API of the Rust crate.
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_fn_clone_encryptedwallet(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        RustCallStatus status = uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
+        auto value = uniffi_rrn_mobile_ffi_fn_clone_encryptedwallet(uniffi_jsi::Bridging</*handle*/ uint64_t>::fromJs(rt, callInvoker, args[0]), 
+            &status
+        );
+        uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::copyIntoJs(rt, callInvoker, status, args[count - 1]);
+
+        
+        return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_fn_free_encryptedwallet(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        RustCallStatus status = uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
+        uniffi_rrn_mobile_ffi_fn_free_encryptedwallet(uniffi_jsi::Bridging</*handle*/ uint64_t>::fromJs(rt, callInvoker, args[0]), 
+            &status
+        );
+        uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::copyIntoJs(rt, callInvoker, status, args[count - 1]);
+
+        
+        return jsi::Value::undefined();
+}
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_fn_constructor_encryptedwallet_encrypt(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        RustCallStatus status = uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
+        auto value = uniffi_rrn_mobile_ffi_fn_constructor_encryptedwallet_encrypt(uniffi_jsi::Bridging</*handle*/ uint64_t>::fromJs(rt, callInvoker, args[0]), uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[1]), 
+            &status
+        );
+        uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::copyIntoJs(rt, callInvoker, status, args[count - 1]);
+
+        
+        return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_fn_constructor_encryptedwallet_from_bytes(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        RustCallStatus status = uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
+        auto value = uniffi_rrn_mobile_ffi_fn_constructor_encryptedwallet_from_bytes(uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[0]), 
+            &status
+        );
+        uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::copyIntoJs(rt, callInvoker, status, args[count - 1]);
+
+        
+        return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_fn_method_encryptedwallet_decrypt(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        RustCallStatus status = uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
+        auto value = uniffi_rrn_mobile_ffi_fn_method_encryptedwallet_decrypt(uniffi_jsi::Bridging</*handle*/ uint64_t>::fromJs(rt, callInvoker, args[0]), uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[1]), 
+            &status
+        );
+        uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::copyIntoJs(rt, callInvoker, status, args[count - 1]);
+
+        
+        return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_fn_method_encryptedwallet_to_bytes(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        RustCallStatus status = uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
+        auto value = uniffi_rrn_mobile_ffi_fn_method_encryptedwallet_to_bytes(uniffi_jsi::Bridging</*handle*/ uint64_t>::fromJs(rt, callInvoker, args[0]), 
+            &status
+        );
+        uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::copyIntoJs(rt, callInvoker, status, args[count - 1]);
+
+        
+        return uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::toJs(rt, callInvoker, value);
+}
 jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_fn_clone_hash(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
         RustCallStatus status = uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
         auto value = uniffi_rrn_mobile_ffi_fn_clone_hash(uniffi_jsi::Bridging</*handle*/ uint64_t>::fromJs(rt, callInvoker, args[0]), 
@@ -2616,6 +3000,95 @@ jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_fn_method_signature_to_
         
         return uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::toJs(rt, callInvoker, value);
 }
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_fn_clone_walletcontents(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        RustCallStatus status = uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
+        auto value = uniffi_rrn_mobile_ffi_fn_clone_walletcontents(uniffi_jsi::Bridging</*handle*/ uint64_t>::fromJs(rt, callInvoker, args[0]), 
+            &status
+        );
+        uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::copyIntoJs(rt, callInvoker, status, args[count - 1]);
+
+        
+        return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_fn_free_walletcontents(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        RustCallStatus status = uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
+        uniffi_rrn_mobile_ffi_fn_free_walletcontents(uniffi_jsi::Bridging</*handle*/ uint64_t>::fromJs(rt, callInvoker, args[0]), 
+            &status
+        );
+        uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::copyIntoJs(rt, callInvoker, status, args[count - 1]);
+
+        
+        return jsi::Value::undefined();
+}
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_fn_constructor_walletcontents_create_new(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        RustCallStatus status = uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
+        auto value = uniffi_rrn_mobile_ffi_fn_constructor_walletcontents_create_new(&status
+        );
+        uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::copyIntoJs(rt, callInvoker, status, args[count - 1]);
+
+        
+        return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_fn_method_walletcontents_address(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        RustCallStatus status = uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
+        auto value = uniffi_rrn_mobile_ffi_fn_method_walletcontents_address(uniffi_jsi::Bridging</*handle*/ uint64_t>::fromJs(rt, callInvoker, args[0]), 
+            &status
+        );
+        uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::copyIntoJs(rt, callInvoker, status, args[count - 1]);
+
+        
+        return uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_fn_method_walletcontents_created_at(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        RustCallStatus status = uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
+        auto value = uniffi_rrn_mobile_ffi_fn_method_walletcontents_created_at(uniffi_jsi::Bridging</*handle*/ uint64_t>::fromJs(rt, callInvoker, args[0]), 
+            &status
+        );
+        uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::copyIntoJs(rt, callInvoker, status, args[count - 1]);
+
+        
+        return uniffi_jsi::Bridging<int64_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_fn_method_walletcontents_keypair(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        RustCallStatus status = uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
+        auto value = uniffi_rrn_mobile_ffi_fn_method_walletcontents_keypair(uniffi_jsi::Bridging</*handle*/ uint64_t>::fromJs(rt, callInvoker, args[0]), 
+            &status
+        );
+        uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::copyIntoJs(rt, callInvoker, status, args[count - 1]);
+
+        
+        return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_fn_method_walletcontents_metadata(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        RustCallStatus status = uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
+        auto value = uniffi_rrn_mobile_ffi_fn_method_walletcontents_metadata(uniffi_jsi::Bridging</*handle*/ uint64_t>::fromJs(rt, callInvoker, args[0]), 
+            &status
+        );
+        uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::copyIntoJs(rt, callInvoker, status, args[count - 1]);
+
+        
+        return uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_fn_method_walletcontents_public_key(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        RustCallStatus status = uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
+        auto value = uniffi_rrn_mobile_ffi_fn_method_walletcontents_public_key(uniffi_jsi::Bridging</*handle*/ uint64_t>::fromJs(rt, callInvoker, args[0]), 
+            &status
+        );
+        uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::copyIntoJs(rt, callInvoker, status, args[count - 1]);
+
+        
+        return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_fn_func_canonical_bytes(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        RustCallStatus status = uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
+        auto value = uniffi_rrn_mobile_ffi_fn_func_canonical_bytes(uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[0]), 
+            &status
+        );
+        uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::copyIntoJs(rt, callInvoker, status, args[count - 1]);
+
+        
+        return uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::toJs(rt, callInvoker, value);
+}
 jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_fn_func_is_valid_address(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
         RustCallStatus status = uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
         auto value = uniffi_rrn_mobile_ffi_fn_func_is_valid_address(uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[0]), 
@@ -2626,8 +3099,29 @@ jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_fn_func_is_valid_addres
         
         return uniffi_jsi::Bridging<int8_t>::toJs(rt, callInvoker, value);
 }
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_checksum_func_canonical_bytes(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_rrn_mobile_ffi_checksum_func_canonical_bytes(
+        );
+
+        
+        return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
 jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_checksum_func_is_valid_address(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
         auto value = uniffi_rrn_mobile_ffi_checksum_func_is_valid_address(
+        );
+
+        
+        return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_checksum_method_encryptedwallet_decrypt(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_rrn_mobile_ffi_checksum_method_encryptedwallet_decrypt(
+        );
+
+        
+        return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_checksum_method_encryptedwallet_to_bytes(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_rrn_mobile_ffi_checksum_method_encryptedwallet_to_bytes(
         );
 
         
@@ -2689,6 +3183,55 @@ jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_checksum_method_signatu
         
         return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
 }
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_checksum_method_walletcontents_address(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_rrn_mobile_ffi_checksum_method_walletcontents_address(
+        );
+
+        
+        return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_checksum_method_walletcontents_created_at(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_rrn_mobile_ffi_checksum_method_walletcontents_created_at(
+        );
+
+        
+        return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_checksum_method_walletcontents_keypair(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_rrn_mobile_ffi_checksum_method_walletcontents_keypair(
+        );
+
+        
+        return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_checksum_method_walletcontents_metadata(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_rrn_mobile_ffi_checksum_method_walletcontents_metadata(
+        );
+
+        
+        return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_checksum_method_walletcontents_public_key(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_rrn_mobile_ffi_checksum_method_walletcontents_public_key(
+        );
+
+        
+        return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_checksum_constructor_encryptedwallet_encrypt(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_rrn_mobile_ffi_checksum_constructor_encryptedwallet_encrypt(
+        );
+
+        
+        return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_checksum_constructor_encryptedwallet_from_bytes(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_rrn_mobile_ffi_checksum_constructor_encryptedwallet_from_bytes(
+        );
+
+        
+        return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
 jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_checksum_constructor_hash_of(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
         auto value = uniffi_rrn_mobile_ffi_checksum_constructor_hash_of(
         );
@@ -2719,6 +3262,13 @@ jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_checksum_constructor_pu
 }
 jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_checksum_constructor_signature_from_bytes(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
         auto value = uniffi_rrn_mobile_ffi_checksum_constructor_signature_from_bytes(
+        );
+
+        
+        return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_checksum_constructor_walletcontents_create_new(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_rrn_mobile_ffi_checksum_constructor_walletcontents_create_new(
         );
 
         

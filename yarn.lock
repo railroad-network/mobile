@@ -2667,6 +2667,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@ubjs/core@npm:0.31.0-3":
+  version: 0.31.0-3
+  resolution: "@ubjs/core@npm:0.31.0-3"
+  checksum: 3e658aec5a71b418e496928565ba9383f18d5cee47b8b12f1b5985dcfc6b3221340b1b5a7b5436816e6e097113056e74cc324c803bdb8959d73401cef25dca8c
+  languageName: node
+  linkType: hard
+
 "@ungap/structured-clone@npm:^1.2.0":
   version: 1.3.2
   resolution: "@ungap/structured-clone@npm:1.3.2"
@@ -7193,6 +7200,7 @@ __metadata:
     "@types/jest": "npm:^29.5.13"
     "@types/react": "npm:^19.2.0"
     "@types/react-test-renderer": "npm:^19.1.0"
+    "@ubjs/core": "npm:0.31.0-3"
     eslint: "npm:^8.19.0"
     jest: "npm:^29.6.3"
     prettier: "npm:2.8.8"

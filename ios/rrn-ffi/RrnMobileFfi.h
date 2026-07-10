@@ -4,7 +4,7 @@
 #endif
 
 #ifdef RCT_NEW_ARCH_ENABLED
-#import "RNNativeModuleSpec.h"
+#import "RrnMobileFfiSpec.h"
 
 @interface RrnMobileFfi : NSObject <NativeRrnMobileFfiSpec>
 #else
