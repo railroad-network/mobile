@@ -240,6 +240,9 @@ const fakeFfi: RrnCryptoFfi = {
     },
   },
   isValidAddress: (address: string) => addressToPubkey.has(address),
+  canonicalBytes: () => {
+    throw new Error('not exercised by ffi_invariants tests');
+  },
   WalletContents: {
     createNew: () => {
       throw new Error('not exercised by ffi_invariants tests');

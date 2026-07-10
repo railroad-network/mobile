@@ -86,6 +86,13 @@ export interface RrnCryptoFfi {
   Signature: {fromBytes(data: Uint8Array): Signature};
   Hash: {of(data: Uint8Array): Hash};
   isValidAddress(address: string): boolean;
+  /**
+   * Serializes a signed-payload value to canonical dCBOR bytes (T1.1.7). The
+   * argument is the tagged-value model as a JSON string (see `cbor.ts`); throws
+   * (payload error) on a float or a malformed node. The bytes are byte-identical
+   * to what the station produces, so a signature over them verifies there.
+   */
+  canonicalBytes(payloadJson: string): Uint8Array;
   WalletContents: {createNew(): WalletContents};
   EncryptedWallet: {
     /** Seals `contents` under `passphrase`; throws (wallet error) on failure. */

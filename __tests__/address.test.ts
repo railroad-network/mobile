@@ -86,6 +86,7 @@ const fakeFfi: RrnCryptoFfi = {
     },
   },
   isValidAddress: (address: string): boolean => validByAddress.has(address),
+  canonicalBytes: () => throwUnused(),
   WalletContents: {createNew: () => throwUnused()},
   EncryptedWallet: {
     encrypt: () => throwUnused(),

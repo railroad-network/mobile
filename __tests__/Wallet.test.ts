@@ -209,6 +209,9 @@ const fakeFfi: RrnCryptoFfi = {
   isValidAddress: () => {
     throw new Error('not exercised by wallet tests');
   },
+  canonicalBytes: () => {
+    throw new Error('not exercised by wallet tests');
+  },
   WalletContents: {
     createNew: () => {
       // A fresh, unique fake identity.
