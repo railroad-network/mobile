@@ -75,6 +75,17 @@ export class Wallet {
   }
 }
 
+/** Options for {@link createWallet}. */
+export interface CreateWalletOptions {
+  /**
+   * Gate reads of the stored wallet behind biometric authentication. Defaults
+   * to `true`; set `false` when the user declines biometrics during onboarding.
+   * The passphrase layer protects the bytes either way — biometrics only guard
+   * retrieval of the (already encrypted) `.rrnwallet` blob from the keychain.
+   */
+  requireBiometric?: boolean;
+}
+
 /**
  * Creates a brand-new identity and persists it, sealed under `passphrase`, to
  * the OS secure store. Returns the opened wallet.
@@ -84,10 +95,13 @@ export class Wallet {
 export async function createWallet(
   passphrase: string,
   store: SecureStore = getSecureStore(),
+  options: CreateWalletOptions = {},
 ): Promise<Wallet> {
   const wallet = Wallet.fromContents(getRrnCryptoFfi().WalletContents.createNew());
   const bytes = await saveWalletToBytes(wallet, passphrase);
-  await store.save(SecureStoreKeys.WALLET_FILE, bytes);
+  await store.save(SecureStoreKeys.WALLET_FILE, bytes, {
+    requireBiometric: options.requireBiometric,
+  });
   return wallet;
 }
 

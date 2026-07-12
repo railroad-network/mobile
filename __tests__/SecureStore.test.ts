@@ -153,4 +153,37 @@ describe('SecureStore', () => {
       Keychain.SECURITY_LEVEL.SECURE_HARDWARE,
     );
   });
+
+  test('opting out of biometrics omits the biometric access control (iOS)', async () => {
+    await getSecureStore().save(SecureStoreKeys.WALLET_FILE, secret, {
+      requireBiometric: false,
+    });
+    const options = mock.setGenericPassword.mock.calls[0][2];
+    // Device-only accessibility still applies; only the biometric gate is dropped.
+    expect(options.accessible).toBe(
+      Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+    );
+    expect(options.accessControl).toBeUndefined();
+    // The bytes are still retrievable.
+    expect(Array.from((await getSecureStore().load(SecureStoreKeys.WALLET_FILE))!)).toEqual(
+      Array.from(secret),
+    );
+  });
+
+  test('opting out of biometrics omits the biometric access control (Android)', async () => {
+    setPlatform('android');
+    await getSecureStore().save(SecureStoreKeys.WALLET_FILE, secret, {
+      requireBiometric: false,
+    });
+    const options = mock.setGenericPassword.mock.calls[0][2];
+    expect(options.accessControl).toBeUndefined();
+    expect(options.storage).toBe(Keychain.STORAGE_TYPE.AES_GCM);
+  });
+
+  test('biometrics required by default when no option is passed', async () => {
+    await getSecureStore().save(SecureStoreKeys.WALLET_FILE, secret);
+    expect(mock.setGenericPassword.mock.calls[0][2].accessControl).toBe(
+      Keychain.ACCESS_CONTROL.BIOMETRY_ANY,
+    );
+  });
 });

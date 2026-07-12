@@ -10,6 +10,7 @@ import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 
 import {RootNavigator} from './navigation/RootNavigator';
 import {ThemeProvider, useTheme} from './theme';
+import {WalletSessionProvider} from './wallet/WalletSession';
 
 const queryClient = new QueryClient();
 
@@ -18,7 +19,9 @@ function App() {
     <SafeAreaProvider>
       <ThemeProvider>
         <QueryClientProvider client={queryClient}>
-          <AppContent />
+          <WalletSessionProvider>
+            <AppContent />
+          </WalletSessionProvider>
         </QueryClientProvider>
       </ThemeProvider>
     </SafeAreaProvider>

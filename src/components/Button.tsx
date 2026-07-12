@@ -1,4 +1,4 @@
-import {useMemo} from 'react';
+import {useMemo, useState} from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -50,6 +50,10 @@ export function Button({
   const theme = useTheme();
   const {colors} = theme;
   const isDisabled = disabled || loading;
+  // Track press state ourselves rather than using Pressable's function-form
+  // `style`: NativeWind's JSX interop drops a function `style` prop entirely,
+  // which would strip the button's fill and layout.
+  const [pressed, setPressed] = useState(false);
 
   const palette = useMemo(() => {
     switch (variant) {
@@ -69,11 +73,13 @@ export function Button({
   return (
     <Pressable
       onPress={isDisabled ? undefined : onPress}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
       disabled={isDisabled}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? children}
       accessibilityState={{disabled: isDisabled}}
-      style={({pressed}) => [
+      style={[
         styles.base,
         {
           height: HEIGHT[size],

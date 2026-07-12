@@ -23,9 +23,21 @@ import * as Keychain from 'react-native-keychain';
 
 import {base64ToBytes, bytesToBase64} from './base64';
 
+/** Options controlling how an entry is protected at rest. */
+export interface SaveOptions {
+  /**
+   * Gate reads of this entry behind biometric authentication (Face ID / Touch
+   * ID / fingerprint). Defaults to `true` — the wallet's convenience unlock.
+   * Pass `false` when the user has opted out of biometrics during onboarding;
+   * the entry is then protected only by device-unlock (plus, for the wallet,
+   * the passphrase layer that guards the bytes themselves).
+   */
+  requireBiometric?: boolean;
+}
+
 export interface SecureStore {
   /** Stores `value` under `key`, replacing any existing entry. */
-  save(key: string, value: Uint8Array): Promise<void>;
+  save(key: string, value: Uint8Array, options?: SaveOptions): Promise<void>;
   /** Returns the bytes stored under `key`, or `null` if none. May prompt for
    * biometric authentication (the OS renders that UI, not us). */
   load(key: string): Promise<Uint8Array | null>;
@@ -49,7 +61,12 @@ const AUTH_PROMPT: Keychain.AuthenticationPrompt = {
  * control flow.
  */
 class KeychainSecureStore implements SecureStore {
-  async save(key: string, value: Uint8Array): Promise<void> {
+  async save(
+    key: string,
+    value: Uint8Array,
+    options: SaveOptions = {},
+  ): Promise<void> {
+    const {requireBiometric = true} = options;
     const password = bytesToBase64(value);
 
     if (Platform.OS === 'android') {
@@ -59,19 +76,31 @@ class KeychainSecureStore implements SecureStore {
         await Keychain.setGenericPassword(
           key,
           password,
-          this.androidOptions(key, Keychain.SECURITY_LEVEL.SECURE_HARDWARE),
+          this.androidOptions(
+            key,
+            Keychain.SECURITY_LEVEL.SECURE_HARDWARE,
+            requireBiometric,
+          ),
         );
       } catch {
         await Keychain.setGenericPassword(
           key,
           password,
-          this.androidOptions(key, Keychain.SECURITY_LEVEL.SECURE_SOFTWARE),
+          this.androidOptions(
+            key,
+            Keychain.SECURITY_LEVEL.SECURE_SOFTWARE,
+            requireBiometric,
+          ),
         );
       }
       return;
     }
 
-    await Keychain.setGenericPassword(key, password, this.iosOptions(key));
+    await Keychain.setGenericPassword(
+      key,
+      password,
+      this.iosOptions(key, requireBiometric),
+    );
   }
 
   async load(key: string): Promise<Uint8Array | null> {
@@ -93,28 +122,35 @@ class KeychainSecureStore implements SecureStore {
     return Keychain.hasGenericPassword({service: key});
   }
 
-  private iosOptions(key: string): Keychain.SetOptions {
+  private iosOptions(key: string, requireBiometric: boolean): Keychain.SetOptions {
     return {
       service: key,
       // Require the device to be unlocked, and never sync to iCloud / migrate
       // to another device.
       accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
-      // Gate access behind Face ID / Touch ID.
-      accessControl: Keychain.ACCESS_CONTROL.BIOMETRY_ANY,
+      // Gate access behind Face ID / Touch ID when the user opted in; otherwise
+      // device-unlock alone guards the (still passphrase-encrypted) bytes.
+      ...(requireBiometric
+        ? {accessControl: Keychain.ACCESS_CONTROL.BIOMETRY_ANY}
+        : {}),
     };
   }
 
   private androidOptions(
     key: string,
     securityLevel: Keychain.SECURITY_LEVEL,
+    requireBiometric: boolean,
   ): Keychain.SetOptions {
     return {
       service: key,
       accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED,
       securityLevel,
-      // AES-GCM keystore entry gated behind biometric authentication.
+      // AES-GCM keystore entry, gated behind biometric authentication when the
+      // user opted in.
       storage: Keychain.STORAGE_TYPE.AES_GCM,
-      accessControl: Keychain.ACCESS_CONTROL.BIOMETRY_ANY,
+      ...(requireBiometric
+        ? {accessControl: Keychain.ACCESS_CONTROL.BIOMETRY_ANY}
+        : {}),
     };
   }
 }

@@ -1,11 +1,15 @@
-import {useEffect, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 
 import {useTheme} from '../theme';
-import {hasWallet} from '../wallet/Wallet';
+import {useWalletSession} from '../wallet/WalletSession';
+import {OnboardingProvider} from '../screens/onboarding/OnboardingContext';
 import {Welcome} from '../screens/onboarding/Welcome';
+import {Passphrase} from '../screens/onboarding/Passphrase';
+import {BiometricSetup} from '../screens/onboarding/BiometricSetup';
+import {GenerateWallet} from '../screens/onboarding/GenerateWallet';
+import {WalletReady} from '../screens/onboarding/WalletReady';
 import {Home} from '../screens/main/Home';
 import {Send} from '../screens/main/Send';
 import {History} from '../screens/main/History';
@@ -16,11 +20,30 @@ const RootStack = createNativeStackNavigator<RootStackParamList>();
 const OnboardingStack = createNativeStackNavigator<OnboardingStackParamList>();
 const MainTab = createBottomTabNavigator<MainTabParamList>();
 
+/**
+ * The create-wallet flow (T1.2.2). Wrapped in `OnboardingProvider` so the
+ * screens can share transient state (passphrase, biometric choice, the new
+ * address) without routing it through navigation params.
+ */
 function OnboardingNavigator() {
   return (
-    <OnboardingStack.Navigator screenOptions={{headerShown: false}}>
-      <OnboardingStack.Screen name="Welcome" component={Welcome} />
-    </OnboardingStack.Navigator>
+    <OnboardingProvider>
+      <OnboardingStack.Navigator screenOptions={{headerShown: false}}>
+        <OnboardingStack.Screen name="Welcome" component={Welcome} />
+        <OnboardingStack.Screen name="Passphrase" component={Passphrase} />
+        <OnboardingStack.Screen name="BiometricSetup" component={BiometricSetup} />
+        <OnboardingStack.Screen
+          name="GenerateWallet"
+          component={GenerateWallet}
+          options={{gestureEnabled: false}}
+        />
+        <OnboardingStack.Screen
+          name="WalletReady"
+          component={WalletReady}
+          options={{gestureEnabled: false}}
+        />
+      </OnboardingStack.Navigator>
+    </OnboardingProvider>
   );
 }
 
@@ -48,32 +71,15 @@ function MainNavigator() {
 }
 
 /**
- * Top-level routing: `OnboardingStack` when no wallet has been created on
- * this device yet, `MainStack` once one exists. The check runs once on
- * mount; a failure (e.g. no native SecureStore module, as under Jest)
- * falls back to onboarding rather than crashing the app shell.
+ * Top-level routing: `OnboardingStack` when no wallet has been created on this
+ * device yet, `MainStack` once one exists. The wallet-existence flag comes from
+ * {@link useWalletSession}, so when onboarding finishes creating a wallet and
+ * refreshes the session, this swaps stacks automatically. A `null` flag (initial
+ * check in flight, or no native SecureStore as under Jest) shows a blank canvas.
  */
 export function RootNavigator() {
   const theme = useTheme();
-  const [walletExists, setWalletExists] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    hasWallet()
-      .then(exists => {
-        if (!cancelled) {
-          setWalletExists(exists);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setWalletExists(false);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const {hasWallet: walletExists} = useWalletSession();
 
   if (walletExists === null) {
     return <View style={[styles.fill, {backgroundColor: theme.colors.bg}]} />;

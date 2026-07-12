@@ -8,3 +8,5 @@ export {Text} from './Text';
 export type {TextProps, TextVariant} from './Text';
 export {Field} from './Field';
 export type {FieldProps} from './Field';
+export {StarMark} from './StarMark';
+export type {StarMarkProps} from './StarMark';

@@ -2060,6 +2060,51 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
+  - RNSVG (15.15.5):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - RNSVG/common (= 15.15.5)
+    - Yoga
+  - RNSVG/common (15.15.5):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
   - RNWorklets (0.10.2):
     - hermes-engine
     - RCTRequired
@@ -2238,6 +2283,7 @@ DEPENDENCIES:
   - RNKeychain (from `../node_modules/react-native-keychain`)
   - RNReanimated (from `../node_modules/react-native-reanimated`)
   - RNScreens (from `../node_modules/react-native-screens`)
+  - RNSVG (from `../node_modules/react-native-svg`)
   - RNWorklets (from `../node_modules/react-native-worklets`)
   - RrnMobileFfi (from `..`)
   - uniffi-bindgen-react-native (from `../node_modules/uniffi-bindgen-react-native`)
@@ -2401,6 +2447,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-reanimated"
   RNScreens:
     :path: "../node_modules/react-native-screens"
+  RNSVG:
+    :path: "../node_modules/react-native-svg"
   RNWorklets:
     :path: "../node_modules/react-native-worklets"
   RrnMobileFfi:
@@ -2489,6 +2537,7 @@ SPEC CHECKSUMS:
   RNKeychain: 6778b35b5bd067c322f8479526ac09b1d61f31d0
   RNReanimated: fcf6a8cdd698fb09a811a8d6c5bcfe36575d965d
   RNScreens: 62693e770c4b73093c018aa7845b691f5ba9988d
+  RNSVG: 6cae8d4082913be2eb43eaec2a456222c42195ed
   RNWorklets: 53439575fed8525fb8d1cabcc05a3d4d91e6ffe4
   RrnMobileFfi: f8e9865453541a4c0ed0bf52531f6cc2fc92d85f
   uniffi-bindgen-react-native: 5a59022841548d4c890e8f259016bdb8a797208a
