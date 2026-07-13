@@ -15,6 +15,8 @@ import {Send} from '../screens/main/Send';
 import {History} from '../screens/main/History';
 import {Settings} from '../screens/main/Settings';
 import {HeldShards} from '../screens/main/HeldShards';
+import {TransactionDetail} from '../screens/main/TransactionDetail';
+import {Receive} from '../screens/main/Receive';
 import {RecoveryNavigator} from '../screens/recovery/RecoveryNavigator';
 import type {
   MainStackParamList,
@@ -93,6 +95,8 @@ function MainNavigator() {
       <MainStack.Screen name="Tabs" component={MainTabs} />
       <MainStack.Screen name="Recovery" component={RecoveryNavigator} />
       <MainStack.Screen name="HeldShards" component={HeldShards} />
+      <MainStack.Screen name="TransactionDetail" component={TransactionDetail} />
+      <MainStack.Screen name="Receive" component={Receive} />
     </MainStack.Navigator>
   );
 }

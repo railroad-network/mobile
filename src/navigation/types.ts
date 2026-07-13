@@ -1,4 +1,8 @@
-import type {NavigatorScreenParams} from '@react-navigation/native';
+import type {
+  CompositeScreenProps,
+  NavigatorScreenParams,
+} from '@react-navigation/native';
+import type {BottomTabScreenProps} from '@react-navigation/bottom-tabs';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 
 /** Where the social-recovery flow was entered from — decides how it exits. */
@@ -40,18 +44,33 @@ export type MainTabParamList = {
 
 /**
  * The main app's native stack: the bottom tabs, plus full-screen flows pushed
- * over them (social-recovery setup from Settings).
+ * over them (social-recovery setup from Settings, transaction detail).
  */
 export type MainStackParamList = {
   Tabs: NavigatorScreenParams<MainTabParamList>;
   Recovery: {origin: RecoveryOrigin};
   /** Shards this device holds for other people (T1.2.3 holder-receive). */
   HeldShards: undefined;
+  /** A single transaction's detail (T1.2.4 opens it; T1.2.7 expands it). */
+  TransactionDetail: {id: string};
+  /** Receive/request: the member's address as a QR (Home's "Request" action). */
+  Receive: undefined;
 };
 
 /** Props for a screen in the main stack. */
 export type MainStackScreenProps<T extends keyof MainStackParamList> =
   NativeStackScreenProps<MainStackParamList, T>;
+
+/**
+ * Props for a bottom-tab screen. Composite so a tab (e.g. Home) can also address
+ * routes on the parent main stack — pushing `TransactionDetail`, or jumping to
+ * another tab.
+ */
+export type MainTabScreenProps<T extends keyof MainTabParamList> =
+  CompositeScreenProps<
+    BottomTabScreenProps<MainTabParamList, T>,
+    NativeStackScreenProps<MainStackParamList>
+  >;
 
 export type RootStackParamList = {
   Onboarding: NavigatorScreenParams<OnboardingStackParamList>;
