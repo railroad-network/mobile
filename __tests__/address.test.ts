@@ -72,6 +72,14 @@ class FakePublicKey implements PublicKey {
 }
 
 const fakeFfi: RrnCryptoFfi = {
+  RecoveryPackage: {
+    create: () => {
+      throw new Error('recovery not exercised by these tests');
+    },
+  },
+  parseShardPayload: () => {
+    throw new Error('recovery not exercised by these tests');
+  },
   Keypair: {generate: () => throwUnused()},
   Signature: {fromBytes: () => throwUnused()},
   Hash: {of: () => throwUnused()},

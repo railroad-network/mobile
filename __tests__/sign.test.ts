@@ -107,6 +107,14 @@ class FakeKeypair implements Keypair {
 const keypairForRow = (v: Vector): FakeKeypair => new FakeKeypair(v.pubkey);
 
 const fakeFfi: RrnCryptoFfi = {
+  RecoveryPackage: {
+    create: () => {
+      throw new Error('recovery not exercised by these tests');
+    },
+  },
+  parseShardPayload: () => {
+    throw new Error('recovery not exercised by these tests');
+  },
   // generate() hands back a keypair for a fixed fixture row so the generate →
   // sign → verify path is exercised without a real CSPRNG.
   Keypair: {generate: () => keypairForRow(fixture.vectors[0])},

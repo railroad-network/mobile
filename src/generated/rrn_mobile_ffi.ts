@@ -16,12 +16,14 @@ import {
   type UniffiHandle,
   type UniffiObjectFactory,
   AbstractFfiConverterByteArray,
+  FfiConverterArray,
   FfiConverterArrayBuffer,
   FfiConverterBool,
   FfiConverterInt32,
   FfiConverterInt64,
   FfiConverterMap,
   FfiConverterObject,
+  FfiConverterUInt32,
   FfiConverterUInt8,
   RustBuffer,
   UniffiAbstractObject,
@@ -31,6 +33,7 @@ import {
   destructorGuardSymbol,
   pointerLiteralSymbol,
   uniffiCreateFfiConverterString,
+  uniffiCreateRecord,
   uniffiTypeNameSymbol,
   variantOrdinalSymbol,
 } from '@ubjs/core';
@@ -84,6 +87,145 @@ export function isValidAddress(address: string): boolean {
     ),
   );
 }
+
+export function parseShardPayload(payload: ArrayBuffer): ShardInfo /*throws*/ {
+  return ((__rb: Uint8Array) => {
+    try {
+      return FfiConverterTypeShardInfo.lift(__rb);
+    } finally {
+      nativeModule().rustbuffer_free(__rb);
+    }
+  })(
+    uniffiCaller.rustCallWithError(
+      /*liftError:*/ FfiConverterTypeRecoveryError.lift.bind(
+        FfiConverterTypeRecoveryError,
+      ),
+      /*caller:*/ callStatus => {
+        return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_func_parse_shard_payload(
+          FfiConverterArrayBuffer.lower(
+            payload,
+            nativeModule().rustbuffer_alloc,
+          ),
+          callStatus,
+        );
+      },
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+    ),
+  );
+}
+
+// Hermes (React Native ≥ 0.74) ships TextEncoder and encodeInto, but not
+// TextDecoder. For single-string decode (bytesToString), we polyfill via the
+// C++ string_from_buffer helper using a duck-typed object matching the
+// standard TextDecoder.decode signature. Once Hermes ships a real
+// TextDecoder, the `typeof` check will pick it up automatically.
+//
+// For array-of-strings decode (readStringFromBuffer), we keep a dedicated C++
+// helper: the polyfill path (new Uint8Array view + decode) measured ~40%
+// slower on getStringArray benchmarks than a direct (buf, offset, length)
+// call, due to the per-read view allocation and extra property lookups in
+// string_from_buffer.
+const stringConverter = (() => {
+  const encoder = new TextEncoder();
+  const decoder: { decode(input: UniffiByteArray): string } =
+    typeof TextDecoder !== 'undefined'
+      ? new TextDecoder()
+      : {
+          decode: (bytes: UniffiByteArray) =>
+            nativeModule().ubrn_uniffi_internal_fn_func_ffi__string_from_buffer(
+              bytes,
+              undefined as any,
+            ) as string,
+        };
+  return {
+    // Single-string lower() uses the C++ helper — TextEncoder.encode
+    // measured ~43% slower on takeString benchmarks.
+    stringToBytes: (s: string) =>
+      nativeModule().ubrn_uniffi_internal_fn_func_ffi__string_to_buffer(
+        s,
+        undefined as any,
+      ),
+    bytesToString: (ab: UniffiByteArray) => decoder.decode(ab),
+    // Direct C++ call — bypasses uniffiCaller.rustCall() overhead.
+    // Matters for N-element arrays.
+    stringByteLength: (s: string) =>
+      nativeModule().ubrn_uniffi_internal_fn_func_ffi__string_to_byte_length(
+        s,
+        undefined as any,
+      ) as number,
+    // Encode directly into the RustBuffer backing store via
+    // TextEncoder.encodeInto — zero intermediate allocation. Replaces
+    // the old C++ write_string_into_buffer helper.
+    writeStringIntoBuffer: (s: string, buf: any, offset: number): number => {
+      const view = new Uint8Array(
+        buf.arrayBuffer,
+        offset,
+        buf.arrayBuffer.byteLength - offset,
+      );
+      return encoder.encodeInto(s, view).written;
+    },
+    // Dedicated C++ helper — avoids per-read Uint8Array allocation and
+    // the double property-lookup in string_from_buffer.
+    readStringFromBuffer: (buf: any, offset: number, length: number): string =>
+      nativeModule().ubrn_uniffi_internal_fn_func_ffi__read_string_from_buffer(
+        buf,
+        offset,
+        length,
+      ) as string,
+  };
+})();
+const FfiConverterString = uniffiCreateFfiConverterString(stringConverter);
+
+export type ShardInfo = {
+  originalAddress: string;
+  holderAddress: string;
+  threshold: number;
+  total: number;
+};
+
+/**
+ * Generated factory for {@link ShardInfo} record objects.
+ */
+export const ShardInfo = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<ShardInfo, ReturnType<typeof defaults>>(defaults);
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<ShardInfo>,
+  });
+})();
+
+const FfiConverterTypeShardInfo = (() => {
+  type TypeName = ShardInfo;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        originalAddress: FfiConverterString.read(from),
+        holderAddress: FfiConverterString.read(from),
+        threshold: FfiConverterUInt8.read(from),
+        total: FfiConverterUInt8.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterString.write(value.originalAddress, into);
+      FfiConverterString.write(value.holderAddress, into);
+      FfiConverterUInt8.write(value.threshold, into);
+      FfiConverterUInt8.write(value.total, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterString.allocationSize(value.originalAddress) +
+        FfiConverterString.allocationSize(value.holderAddress) +
+        FfiConverterUInt8.allocationSize(value.threshold) +
+        FfiConverterUInt8.allocationSize(value.total)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
 
 // Flat error type: CryptoError
 export enum CryptoError_Tags {
@@ -421,6 +563,251 @@ const FfiConverterTypePayloadError = (() => {
   return new FfiConverter();
 })();
 
+// Flat error type: RecoveryError
+export enum RecoveryError_Tags {
+  TooManyHolders = 'TooManyHolders',
+  InvalidParameters = 'InvalidParameters',
+  InvalidHolderAddress = 'InvalidHolderAddress',
+  ShardIndexOutOfRange = 'ShardIndexOutOfRange',
+  Encryption = 'Encryption',
+  Corrupt = 'Corrupt',
+  Internal = 'Internal',
+}
+export const RecoveryError = (() => {
+  class TooManyHolders extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = 'RecoveryError';
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 1;
+
+    readonly tag = RecoveryError_Tags.TooManyHolders;
+
+    constructor(message: string) {
+      super('RecoveryError', 'TooManyHolders', message);
+    }
+
+    static instanceOf(e: any): e is TooManyHolders {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 1;
+    }
+  }
+  class InvalidParameters extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = 'RecoveryError';
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 2;
+
+    readonly tag = RecoveryError_Tags.InvalidParameters;
+
+    constructor(message: string) {
+      super('RecoveryError', 'InvalidParameters', message);
+    }
+
+    static instanceOf(e: any): e is InvalidParameters {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 2;
+    }
+  }
+  class InvalidHolderAddress extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = 'RecoveryError';
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 3;
+
+    readonly tag = RecoveryError_Tags.InvalidHolderAddress;
+
+    constructor(message: string) {
+      super('RecoveryError', 'InvalidHolderAddress', message);
+    }
+
+    static instanceOf(e: any): e is InvalidHolderAddress {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 3;
+    }
+  }
+  class ShardIndexOutOfRange extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = 'RecoveryError';
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 4;
+
+    readonly tag = RecoveryError_Tags.ShardIndexOutOfRange;
+
+    constructor(message: string) {
+      super('RecoveryError', 'ShardIndexOutOfRange', message);
+    }
+
+    static instanceOf(e: any): e is ShardIndexOutOfRange {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 4;
+    }
+  }
+  class Encryption extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = 'RecoveryError';
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 5;
+
+    readonly tag = RecoveryError_Tags.Encryption;
+
+    constructor(message: string) {
+      super('RecoveryError', 'Encryption', message);
+    }
+
+    static instanceOf(e: any): e is Encryption {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 5;
+    }
+  }
+  class Corrupt extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = 'RecoveryError';
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 6;
+
+    readonly tag = RecoveryError_Tags.Corrupt;
+
+    constructor(message: string) {
+      super('RecoveryError', 'Corrupt', message);
+    }
+
+    static instanceOf(e: any): e is Corrupt {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 6;
+    }
+  }
+  class Internal extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = 'RecoveryError';
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 7;
+
+    readonly tag = RecoveryError_Tags.Internal;
+
+    constructor(message: string) {
+      super('RecoveryError', 'Internal', message);
+    }
+
+    static instanceOf(e: any): e is Internal {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 7;
+    }
+  }
+
+  // Utility function which does not rely on instanceof.
+  function instanceOf(e: any): e is RecoveryError {
+    return (e as any)[uniffiTypeNameSymbol] === 'RecoveryError';
+  }
+  return {
+    TooManyHolders,
+    InvalidParameters,
+    InvalidHolderAddress,
+    ShardIndexOutOfRange,
+    Encryption,
+    Corrupt,
+    Internal,
+    instanceOf,
+  };
+})();
+
+// Union type for RecoveryError error type.
+export type RecoveryError = InstanceType<
+  (typeof RecoveryError)[
+    | 'TooManyHolders'
+    | 'InvalidParameters'
+    | 'InvalidHolderAddress'
+    | 'ShardIndexOutOfRange'
+    | 'Encryption'
+    | 'Corrupt'
+    | 'Internal']
+>;
+
+const FfiConverterTypeRecoveryError = (() => {
+  const intConverter = FfiConverterInt32;
+  type TypeName = RecoveryError;
+  class FfiConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      switch (intConverter.read(from)) {
+        case 1:
+          return new RecoveryError.TooManyHolders(
+            FfiConverterString.read(from),
+          );
+
+        case 2:
+          return new RecoveryError.InvalidParameters(
+            FfiConverterString.read(from),
+          );
+
+        case 3:
+          return new RecoveryError.InvalidHolderAddress(
+            FfiConverterString.read(from),
+          );
+
+        case 4:
+          return new RecoveryError.ShardIndexOutOfRange(
+            FfiConverterString.read(from),
+          );
+
+        case 5:
+          return new RecoveryError.Encryption(FfiConverterString.read(from));
+
+        case 6:
+          return new RecoveryError.Corrupt(FfiConverterString.read(from));
+
+        case 7:
+          return new RecoveryError.Internal(FfiConverterString.read(from));
+
+        default:
+          throw new UniffiInternalError.UnexpectedEnumCase();
+      }
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      const obj = value as any;
+      const index = obj[variantOrdinalSymbol] as number;
+      intConverter.write(index, into);
+    }
+    allocationSize(value: TypeName): number {
+      return intConverter.allocationSize(0);
+    }
+  }
+  return new FfiConverter();
+})();
+
 // Flat error type: WalletError
 export enum WalletError_Tags {
   Decrypt = 'Decrypt',
@@ -571,68 +958,6 @@ const FfiConverterTypeWalletError = (() => {
   }
   return new FfiConverter();
 })();
-
-// Hermes (React Native ≥ 0.74) ships TextEncoder and encodeInto, but not
-// TextDecoder. For single-string decode (bytesToString), we polyfill via the
-// C++ string_from_buffer helper using a duck-typed object matching the
-// standard TextDecoder.decode signature. Once Hermes ships a real
-// TextDecoder, the `typeof` check will pick it up automatically.
-//
-// For array-of-strings decode (readStringFromBuffer), we keep a dedicated C++
-// helper: the polyfill path (new Uint8Array view + decode) measured ~40%
-// slower on getStringArray benchmarks than a direct (buf, offset, length)
-// call, due to the per-read view allocation and extra property lookups in
-// string_from_buffer.
-const stringConverter = (() => {
-  const encoder = new TextEncoder();
-  const decoder: { decode(input: UniffiByteArray): string } =
-    typeof TextDecoder !== 'undefined'
-      ? new TextDecoder()
-      : {
-          decode: (bytes: UniffiByteArray) =>
-            nativeModule().ubrn_uniffi_internal_fn_func_ffi__string_from_buffer(
-              bytes,
-              undefined as any,
-            ) as string,
-        };
-  return {
-    // Single-string lower() uses the C++ helper — TextEncoder.encode
-    // measured ~43% slower on takeString benchmarks.
-    stringToBytes: (s: string) =>
-      nativeModule().ubrn_uniffi_internal_fn_func_ffi__string_to_buffer(
-        s,
-        undefined as any,
-      ),
-    bytesToString: (ab: UniffiByteArray) => decoder.decode(ab),
-    // Direct C++ call — bypasses uniffiCaller.rustCall() overhead.
-    // Matters for N-element arrays.
-    stringByteLength: (s: string) =>
-      nativeModule().ubrn_uniffi_internal_fn_func_ffi__string_to_byte_length(
-        s,
-        undefined as any,
-      ) as number,
-    // Encode directly into the RustBuffer backing store via
-    // TextEncoder.encodeInto — zero intermediate allocation. Replaces
-    // the old C++ write_string_into_buffer helper.
-    writeStringIntoBuffer: (s: string, buf: any, offset: number): number => {
-      const view = new Uint8Array(
-        buf.arrayBuffer,
-        offset,
-        buf.arrayBuffer.byteLength - offset,
-      );
-      return encoder.encodeInto(s, view).written;
-    },
-    // Dedicated C++ helper — avoids per-read Uint8Array allocation and
-    // the double property-lookup in string_from_buffer.
-    readStringFromBuffer: (buf: any, offset: number, length: number): string =>
-      nativeModule().ubrn_uniffi_internal_fn_func_ffi__read_string_from_buffer(
-        buf,
-        offset,
-        length,
-      ) as string,
-  };
-})();
-const FfiConverterString = uniffiCreateFfiConverterString(stringConverter);
 
 export interface SignatureLike {
   toBytes(): ArrayBuffer;
@@ -1687,11 +2012,218 @@ const FfiConverterTypeHash = new FfiConverterObject(
   uniffiTypeHashObjectFactory,
 );
 
+export interface RecoveryPackageLike {
+  shardCount(): number;
+  shardPayload(index: number): /*throws*/ ArrayBuffer;
+  threshold(): number;
+  total(): number;
+}
+/**
+ * @deprecated Use `RecoveryPackageLike` instead.
+ */
+export type RecoveryPackageInterface = RecoveryPackageLike;
+
+export class RecoveryPackage
+  extends UniffiAbstractObject
+  implements RecoveryPackageLike
+{
+  readonly [uniffiTypeNameSymbol] = 'RecoveryPackage';
+  readonly [destructorGuardSymbol]: UniffiGcObject;
+  readonly [pointerLiteralSymbol]: UniffiHandle;
+  // No primary constructor declared for this class.
+  private constructor(pointer: UniffiHandle) {
+    super();
+    this[pointerLiteralSymbol] = pointer;
+    this[destructorGuardSymbol] =
+      uniffiTypeRecoveryPackageObjectFactory.bless(pointer);
+  }
+
+  static create(
+    wallet: WalletContentsLike,
+    holderAddresses: Array<string>,
+    threshold: number,
+  ): RecoveryPackageLike /*throws*/ {
+    return FfiConverterTypeRecoveryPackage.lift(
+      uniffiCaller.rustCallWithError(
+        /*liftError:*/ FfiConverterTypeRecoveryError.lift.bind(
+          FfiConverterTypeRecoveryError,
+        ),
+        /*caller:*/ callStatus => {
+          return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_constructor_recoverypackage_create(
+            FfiConverterTypeWalletContents.lower(
+              wallet,
+              nativeModule().rustbuffer_alloc,
+            ),
+            FfiConverterSequenceString.lower(
+              holderAddresses,
+              nativeModule().rustbuffer_alloc,
+            ),
+            FfiConverterUInt8.lower(threshold, nativeModule().rustbuffer_alloc),
+            callStatus,
+          );
+        },
+        /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      ),
+    );
+  }
+
+  shardCount(): number {
+    return FfiConverterUInt32.lift(
+      uniffiCaller.rustCall(
+        /*caller:*/ callStatus => {
+          return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_method_recoverypackage_shard_count(
+            uniffiTypeRecoveryPackageObjectFactory.clonePointer(this),
+            callStatus,
+          );
+        },
+        /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      ),
+    );
+  }
+
+  shardPayload(index: number): ArrayBuffer /*throws*/ {
+    return ((__rb: Uint8Array) => {
+      try {
+        return FfiConverterArrayBuffer.lift(__rb);
+      } finally {
+        nativeModule().rustbuffer_free(__rb);
+      }
+    })(
+      uniffiCaller.rustCallWithError(
+        /*liftError:*/ FfiConverterTypeRecoveryError.lift.bind(
+          FfiConverterTypeRecoveryError,
+        ),
+        /*caller:*/ callStatus => {
+          return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_method_recoverypackage_shard_payload(
+            uniffiTypeRecoveryPackageObjectFactory.clonePointer(this),
+            FfiConverterUInt32.lower(index, nativeModule().rustbuffer_alloc),
+            callStatus,
+          );
+        },
+        /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      ),
+    );
+  }
+
+  threshold(): number {
+    return FfiConverterUInt8.lift(
+      uniffiCaller.rustCall(
+        /*caller:*/ callStatus => {
+          return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_method_recoverypackage_threshold(
+            uniffiTypeRecoveryPackageObjectFactory.clonePointer(this),
+            callStatus,
+          );
+        },
+        /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      ),
+    );
+  }
+
+  total(): number {
+    return FfiConverterUInt8.lift(
+      uniffiCaller.rustCall(
+        /*caller:*/ callStatus => {
+          return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_method_recoverypackage_total(
+            uniffiTypeRecoveryPackageObjectFactory.clonePointer(this),
+            callStatus,
+          );
+        },
+        /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      ),
+    );
+  }
+
+  uniffiDestroy(): void {
+    const ptr = (this as any)[destructorGuardSymbol];
+    if (ptr !== undefined) {
+      const pointer = uniffiTypeRecoveryPackageObjectFactory.pointer(this);
+      uniffiTypeRecoveryPackageObjectFactory.freePointer(pointer);
+      uniffiTypeRecoveryPackageObjectFactory.unbless(ptr);
+      delete (this as any)[destructorGuardSymbol];
+    }
+  }
+
+  static instanceOf(obj_: any): obj_ is RecoveryPackage {
+    return uniffiTypeRecoveryPackageObjectFactory.isConcreteType(obj_);
+  }
+}
+
+const uniffiTypeRecoveryPackageObjectFactory: UniffiObjectFactory<RecoveryPackageLike> =
+  (() => {
+    return {
+      create(pointer: UniffiHandle): RecoveryPackageLike {
+        const instance = Object.create(RecoveryPackage.prototype);
+        instance[pointerLiteralSymbol] = pointer;
+        instance[destructorGuardSymbol] = this.bless(pointer);
+        instance[uniffiTypeNameSymbol] = 'RecoveryPackage';
+        return instance;
+      },
+
+      bless(p: UniffiHandle): UniffiGcObject {
+        return uniffiCaller.rustCall(
+          /*caller:*/ status =>
+            nativeModule().ubrn_uniffi_internal_fn_method_recoverypackage_ffi__bless_pointer(
+              p,
+              status,
+            ),
+          /*liftString:*/ FfiConverterString.lift,
+        );
+      },
+
+      unbless(ptr_: UniffiGcObject) {
+        ptr_.markDestroyed();
+      },
+
+      pointer(obj_: RecoveryPackageLike): UniffiHandle {
+        if ((obj_ as any)[destructorGuardSymbol] === undefined) {
+          throw new UniffiInternalError.UnexpectedNullPointer();
+        }
+        return (obj_ as any)[pointerLiteralSymbol];
+      },
+
+      clonePointer(obj_: RecoveryPackageLike): UniffiHandle {
+        const pointer = this.pointer(obj_);
+        return uniffiCaller.rustCall(
+          /*caller:*/ callStatus =>
+            nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_clone_recoverypackage(
+              pointer,
+              callStatus,
+            ),
+          /*liftString:*/ FfiConverterString.lift,
+        );
+      },
+
+      freePointer(pointer: UniffiHandle): void {
+        uniffiCaller.rustCall(
+          /*caller:*/ callStatus =>
+            nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_free_recoverypackage(
+              pointer,
+              callStatus,
+            ),
+          /*liftString:*/ FfiConverterString.lift,
+        );
+      },
+
+      isConcreteType(obj_: any): obj_ is RecoveryPackageLike {
+        return (
+          obj_[destructorGuardSymbol] &&
+          obj_[uniffiTypeNameSymbol] === 'RecoveryPackage'
+        );
+      },
+    };
+  })();
+const FfiConverterTypeRecoveryPackage = new FfiConverterObject(
+  uniffiTypeRecoveryPackageObjectFactory,
+);
+
 // FfiConverter for Map<string, string>
 const FfiConverterMapStringString = new FfiConverterMap(
   FfiConverterString,
   FfiConverterString,
 );
+
+// FfiConverter for Array<string>
+const FfiConverterSequenceString = new FfiConverterArray(FfiConverterString);
 
 /**
  * This should be called before anything else.
@@ -1729,6 +2261,14 @@ function uniffiEnsureInitialized() {
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       'uniffi_rrn_mobile_ffi_checksum_func_is_valid_address',
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_func_parse_shard_payload() !==
+    16570
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_func_parse_shard_payload',
     );
   }
   if (
@@ -1852,6 +2392,46 @@ function uniffiEnsureInitialized() {
     );
   }
   if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_constructor_recoverypackage_create() !==
+    34432
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_constructor_recoverypackage_create',
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_method_recoverypackage_shard_count() !==
+    21046
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_method_recoverypackage_shard_count',
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_method_recoverypackage_shard_payload() !==
+    31658
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_method_recoverypackage_shard_payload',
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_method_recoverypackage_threshold() !==
+    31682
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_method_recoverypackage_threshold',
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_method_recoverypackage_total() !==
+    9114
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_method_recoverypackage_total',
+    );
+  }
+  if (
     nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_constructor_signature_from_bytes() !==
     12225
   ) {
@@ -1926,6 +2506,9 @@ export default Object.freeze({
     FfiConverterTypeKeypair,
     FfiConverterTypePayloadError,
     FfiConverterTypePublicKey,
+    FfiConverterTypeRecoveryError,
+    FfiConverterTypeRecoveryPackage,
+    FfiConverterTypeShardInfo,
     FfiConverterTypeSignature,
     FfiConverterTypeWalletContents,
     FfiConverterTypeWalletError,

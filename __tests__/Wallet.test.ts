@@ -187,6 +187,14 @@ class FakeEncryptedWallet implements EncryptedWallet {
 }
 
 const fakeFfi: RrnCryptoFfi = {
+  RecoveryPackage: {
+    create: () => {
+      throw new Error('recovery not exercised by these tests');
+    },
+  },
+  parseShardPayload: () => {
+    throw new Error('recovery not exercised by these tests');
+  },
   Keypair: {
     generate: () => {
       throw new Error('not exercised by wallet tests');

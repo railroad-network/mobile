@@ -79,6 +79,14 @@ const unused = (): never => {
   throw new Error('not exercised by cbor tests');
 };
 const fakeFfi: RrnCryptoFfi = {
+  RecoveryPackage: {
+    create: () => {
+      throw new Error('recovery not exercised by these tests');
+    },
+  },
+  parseShardPayload: () => {
+    throw new Error('recovery not exercised by these tests');
+  },
   Keypair: {generate: unused},
   Signature: {fromBytes: unused},
   Hash: {of: unused},

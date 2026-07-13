@@ -73,6 +73,46 @@ export interface EncryptedWallet {
 }
 
 /**
+ * Non-secret metadata read off a distributable recovery shard payload (T1.2.3),
+ * for a holder's receive flow.
+ */
+export interface ShardInfo {
+  /** The `rrn1…` address of the identity this shard helps recover — the key the
+   * holder app files the payload under. */
+  originalAddress: string;
+  /** The `rrn1…` address this shard is sealed to; the receiver can check it
+   * matches their own identity ("is this shard for me?"). */
+  holderAddress: string;
+  /** `K` — how many holders must cooperate to reconstruct. */
+  threshold: number;
+  /** `N` — how many holders the secret was split across. */
+  total: number;
+}
+
+/**
+ * Opaque handle to a social-recovery package: `N` shards of the wallet secret,
+ * each sealed to a holder, any `K` of which reconstruct the identity. The
+ * package's secret material never crosses this boundary — only the per-holder
+ * sealed shard payloads, read out one at a time via {@link shardPayload}.
+ */
+export interface RecoveryPackage {
+  /** `K` — decrypted shards required to reconstruct. */
+  threshold(): number;
+  /** `N` — total shards / holders. */
+  total(): number;
+  /** The number of sealed shards (equals {@link total}); valid indices for
+   * {@link shardPayload} are `0..shardCount`. */
+  shardCount(): number;
+  /**
+   * The self-contained, distributable payload for the shard at `index`
+   * (canonical CBOR of the sealed shard plus routing metadata). The holder
+   * scans this (e.g. as a QR) and stores it. Throws (recovery error) if `index`
+   * is outside `0..shardCount`.
+   */
+  shardPayload(index: number): Uint8Array;
+}
+
+/**
  * The native module surface. Mirrors the shape uniffi generates: static
  * constructors grouped under each type, plus free functions. Fallible
  * constructors (`fromBytes`, `fromAddress`) throw on invalid input.
@@ -100,6 +140,27 @@ export interface RrnCryptoFfi {
     /** Parses `.rrnwallet` bytes; throws if they are not a valid wallet file. */
     fromBytes(data: Uint8Array): EncryptedWallet;
   };
+  RecoveryPackage: {
+    /**
+     * Splits `wallet`'s secret into one sealed shard per entry in
+     * `holderAddresses`, requiring `threshold` (`K`) of the holders (`N`) to
+     * reconstruct. Each holder address is a bech32m `rrn1…` string. Throws
+     * (recovery error) on an invalid holder address or bad split parameters
+     * (`K` must satisfy `2 <= K <= N <= 16`).
+     */
+    create(
+      wallet: WalletContents,
+      holderAddresses: string[],
+      threshold: number,
+    ): RecoveryPackage;
+  };
+  /**
+   * Reads the non-secret routing metadata off a distributable shard payload
+   * (the bytes from {@link RecoveryPackage.shardPayload}), for a holder's
+   * receive flow. Does not decrypt the shard. Throws (recovery error) if the
+   * bytes are not a valid payload.
+   */
+  parseShardPayload(payload: Uint8Array): ShardInfo;
 }
 
 let registered: RrnCryptoFfi | null = null;

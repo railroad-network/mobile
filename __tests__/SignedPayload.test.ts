@@ -131,6 +131,14 @@ const unused = (): never => {
   throw new Error('not exercised by SignedPayload tests');
 };
 const fakeFfi: RrnCryptoFfi = {
+  RecoveryPackage: {
+    create: () => {
+      throw new Error('recovery not exercised by these tests');
+    },
+  },
+  parseShardPayload: () => {
+    throw new Error('recovery not exercised by these tests');
+  },
   Keypair: {generate: unused},
   Signature: {fromBytes: (data: Uint8Array) => new FakeSignature(data)},
   Hash: {of: unused},
