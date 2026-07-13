@@ -45,7 +45,13 @@ export type MainTabParamList = {
 export type MainStackParamList = {
   Tabs: NavigatorScreenParams<MainTabParamList>;
   Recovery: {origin: RecoveryOrigin};
+  /** Shards this device holds for other people (T1.2.3 holder-receive). */
+  HeldShards: undefined;
 };
+
+/** Props for a screen in the main stack. */
+export type MainStackScreenProps<T extends keyof MainStackParamList> =
+  NativeStackScreenProps<MainStackParamList, T>;
 
 export type RootStackParamList = {
   Onboarding: NavigatorScreenParams<OnboardingStackParamList>;

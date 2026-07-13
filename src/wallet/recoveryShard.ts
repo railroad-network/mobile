@@ -11,6 +11,9 @@
  * scanner can reject the wrong kind of code instead of mis-parsing it.
  */
 import {base64ToBytes, bytesToBase64} from '../crypto/base64';
+import {getRrnCryptoFfi, type ShardInfo} from '../crypto/ffi';
+
+export type {ShardInfo};
 
 /** URI-style scheme marking a QR string as a recovery shard payload. */
 export const SHARD_QR_PREFIX = 'rrnrecovery:';
@@ -33,4 +36,16 @@ export function decodeShardQr(value: string): Uint8Array | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * Reads the non-secret routing metadata off a shard payload (the bytes from
+ * {@link decodeShardQr}), for a holder's receive flow. Delegates to the Rust
+ * FFI — mobile does not decode the shard's CBOR itself — and does **not**
+ * decrypt the sealed shard. Throws (recovery error) if the bytes are not a
+ * valid payload. Keeps the FFI call in the wallet layer, like
+ * {@link Wallet.createRecoveryPackage}.
+ */
+export function parseShardPayload(payload: Uint8Array): ShardInfo {
+  return getRrnCryptoFfi().parseShardPayload(payload);
 }

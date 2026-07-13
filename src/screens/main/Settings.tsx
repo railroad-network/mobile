@@ -13,6 +13,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Card, Heading, Text} from '../../components';
 import {useTheme} from '../../theme';
 import {loadRecoveryConfig, type RecoveryConfig} from '../../wallet/recoveryConfig';
+import {loadHeldShards} from '../../wallet/heldShards';
 import type {MainStackParamList} from '../../navigation/types';
 
 export function Settings() {
@@ -21,8 +22,9 @@ export function Settings() {
   const navigation =
     useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const [recovery, setRecovery] = useState<RecoveryConfig | null>(null);
+  const [heldCount, setHeldCount] = useState(0);
 
-  // Re-read on focus so returning from the recovery flow reflects the new state.
+  // Re-read on focus so returning from a recovery flow reflects the new state.
   useFocusEffect(
     useCallback(() => {
       let active = true;
@@ -32,6 +34,13 @@ export function Settings() {
         })
         .catch(() => {
           if (active) setRecovery(null);
+        });
+      loadHeldShards()
+        .then(map => {
+          if (active) setHeldCount(Object.keys(map).length);
+        })
+        .catch(() => {
+          if (active) setHeldCount(0);
         });
       return () => {
         active = false;
@@ -45,6 +54,11 @@ export function Settings() {
       : `${recovery.threshold}-of-${recovery.total} circle · ${
           recovery.holders.filter(h => h.delivered).length
         } delivered`;
+
+  const heldSubtitle =
+    heldCount === 0
+      ? 'Recovery pieces friends have entrusted to you'
+      : `Holding ${heldCount} for ${heldCount === 1 ? 'a friend' : 'friends'}`;
 
   return (
     <ScrollView
@@ -72,6 +86,24 @@ export function Settings() {
               </Text>
               <Text variant="caption" color={theme.colors.textSecondary}>
                 {recoverySubtitle}
+              </Text>
+            </View>
+            <Text variant="body" color={theme.colors.textMuted}>
+              ›
+            </Text>
+          </Card>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Shards you hold"
+          onPress={() => navigation.navigate('HeldShards')}>
+          <Card style={styles.row}>
+            <View style={styles.rowText}>
+              <Text variant="label" color={theme.colors.text}>
+                Shards you hold
+              </Text>
+              <Text variant="caption" color={theme.colors.textSecondary}>
+                {heldSubtitle}
               </Text>
             </View>
             <Text variant="body" color={theme.colors.textMuted}>

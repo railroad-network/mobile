@@ -15,7 +15,11 @@ export const SecureStoreKeys = {
   WALLET_SECRET: 'rrn.wallet.secret',
   /** Token proving this device is paired with a station. */
   STATION_PAIRING_TOKEN: 'rrn.station.pairing_token',
-  /** Social-recovery shards held on this device (M1.4). */
+  /** Sealed social-recovery shards this device holds *for other people*
+   * (T1.2.3): a JSON map keyed by the wallet address each shard helps recover.
+   * The payloads are ciphertext (sealed to this holder) and each is below the
+   * reconstruction threshold, so they carry no biometric gate. See
+   * {@link wallet/heldShards}. */
   RECOVERY_SHARDS: 'rrn.recovery.shards',
   /** This wallet's own social-recovery setup (T1.2.3): the holders it split its
    * key across, their nicknames, threshold, and per-holder delivery state. Not
