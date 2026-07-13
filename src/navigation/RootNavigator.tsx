@@ -14,10 +14,17 @@ import {Home} from '../screens/main/Home';
 import {Send} from '../screens/main/Send';
 import {History} from '../screens/main/History';
 import {Settings} from '../screens/main/Settings';
-import type {MainTabParamList, OnboardingStackParamList, RootStackParamList} from './types';
+import {RecoveryNavigator} from '../screens/recovery/RecoveryNavigator';
+import type {
+  MainStackParamList,
+  MainTabParamList,
+  OnboardingStackParamList,
+  RootStackParamList,
+} from './types';
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 const OnboardingStack = createNativeStackNavigator<OnboardingStackParamList>();
+const MainStack = createNativeStackNavigator<MainStackParamList>();
 const MainTab = createBottomTabNavigator<MainTabParamList>();
 
 /**
@@ -42,13 +49,18 @@ function OnboardingNavigator() {
           component={WalletReady}
           options={{gestureEnabled: false}}
         />
+        <OnboardingStack.Screen
+          name="Recovery"
+          component={RecoveryNavigator}
+          options={{gestureEnabled: false}}
+        />
       </OnboardingStack.Navigator>
     </OnboardingProvider>
   );
 }
 
 /** Bottom-tab main nav: Home / Send / History / Settings (T1.2.1's confirmed 4-tab scope). */
-function MainNavigator() {
+function MainTabs() {
   const theme = useTheme();
 
   return (
@@ -67,6 +79,19 @@ function MainNavigator() {
       <MainTab.Screen name="History" component={History} />
       <MainTab.Screen name="Settings" component={Settings} />
     </MainTab.Navigator>
+  );
+}
+
+/**
+ * The main app stack: the bottom tabs, with full-screen flows pushed over them.
+ * Social-recovery setup (from Settings) lives here so it can cover the tab bar.
+ */
+function MainNavigator() {
+  return (
+    <MainStack.Navigator screenOptions={{headerShown: false}}>
+      <MainStack.Screen name="Tabs" component={MainTabs} />
+      <MainStack.Screen name="Recovery" component={RecoveryNavigator} />
+    </MainStack.Navigator>
   );
 }
 

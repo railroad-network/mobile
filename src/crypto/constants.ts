@@ -17,6 +17,11 @@ export const SecureStoreKeys = {
   STATION_PAIRING_TOKEN: 'rrn.station.pairing_token',
   /** Social-recovery shards held on this device (M1.4). */
   RECOVERY_SHARDS: 'rrn.recovery.shards',
+  /** This wallet's own social-recovery setup (T1.2.3): the holders it split its
+   * key across, their nicknames, threshold, and per-holder delivery state. Not
+   * secret (no shard material) — stored here only to keep all wallet-scoped
+   * persistence in one place; saved without a biometric gate. */
+  RECOVERY_CONFIG: 'rrn.recovery.config',
 } as const;
 
 /** A value from {@link SecureStoreKeys}. */

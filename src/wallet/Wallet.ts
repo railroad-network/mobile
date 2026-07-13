@@ -22,6 +22,7 @@ import {
   getRrnCryptoFfi,
   type EncryptedWallet,
   type PublicKey,
+  type RecoveryPackage,
   type Signature,
   type WalletContents,
 } from '../crypto/ffi';
@@ -72,6 +73,24 @@ export class Wallet {
   /** Signs `message` with this identity. The secret never leaves Rust. */
   async sign(message: Uint8Array): Promise<Signature> {
     return this.contents.keypair().sign(message);
+  }
+
+  /**
+   * Splits this identity's secret into a social-recovery package (T1.2.3):
+   * one sealed shard per `holderAddresses` entry, any `threshold` (`K`) of
+   * which reconstruct the identity. The split runs entirely in Rust — no shard
+   * or secret material crosses into JS. Rejects (recovery error) on an invalid
+   * holder address or bad parameters (`2 <= K <= N <= 16`).
+   */
+  async createRecoveryPackage(
+    holderAddresses: string[],
+    threshold: number,
+  ): Promise<RecoveryPackage> {
+    return getRrnCryptoFfi().RecoveryPackage.create(
+      this.contents,
+      holderAddresses,
+      threshold,
+    );
   }
 }
 

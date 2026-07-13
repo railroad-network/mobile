@@ -1,11 +1,11 @@
 /**
  * Wallet created (T1.2.2, final step). Shows the new identity's address as a QR
- * code and in full text — others scan it to pay or vouch for the user. The CTA
- * continues into social-recovery setup (T1.2.3).
+ * code and in full text — others scan it to pay or vouch for the user. From here
+ * the user can set up social recovery now (T1.2.3) or skip it and enter the app.
  *
- * "Continue" completes onboarding: it refreshes the wallet session, which flips
- * the root navigator from the onboarding stack to the main app. (Recovery setup
- * lands in T1.2.3; until then this is the hand-off point.)
+ * "Continue to recovery setup" pushes the recovery flow (tagged `onboarding`, so
+ * its final screen enters the app). "Set up later" refreshes the wallet session,
+ * which flips the root navigator straight from the onboarding stack to the app.
  */
 import {StyleSheet, View} from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
@@ -13,29 +13,38 @@ import QRCode from 'react-native-qrcode-svg';
 import {Button, Card, Heading, Text} from '../../components';
 import {useTheme} from '../../theme';
 import {useWalletSession} from '../../wallet/WalletSession';
+import type {OnboardingScreenProps} from '../../navigation/types';
 import {useOnboarding} from './OnboardingContext';
 import {OnboardingScaffold} from './OnboardingScaffold';
 
 const QR_SIZE = 180;
 
-export function WalletReady() {
+export function WalletReady({navigation}: OnboardingScreenProps<'WalletReady'>) {
   const theme = useTheme();
   const {createdAddress} = useOnboarding();
   const {refresh} = useWalletSession();
 
   // Refreshing the session flips the root navigator from the onboarding stack
   // to the main app; the stack unmounts, so no explicit navigation is needed.
-  // (T1.2.3 will instead route into the recovery-setup stack here.)
-  async function onContinue() {
+  async function onSkip() {
     await refresh();
   }
 
   return (
     <OnboardingScaffold
       footer={
-        <Button variant="primary" size="lg" fullWidth onPress={onContinue}>
-          Continue to recovery setup
-        </Button>
+        <>
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            onPress={() => navigation.navigate('Recovery', {origin: 'onboarding'})}>
+            Continue to recovery setup
+          </Button>
+          <Button variant="ghost" size="lg" fullWidth onPress={onSkip}>
+            Set up later
+          </Button>
+        </>
       }>
       <View style={styles.body}>
         <View

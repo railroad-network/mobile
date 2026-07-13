@@ -293,17 +293,35 @@ describe('GenerateWallet', () => {
 describe('WalletReady', () => {
   test('shows the address as text and as a QR code', async () => {
     mockOnboarding.createdAddress = 'rrn1readyaddress';
-    const r = await renderScreen(<WalletReady />);
+    const r = await renderScreen(
+      <WalletReady navigation={nav()} route={{} as any} />,
+    );
 
     expect(hasText(r, 'rrn1readyaddress')).toBe(true);
     expect(queryByLabel(r, 'QR code for rrn1readyaddress')).not.toBeNull();
   });
 
-  test('Continue refreshes the wallet session (entering the app)', async () => {
+  test('Continue enters recovery setup (tagged as onboarding)', async () => {
     mockOnboarding.createdAddress = 'rrn1readyaddress';
-    const r = await renderScreen(<WalletReady />);
+    const navigation = nav();
+    const r = await renderScreen(
+      <WalletReady navigation={navigation} route={{} as any} />,
+    );
 
     await press(button(r, 'Continue to recovery setup'));
+    expect(navigation.navigate).toHaveBeenCalledWith('Recovery', {
+      origin: 'onboarding',
+    });
+    expect(mockRefresh).not.toHaveBeenCalled();
+  });
+
+  test('"Set up later" refreshes the wallet session (entering the app)', async () => {
+    mockOnboarding.createdAddress = 'rrn1readyaddress';
+    const r = await renderScreen(
+      <WalletReady navigation={nav()} route={{} as any} />,
+    );
+
+    await press(button(r, 'Set up later'));
     expect(mockRefresh).toHaveBeenCalled();
   });
 });
