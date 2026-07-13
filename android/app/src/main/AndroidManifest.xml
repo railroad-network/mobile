@@ -1,6 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Camera is used to scan QR codes (recovery shards, payment requests).
+         `required=false` so the app still installs on camera-less devices; the
+         scanner degrades to its no-device fallback. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
 
     <application
       android:name=".MainApplication"

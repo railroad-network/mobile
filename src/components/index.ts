@@ -10,3 +10,5 @@ export {Field} from './Field';
 export type {FieldProps} from './Field';
 export {StarMark} from './StarMark';
 export type {StarMarkProps} from './StarMark';
+export {QRScanner} from './QRScanner';
+export type {QRScannerProps, QRScannerPermissionState} from './QRScanner';

@@ -35,11 +35,14 @@
     "react": "19.2.3",
     "react-native": "0.86.0",
     "react-native-keychain": "^10.0.0",
+    "react-native-nitro-image": "^0.15.1",
+    "react-native-nitro-modules": "^0.36.1",
     "react-native-qrcode-svg": "^6.3.21",
     "react-native-reanimated": "^4.5.1",
     "react-native-safe-area-context": "^5.5.2",
     "react-native-screens": "^4.26.0",
-    "react-native-svg": "^15.15.5"
+    "react-native-svg": "^15.15.5",
+    "react-native-vision-camera": "^5.1.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
