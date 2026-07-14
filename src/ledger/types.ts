@@ -53,6 +53,10 @@ export interface Transaction {
    * settlement window runs from here.
    */
   confirmedAt?: number;
+  /** Unix seconds when the transaction settled. Present once settled. */
+  settledAt?: number;
+  /** The sender's per-sender monotonic nonce, if known (present on sent items). */
+  nonce?: number;
 }
 
 /** This device's identity, for the home header. */

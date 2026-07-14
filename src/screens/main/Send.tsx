@@ -171,6 +171,8 @@ export function Send({navigation}: MainTabScreenProps<'Send'>) {
         memo: proposal.memo,
         state: 'pending',
         timestamp: proposal.proposedAt,
+        expiresAt: proposal.expiresAt,
+        nonce: proposal.nonce,
       };
       await enqueue(tx);
       setSentId(proposal.id);

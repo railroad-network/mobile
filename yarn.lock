@@ -1925,6 +1925,23 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@react-native-clipboard/clipboard@npm:^1.16.3":
+  version: 1.16.3
+  resolution: "@react-native-clipboard/clipboard@npm:1.16.3"
+  peerDependencies:
+    react: ">= 16.9.0"
+    react-native: ">= 0.61.5"
+    react-native-macos: ">= 0.61.0"
+    react-native-windows: ">= 0.61.0"
+  peerDependenciesMeta:
+    react-native-macos:
+      optional: true
+    react-native-windows:
+      optional: true
+  checksum: 3d9944fc2c4acbecf917e752cc36ec92c4dcdb590c94c81c78c24df9ddd4b02448e252eb39e0949000b01046cfdfe2b03e1676c5e3ac0fe7eb3bf6b649970c27
+  languageName: node
+  linkType: hard
+
 "@react-native-community/cli-clean@npm:20.1.0":
   version: 20.1.0
   resolution: "@react-native-community/cli-clean@npm:20.1.0"
@@ -2467,6 +2484,17 @@ __metadata:
   dependencies:
     nanoid: "npm:^3.3.11"
   checksum: 8e2f29cf88d609db888c0888b9c8171e319aad6fc9dbe53cf77e417dc932b808333612c67db3c62775a2152c0d4b296d9db30428ac414b674dcfd474c9d3368f
+  languageName: node
+  linkType: hard
+
+"@shopify/flash-list@npm:^2.3.2":
+  version: 2.3.2
+  resolution: "@shopify/flash-list@npm:2.3.2"
+  peerDependencies:
+    "@babel/runtime": "*"
+    react: "*"
+    react-native: "*"
+  checksum: d6a3ea586c6024372e7e42283db05f2ca6173ba3015e96a9e469a41f94fcd064a92059875d1cc9d14c704580d6a42791f2956d50e992203c2656489736dc6f4b
   languageName: node
   linkType: hard
 
@@ -7876,6 +7904,7 @@ __metadata:
     "@babel/core": ^7.25.2
     "@babel/preset-env": ^7.25.3
     "@babel/runtime": ^7.25.0
+    "@react-native-clipboard/clipboard": ^1.16.3
     "@react-native-community/cli": 20.1.0
     "@react-native-community/cli-platform-android": 20.1.0
     "@react-native-community/cli-platform-ios": 20.1.0
@@ -7888,6 +7917,7 @@ __metadata:
     "@react-navigation/bottom-tabs": ^7.18.8
     "@react-navigation/native": ^7.3.8
     "@react-navigation/native-stack": ^7.17.10
+    "@shopify/flash-list": ^2.3.2
     "@tanstack/react-query": ^5.101.2
     "@types/jest": ^29.5.13
     "@types/react": ^19.2.0

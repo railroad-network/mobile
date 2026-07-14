@@ -8,6 +8,7 @@
  */
 import {
   amountSign,
+  dayLabel,
   formatCommons,
   parseCommons,
   relativeTime,
@@ -15,6 +16,25 @@ import {
   MINUS,
 } from '../src/ledger/format';
 import {stateBadge} from '../src/ledger/txDisplay';
+
+describe('dayLabel', () => {
+  // Fixed local reference: Monday, Jul 15 2024, noon.
+  const now = new Date(2024, 6, 15, 12, 0, 0).getTime();
+  const secs = (d: Date) => Math.floor(d.getTime() / 1000);
+
+  test('labels today and yesterday', () => {
+    expect(dayLabel(secs(new Date(2024, 6, 15, 9, 0, 0)), now)).toBe('Today');
+    expect(dayLabel(secs(new Date(2024, 6, 14, 23, 0, 0)), now)).toBe('Yesterday');
+  });
+
+  test('labels an older day in the same year without the year', () => {
+    expect(dayLabel(secs(new Date(2024, 6, 9, 9, 0, 0)), now)).toBe('Tue, Jul 9');
+  });
+
+  test('includes the year for a prior year', () => {
+    expect(dayLabel(secs(new Date(2023, 6, 9, 9, 0, 0)), now)).toBe('Sun, Jul 9, 2023');
+  });
+});
 
 describe('parseCommons', () => {
   test('parses whole and fractional amounts to centi', () => {

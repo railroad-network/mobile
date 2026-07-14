@@ -70,6 +70,28 @@ export function shortAddress(address: string): string {
   return `${address.slice(0, 9)}…${address.slice(-5)}`;
 }
 
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/**
+ * A day header for grouping the transaction history: `"Today"`, `"Yesterday"`,
+ * otherwise `"Wed, Jul 9"` (or `"Wed, Jul 9, 2024"` for a prior year). `now` is
+ * injectable for deterministic tests. Uses local calendar days.
+ */
+export function dayLabel(unixSeconds: number, now: number = Date.now()): string {
+  const startOfDay = (ms: number) => {
+    const d = new Date(ms);
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  };
+  const dayMs = 86400_000;
+  const days = Math.round((startOfDay(now) - startOfDay(unixSeconds * 1000)) / dayMs);
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  const d = new Date(unixSeconds * 1000);
+  const base = `${WEEKDAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}`;
+  return d.getFullYear() === new Date(now).getFullYear() ? base : `${base}, ${d.getFullYear()}`;
+}
+
 /**
  * A short, human relative time from a unix-seconds timestamp, e.g. `"just now"`,
  * `"20 min ago"`, `"2h ago"`, `"3d ago"`. Falls back to a `MM/DD/YYYY` date past

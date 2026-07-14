@@ -7,6 +7,7 @@ export type {
 } from './types';
 export {
   amountSign,
+  dayLabel,
   formatCommons,
   parseCommons,
   relativeTime,
