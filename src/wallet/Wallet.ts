@@ -26,8 +26,10 @@ import {
   type Signature,
   type WalletContents,
 } from '../crypto/ffi';
+import {bytesToBase64} from '../crypto/base64';
 import {SecureStoreKeys} from '../crypto/constants';
 import {getSecureStore, type SecureStore} from '../crypto/SecureStore';
+import {loadProfile, saveProfile} from './profile';
 
 /**
  * An opened, in-memory wallet. Wraps the FFI {@link WalletContents} handle; the
@@ -174,4 +176,71 @@ export async function hasWallet(
   store: SecureStore = getSecureStore(),
 ): Promise<boolean> {
   return store.has(SecureStoreKeys.WALLET_FILE);
+}
+
+/**
+ * Re-encrypts the stored wallet under `newPassphrase` (T1.2.8 change passphrase).
+ * The `oldPassphrase` is verified first by opening the wallet — a wrong old
+ * passphrase rejects with the FFI wallet error and nothing is written. The new
+ * bytes keep the current biometric gate.
+ */
+export async function changePassphrase(
+  oldPassphrase: string,
+  newPassphrase: string,
+  store: SecureStore = getSecureStore(),
+): Promise<void> {
+  const wallet = await loadWallet(oldPassphrase, store);
+  if (wallet === null) {
+    throw new Error('No wallet on this device.');
+  }
+  const {biometricEnabled = true} = await loadProfile(store);
+  const bytes = await saveWalletToBytes(wallet, newPassphrase);
+  await store.save(SecureStoreKeys.WALLET_FILE, bytes, {
+    requireBiometric: biometricEnabled,
+  });
+}
+
+/**
+ * Turns biometric unlock on or off (T1.2.8). Re-stores the *unchanged* encrypted
+ * wallet bytes with the new keychain access control, and records the preference.
+ * Reading the current bytes may itself prompt for biometrics if they are gated.
+ */
+export async function setBiometricUnlock(
+  enabled: boolean,
+  store: SecureStore = getSecureStore(),
+): Promise<void> {
+  const bytes = await store.load(SecureStoreKeys.WALLET_FILE);
+  if (bytes === null) {
+    throw new Error('No wallet on this device.');
+  }
+  await store.save(SecureStoreKeys.WALLET_FILE, bytes, {requireBiometric: enabled});
+  await saveProfile({biometricEnabled: enabled}, store);
+}
+
+/**
+ * Produces the exportable `.rrnwallet` bytes as base64, for transferring the
+ * identity to another device (T1.2.8). The passphrase is required and verified
+ * (the export is still passphrase-encrypted — it is the same sealed format).
+ */
+export async function exportWalletBytes(
+  passphrase: string,
+  store: SecureStore = getSecureStore(),
+): Promise<string> {
+  const wallet = await loadWallet(passphrase, store);
+  if (wallet === null) {
+    throw new Error('No wallet on this device.');
+  }
+  return bytesToBase64(await saveWalletToBytes(wallet, passphrase));
+}
+
+/**
+ * Factory reset (T1.2.8): erases every wallet-scoped entry from the secure store
+ * — the wallet file, recovery config, held shards, pairing token, and local
+ * profile. Irreversible; without a recovery circle the identity is gone. The
+ * caller then refreshes the wallet session to return to onboarding.
+ */
+export async function factoryReset(
+  store: SecureStore = getSecureStore(),
+): Promise<void> {
+  await Promise.all(Object.values(SecureStoreKeys).map(key => store.delete(key)));
 }

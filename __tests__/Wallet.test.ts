@@ -18,13 +18,19 @@
  * (and by the Rust test today).
  */
 import {
+  changePassphrase,
   createWallet,
+  exportWalletBytes,
+  factoryReset,
   hasWallet,
   loadWallet,
   loadWalletFromBytes,
   saveWalletToBytes,
+  setBiometricUnlock,
   Wallet,
 } from '../src/wallet/Wallet';
+import {loadProfile, saveProfile} from '../src/wallet/profile';
+import {base64ToBytes} from '../src/crypto/base64';
 import {SecureStoreKeys} from '../src/crypto/constants';
 import type {SecureStore} from '../src/crypto/SecureStore';
 import {
@@ -358,5 +364,61 @@ describe('Wallet', () => {
     const reloaded = await loadWalletFromBytes(bytes, 'pw');
     expect(reloaded.address).toBe(wallet.address);
     expect(reloaded).toBeInstanceOf(Wallet);
+  });
+});
+
+describe('Wallet settings ops (T1.2.8)', () => {
+  test('changePassphrase re-encrypts: the new passphrase opens it, the old no longer does', async () => {
+    const store = new MemoryStore();
+    await createWallet('old-pass', store);
+    await changePassphrase('old-pass', 'new-pass-1234', store);
+    expect(await loadWallet('new-pass-1234', store)).not.toBeNull();
+    await expect(loadWallet('old-pass', store)).rejects.toBeInstanceOf(WalletError);
+  });
+
+  test('changePassphrase with the wrong current passphrase rejects and changes nothing', async () => {
+    const store = new MemoryStore();
+    await createWallet('old-pass', store);
+    await expect(
+      changePassphrase('wrong', 'new-pass-1234', store),
+    ).rejects.toBeInstanceOf(WalletError);
+    // The original passphrase still works.
+    expect(await loadWallet('old-pass', store)).not.toBeNull();
+  });
+
+  test('exportWalletBytes yields base64 that re-imports to the same identity', async () => {
+    const store = new MemoryStore();
+    const wallet = await createWallet('pw', store);
+    const b64 = await exportWalletBytes('pw', store);
+    expect(typeof b64).toBe('string');
+    const reloaded = await loadWalletFromBytes(base64ToBytes(b64), 'pw');
+    expect(reloaded.address).toBe(wallet.address);
+  });
+
+  test('exportWalletBytes rejects a wrong passphrase', async () => {
+    const store = new MemoryStore();
+    await createWallet('pw', store);
+    await expect(exportWalletBytes('nope', store)).rejects.toBeInstanceOf(WalletError);
+  });
+
+  test('setBiometricUnlock records the preference and keeps the wallet loadable', async () => {
+    const store = new MemoryStore();
+    await createWallet('pw', store);
+    await setBiometricUnlock(false, store);
+    expect((await loadProfile(store)).biometricEnabled).toBe(false);
+    expect(await loadWallet('pw', store)).not.toBeNull();
+  });
+
+  test('factoryReset clears every wallet-scoped entry', async () => {
+    const store = new MemoryStore();
+    await createWallet('pw', store);
+    await saveProfile({nickname: 'asa'}, store);
+    expect(await hasWallet(store)).toBe(true);
+
+    await factoryReset(store);
+
+    expect(await hasWallet(store)).toBe(false);
+    expect(await store.load(SecureStoreKeys.PROFILE)).toBeNull();
+    expect(await store.load(SecureStoreKeys.RECOVERY_CONFIG)).toBeNull();
   });
 });

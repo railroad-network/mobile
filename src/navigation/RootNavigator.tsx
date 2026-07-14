@@ -18,6 +18,9 @@ import {HeldShards} from '../screens/main/HeldShards';
 import {TransactionDetail} from '../screens/main/TransactionDetail';
 import {ConfirmReceived} from '../screens/main/ConfirmReceived';
 import {Receive} from '../screens/main/Receive';
+import {ChangePassphrase} from '../screens/main/ChangePassphrase';
+import {ExportWallet} from '../screens/main/ExportWallet';
+import {FactoryReset} from '../screens/main/FactoryReset';
 import {RecoveryNavigator} from '../screens/recovery/RecoveryNavigator';
 import type {
   MainStackParamList,
@@ -99,6 +102,9 @@ function MainNavigator() {
       <MainStack.Screen name="TransactionDetail" component={TransactionDetail} />
       <MainStack.Screen name="ConfirmReceived" component={ConfirmReceived} />
       <MainStack.Screen name="Receive" component={Receive} />
+      <MainStack.Screen name="ChangePassphrase" component={ChangePassphrase} />
+      <MainStack.Screen name="ExportWallet" component={ExportWallet} />
+      <MainStack.Screen name="FactoryReset" component={FactoryReset} />
     </MainStack.Navigator>
   );
 }

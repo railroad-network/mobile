@@ -57,6 +57,12 @@ export type MainStackParamList = {
   ConfirmReceived: {id: string};
   /** Receive/request: the member's address as a QR (Home's "Request" action). */
   Receive: undefined;
+  /** Change the wallet passphrase (T1.2.8). */
+  ChangePassphrase: undefined;
+  /** Export the sealed wallet bytes to move to another device (T1.2.8). */
+  ExportWallet: undefined;
+  /** Factory reset, confirmed by typing the given nickname (T1.2.8). */
+  FactoryReset: {nickname: string};
 };
 
 /** Props for a screen in the main stack. */

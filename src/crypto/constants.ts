@@ -26,6 +26,9 @@ export const SecureStoreKeys = {
    * secret (no shard material) — stored here only to keep all wallet-scoped
    * persistence in one place; saved without a biometric gate. */
   RECOVERY_CONFIG: 'rrn.recovery.config',
+  /** Local device preferences (T1.2.8): the user's chosen nickname and whether
+   * biometric unlock is enabled. Non-secret; saved without a biometric gate. */
+  PROFILE: 'rrn.profile',
 } as const;
 
 /** A value from {@link SecureStoreKeys}. */

@@ -10,6 +10,7 @@
  *
  * Seed: the "Blue Ridge Collective" fixtures from the design system's mobile kit.
  */
+import {loadProfile} from '../wallet/profile';
 import type {Balance, Identity, Transaction} from './types';
 
 /** Simulated network latency for the mock (ms). */
@@ -99,9 +100,22 @@ function seededActivity(now: number): Transaction[] {
   ];
 }
 
-/** MOCK: the member's identity. Replace with a station call in M1.3. */
-export function fetchIdentity(): Promise<Identity> {
-  return delay(ME);
+/**
+ * MOCK: the member's identity. Replace with a station call in M1.3. The nickname
+ * is overlaid from the local profile (T1.2.8), so an edit in Settings shows up
+ * here too; everything else is still seeded.
+ */
+export async function fetchIdentity(): Promise<Identity> {
+  let nickname = ME.nickname;
+  try {
+    const profile = await loadProfile();
+    if (profile.nickname !== undefined && profile.nickname.length > 0) {
+      nickname = profile.nickname;
+    }
+  } catch {
+    // No secure store available — keep the seeded nickname.
+  }
+  return delay({...ME, nickname});
 }
 
 /** MOCK: the member's current balance. Replace with a `BalanceView` RPC in M1.3. */

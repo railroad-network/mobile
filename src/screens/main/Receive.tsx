@@ -4,11 +4,13 @@
  * propose a payment from their own wallet. There is no amount request in M1
  * (a plain address is enough); a requested-amount flow can come later.
  */
+import {useState} from 'react';
 import {ScrollView, StyleSheet, View} from 'react-native';
+import Clipboard from '@react-native-clipboard/clipboard';
 import QRCode from 'react-native-qrcode-svg';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
-import {Card, Heading, Identicon, Text} from '../../components';
+import {Button, Card, Heading, Identicon, Text} from '../../components';
 import {shortAddress, useIdentity} from '../../ledger';
 import {useTheme} from '../../theme';
 import type {MainStackScreenProps} from '../../navigation/types';
@@ -20,6 +22,7 @@ export function Receive({navigation}: MainStackScreenProps<'Receive'>) {
   const insets = useSafeAreaInsets();
   const {data: identity} = useIdentity();
   const address = identity?.address ?? '';
+  const [copied, setCopied] = useState(false);
 
   return (
     <ScrollView
@@ -58,6 +61,17 @@ export function Receive({navigation}: MainStackScreenProps<'Receive'>) {
         <Text variant="caption" color={theme.colors.textMuted}>
           {identity?.nickname ?? shortAddress(address)}
         </Text>
+        {address.length > 0 && (
+          <Button
+            variant="secondary"
+            size="md"
+            onPress={() => {
+              Clipboard.setString(address);
+              setCopied(true);
+            }}>
+            {copied ? 'Copied ✓' : 'Copy address'}
+          </Button>
+        )}
       </Card>
     </ScrollView>
   );
