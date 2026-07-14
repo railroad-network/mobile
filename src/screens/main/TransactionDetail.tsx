@@ -249,7 +249,7 @@ function SignatureRow({
 const styles = StyleSheet.create({
   hero: {alignItems: 'center', gap: 10, paddingVertical: 24},
   settleRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16},
-  settleClock: {fontSize: 22, fontWeight: '700'},
+  settleClock: {fontSize: 22, lineHeight: 28, fontWeight: '700'},
   fields: {gap: 14},
   detailRow: {flexDirection: 'row', justifyContent: 'space-between', gap: 12},
   detailValue: {flexShrink: 1, textAlign: 'right'},

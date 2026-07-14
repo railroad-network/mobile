@@ -306,5 +306,5 @@ const styles = StyleSheet.create({
   rowValue: {flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1},
   settleCard: {alignItems: 'center', gap: 8, paddingVertical: 24},
   settleLabel: {letterSpacing: 1, fontWeight: '700'},
-  settleClock: {fontSize: 36, fontWeight: '700'},
+  settleClock: {fontSize: 36, lineHeight: 44, fontWeight: '700'},
 });
