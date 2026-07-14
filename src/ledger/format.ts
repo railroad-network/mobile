@@ -26,6 +26,33 @@ export function formatCommons(centi: number): string {
   return `${grouped}.${String(cents).padStart(2, '0')}`;
 }
 
+/**
+ * Parses a user-typed Commons amount (e.g. `"3.50"`) into unsigned integer
+ * centi, or returns an error message. Mirrors the CLI's rules: `"3.5"` → `350`,
+ * `"3.50"` → `350`, `"3"` → `300`; at most two decimal places (`"3.001"` is
+ * rejected). No sign is accepted — direction is applied by the caller. The
+ * result is always non-negative; callers reject zero where an amount is
+ * required.
+ */
+export function parseCommons(input: string): {centi: number} | {error: string} {
+  const trimmed = input.trim();
+  if (trimmed.length === 0) {
+    return {error: 'Enter an amount.'};
+  }
+  if (!/^\d+(\.\d+)?$/.test(trimmed)) {
+    return {error: 'Enter a valid amount, like 3.50.'};
+  }
+  const [whole, frac = ''] = trimmed.split('.');
+  if (frac.length > 2) {
+    return {error: 'Use at most two decimal places.'};
+  }
+  const centi = Number(whole) * 100 + Number(frac.padEnd(2, '0'));
+  if (!Number.isSafeInteger(centi)) {
+    return {error: 'That amount is too large.'};
+  }
+  return {centi};
+}
+
 /** The sign to show for a signed centi value: `+`, a proper minus, or none. */
 export function amountSign(centi: number): '' | '+' | typeof MINUS {
   if (centi > 0) return '+';

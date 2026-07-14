@@ -9,6 +9,7 @@ import {useQuery, useQueryClient, type UseQueryResult} from '@tanstack/react-que
 
 import type {ConnectivityLevel} from '../components';
 import {fetchActivity, fetchBalance, fetchIdentity} from './mockLedger';
+import {addToOutbox, getOutbox} from './outbox';
 import type {Balance, Identity, Transaction} from './types';
 
 /** Query keys, all under a `ledger` root so a refresh can invalidate them together. */
@@ -28,7 +29,13 @@ export function useBalance(): UseQueryResult<Balance> {
 }
 
 export function useActivity(): UseQueryResult<Transaction[]> {
-  return useQuery({queryKey: ledgerKeys.activity, queryFn: fetchActivity});
+  // Locally-queued proposals (the outbox) come first — they are the newest and
+  // are not yet in the mock/station activity. M1.3's real transport reconciles
+  // the two; until then this merge is what makes a just-sent payment appear.
+  return useQuery({
+    queryKey: ledgerKeys.activity,
+    queryFn: async () => [...getOutbox(), ...(await fetchActivity())],
+  });
 }
 
 /** Current transport state. */
@@ -56,4 +63,20 @@ export function useRefreshLedger(): () => Promise<void> {
   return useCallback(async () => {
     await queryClient.invalidateQueries({queryKey: ledgerKeys.root});
   }, [queryClient]);
+}
+
+/**
+ * Returns a function that queues a freshly-sent transaction locally and
+ * refreshes the ledger so it shows up (as Pending) immediately. The M1.2
+ * stand-in for handing a signed proposal to the transport layer (M1.3).
+ */
+export function useEnqueueTransaction(): (tx: Transaction) => Promise<void> {
+  const queryClient = useQueryClient();
+  return useCallback(
+    async (tx: Transaction) => {
+      addToOutbox(tx);
+      await queryClient.invalidateQueries({queryKey: ledgerKeys.root});
+    },
+    [queryClient],
+  );
 }

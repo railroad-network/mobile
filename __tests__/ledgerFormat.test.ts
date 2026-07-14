@@ -9,11 +9,42 @@
 import {
   amountSign,
   formatCommons,
+  parseCommons,
   relativeTime,
   shortAddress,
   MINUS,
 } from '../src/ledger/format';
 import {stateBadge} from '../src/ledger/txDisplay';
+
+describe('parseCommons', () => {
+  test('parses whole and fractional amounts to centi', () => {
+    expect(parseCommons('3')).toEqual({centi: 300});
+    expect(parseCommons('3.5')).toEqual({centi: 350});
+    expect(parseCommons('3.50')).toEqual({centi: 350});
+    expect(parseCommons('0.05')).toEqual({centi: 5});
+    expect(parseCommons('1234.56')).toEqual({centi: 123456});
+  });
+
+  test('trims surrounding whitespace', () => {
+    expect(parseCommons('  3.50  ')).toEqual({centi: 350});
+  });
+
+  test('rejects an empty amount', () => {
+    expect(parseCommons('')).toEqual({error: expect.any(String)});
+    expect(parseCommons('   ')).toEqual({error: expect.any(String)});
+  });
+
+  test('rejects more than two decimal places', () => {
+    const r = parseCommons('3.001');
+    expect(r).toEqual({error: expect.stringContaining('two decimal')});
+  });
+
+  test('rejects malformed input (letters, signs, stray dots)', () => {
+    for (const bad of ['abc', '3.5.5', '-3', '+3', '3,50', '.5', '3.']) {
+      expect(parseCommons(bad)).toHaveProperty('error');
+    }
+  });
+});
 
 describe('formatCommons', () => {
   test('formats whole and fractional centi with two decimals', () => {
