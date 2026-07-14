@@ -53,6 +53,8 @@ export type MainStackParamList = {
   HeldShards: undefined;
   /** A single transaction's detail (T1.2.4 opens it; T1.2.7 expands it). */
   TransactionDetail: {id: string};
+  /** Confirm/reject an incoming payment proposal (T1.2.6), by proposal id. */
+  ConfirmReceived: {id: string};
   /** Receive/request: the member's address as a QR (Home's "Request" action). */
   Receive: undefined;
 };

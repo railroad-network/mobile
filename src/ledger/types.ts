@@ -42,6 +42,17 @@ export interface Transaction {
   state: TransactionState;
   /** When the transaction was proposed, in unix seconds. */
   timestamp: number;
+  /**
+   * Unix seconds after which an unconfirmed proposal auto-cancels. Present on
+   * proposals awaiting confirmation (the receiver's inbox); drives the "expires
+   * in" countdown and the expired-and-uncomfirmable state.
+   */
+  expiresAt?: number;
+  /**
+   * Unix seconds when the receiver confirmed. Present once confirmed; the
+   * settlement window runs from here.
+   */
+  confirmedAt?: number;
 }
 
 /** This device's identity, for the home header. */

@@ -28,6 +28,7 @@ interface Query<T> {
 const mockIdentity: Query<{address: string; nickname?: string; community?: string}> = {} as any;
 const mockBalance: Query<{centi: number}> = {} as any;
 const mockActivity: Query<Transaction[]> = {} as any;
+const mockInbox: Query<Transaction[]> = {} as any;
 let mockConnectivity: {level: string; isOffline: boolean};
 const mockRefresh = jest.fn(async () => {});
 
@@ -36,6 +37,7 @@ jest.mock('../src/ledger', () => ({
   useIdentity: () => mockIdentity,
   useBalance: () => mockBalance,
   useActivity: () => mockActivity,
+  useInbox: () => mockInbox,
   useConnectivity: () => mockConnectivity,
   useRefreshLedger: () => mockRefresh,
 }));
@@ -118,6 +120,7 @@ beforeEach(() => {
   Object.assign(mockIdentity, {data: IDENTITY, isLoading: false});
   Object.assign(mockBalance, {data: {centi: 2400}, isLoading: false});
   Object.assign(mockActivity, {data: txns(), isLoading: false});
+  Object.assign(mockInbox, {data: [], isLoading: false});
   mockConnectivity = {level: 'mesh', isOffline: false};
 });
 
@@ -180,4 +183,24 @@ test('shows a placeholder balance until it loads', async () => {
   Object.assign(mockBalance, {data: undefined, isLoading: true});
   const r = await renderHome();
   expect(hasText(r, '—')).toBe(true);
+});
+
+test('surfaces the confirmation inbox and opens a proposal', async () => {
+  Object.assign(mockInbox, {
+    data: [
+      {
+        id: 'p1', counterparty: 'valley_farm', counterpartyAddress: 'rrn1qvalley',
+        direction: 'in', amountCenti: 1500, memo: 'Split the seed order',
+        state: 'pending', timestamp: Math.floor(Date.now() / 1000) - 3600,
+        expiresAt: Math.floor(Date.now() / 1000) + 172800,
+      },
+    ],
+    isLoading: false,
+  });
+  const navigation = nav();
+  const r = await renderHome(navigation);
+  expect(hasText(r, 'To confirm')).toBe(true);
+  expect(hasText(r, 'Split the seed order')).toBe(true);
+  await press(button(r, 'Split the seed order'));
+  expect(navigation.navigate).toHaveBeenCalledWith('ConfirmReceived', {id: 'p1'});
 });

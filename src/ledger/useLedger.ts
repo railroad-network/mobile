@@ -8,9 +8,20 @@ import {useCallback} from 'react';
 import {useQuery, useQueryClient, type UseQueryResult} from '@tanstack/react-query';
 
 import type {ConnectivityLevel} from '../components';
+import {applyDecisions, recordDecision, type Decision} from './decisions';
 import {fetchActivity, fetchBalance, fetchIdentity} from './mockLedger';
 import {addToOutbox, getOutbox} from './outbox';
 import type {Balance, Identity, Transaction} from './types';
+
+/**
+ * The activity source: locally-queued outgoing proposals (the outbox) plus the
+ * ledger's transactions, with any local confirm/reject decisions folded in.
+ * Shared by {@link useActivity} and {@link useInbox} (same query key, so
+ * react-query fetches it once).
+ */
+async function activityQueryFn(): Promise<Transaction[]> {
+  return applyDecisions([...getOutbox(), ...(await fetchActivity())]);
+}
 
 /** Query keys, all under a `ledger` root so a refresh can invalidate them together. */
 export const ledgerKeys = {
@@ -32,9 +43,20 @@ export function useActivity(): UseQueryResult<Transaction[]> {
   // Locally-queued proposals (the outbox) come first — they are the newest and
   // are not yet in the mock/station activity. M1.3's real transport reconciles
   // the two; until then this merge is what makes a just-sent payment appear.
+  return useQuery({queryKey: ledgerKeys.activity, queryFn: activityQueryFn});
+}
+
+/**
+ * The receiver's inbox: incoming proposals still awaiting this member's
+ * confirmation. Derived from the same activity query (a `select` filter), so
+ * confirming or rejecting one — which flips its state via the decisions overlay
+ * — removes it from the inbox on the next refresh.
+ */
+export function useInbox(): UseQueryResult<Transaction[]> {
   return useQuery({
     queryKey: ledgerKeys.activity,
-    queryFn: async () => [...getOutbox(), ...(await fetchActivity())],
+    queryFn: activityQueryFn,
+    select: txs => txs.filter(tx => tx.direction === 'in' && tx.state === 'pending'),
   });
 }
 
@@ -75,6 +97,23 @@ export function useEnqueueTransaction(): (tx: Transaction) => Promise<void> {
   return useCallback(
     async (tx: Transaction) => {
       addToOutbox(tx);
+      await queryClient.invalidateQueries({queryKey: ledgerKeys.root});
+    },
+    [queryClient],
+  );
+}
+
+/**
+ * Returns a function that records a local confirm/reject decision on a proposal
+ * and refreshes the ledger so the change (and its removal from the inbox) shows
+ * immediately. The M1.2 stand-in for transmitting the signed confirmation to the
+ * station (M1.3).
+ */
+export function useRecordDecision(): (id: string, decision: Decision) => Promise<void> {
+  const queryClient = useQueryClient();
+  return useCallback(
+    async (id: string, decision: Decision) => {
+      recordDecision(id, decision);
       await queryClient.invalidateQueries({queryKey: ledgerKeys.root});
     },
     [queryClient],

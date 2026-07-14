@@ -25,6 +25,7 @@ import {
   Text,
 } from '../../components';
 import {
+  isExpired,
   relativeTime,
   shortAddress,
   stateBadge,
@@ -32,6 +33,7 @@ import {
   useBalance,
   useConnectivity,
   useIdentity,
+  useInbox,
   useRefreshLedger,
   type Transaction,
 } from '../../ledger';
@@ -48,6 +50,7 @@ export function Home({navigation}: MainTabScreenProps<'Home'>) {
   const identity = useIdentity();
   const balance = useBalance();
   const activity = useActivity();
+  const inbox = useInbox();
   const connectivity = useConnectivity();
   const refreshLedger = useRefreshLedger();
 
@@ -66,6 +69,7 @@ export function Home({navigation}: MainTabScreenProps<'Home'>) {
     (identity.data ? shortAddress(identity.data.address) : '…');
   const items = activity.data ?? [];
   const recent = items.slice(0, RECENT_LIMIT);
+  const inboxItems = inbox.data ?? [];
 
   const hero = heroColors(theme);
 
@@ -156,6 +160,25 @@ export function Home({navigation}: MainTabScreenProps<'Home'>) {
           </View>
         </View>
 
+        {/* Inbox — incoming proposals awaiting confirmation (T1.2.6) */}
+        {inboxItems.length > 0 && (
+          <View>
+            <View style={[styles.sectionHead, {paddingHorizontal: theme.spacing.lg}]}>
+              <Heading level="headingSmall">To confirm</Heading>
+              <Badge variant="warning" size="sm">
+                {`${inboxItems.length} waiting`}
+              </Badge>
+            </View>
+            {inboxItems.map(tx => (
+              <InboxRow
+                key={tx.id}
+                tx={tx}
+                onPress={() => navigation.navigate('ConfirmReceived', {id: tx.id})}
+              />
+            ))}
+          </View>
+        )}
+
         {/* Recent activity */}
         <View style={[styles.sectionHead, {paddingHorizontal: theme.spacing.lg}]}>
           <Heading level="headingSmall">Recent activity</Heading>
@@ -229,6 +252,44 @@ function ActivityRow({tx, onPress}: {tx: Transaction; onPress: () => void}) {
         <Amount centi={tx.amountCenti} size="sm" />
         <Badge variant={badge.variant} size="sm" dot>
           {badge.label}
+        </Badge>
+      </View>
+    </Pressable>
+  );
+}
+
+function InboxRow({tx, onPress}: {tx: Transaction; onPress: () => void}) {
+  const theme = useTheme();
+  const expired = isExpired(tx);
+  const [pressed, setPressed] = useState(false);
+  return (
+    <Pressable
+      onPress={onPress}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
+      accessibilityRole="button"
+      accessibilityLabel={`${tx.memo ?? tx.counterparty}, ${expired ? 'expired' : 'confirm'}`}
+      style={[
+        styles.row,
+        {
+          paddingHorizontal: theme.spacing.lg,
+          borderTopColor: theme.colors.border,
+          backgroundColor: pressed ? theme.colors.surfaceSunken : 'transparent',
+        },
+      ]}>
+      <Identicon seed={tx.counterpartyAddress} size={40} radius={11} />
+      <View style={styles.rowMain}>
+        <Text variant="label" color={theme.colors.text} numberOfLines={1} style={styles.rowLabel}>
+          {tx.memo ?? tx.counterparty}
+        </Text>
+        <Text variant="caption" color={theme.colors.textSecondary} numberOfLines={1}>
+          from {tx.counterparty} · {relativeTime(tx.timestamp)}
+        </Text>
+      </View>
+      <View style={styles.rowRight}>
+        <Amount centi={tx.amountCenti} size="sm" />
+        <Badge variant={expired ? 'neutral' : 'warning'} size="sm" dot>
+          {expired ? 'Expired' : 'Confirm'}
         </Badge>
       </View>
     </Pressable>

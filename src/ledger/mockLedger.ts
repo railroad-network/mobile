@@ -40,10 +40,27 @@ const ADDR: Record<string, string> = {
 const HOUR = 3600;
 const DAY = 86400;
 
+// Content-address ids (Blake3, 64 hex chars) for the incoming proposals, so the
+// receiver can sign a real TransactionConfirmation against them (its proposal_id
+// is a 32-byte hash). Fixed here since the mock has no real proposal behind them.
+const INBOX_ID_1 = 'a1b2c3d4e5f60718293a4b5c6d7e8f90112233445566778899aabbccddeeff00';
+const INBOX_ID_2 = '00ffeeddccbbaa998877665544332211009f8e7d6c5b4a3928190a7b6c5d4e3f';
+
 /** Builds the seeded activity relative to `now` so relative times stay fresh. */
 function seededActivity(now: number): Transaction[] {
   const t = (offset: number) => Math.floor(now / 1000) - offset;
   return [
+    // Incoming proposals awaiting this member's confirmation (the inbox).
+    {
+      id: INBOX_ID_1, counterparty: 'valley_farm', counterpartyAddress: ADDR.valley_farm,
+      direction: 'in', amountCenti: 1500, memo: 'Split the seed order',
+      state: 'pending', timestamp: t(3 * HOUR), expiresAt: t(-2 * DAY),
+    },
+    {
+      id: INBOX_ID_2, counterparty: 'lena_p', counterpartyAddress: ADDR.lena_p,
+      direction: 'in', amountCenti: 450, memo: 'Herbs from the fall market',
+      state: 'pending', timestamp: t(30 * HOUR), expiresAt: t(-18 * HOUR),
+    },
     {
       id: 'tx_7b21', counterparty: 'dr_sarah', counterpartyAddress: ADDR.dr_sarah,
       direction: 'out', amountCenti: -300, memo: 'General consultation',

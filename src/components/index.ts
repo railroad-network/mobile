@@ -24,3 +24,5 @@ export {Identicon} from './Identicon';
 export type {IdenticonProps} from './Identicon';
 export {ConnectivityStatus} from './ConnectivityStatus';
 export type {ConnectivityStatusProps, ConnectivityLevel} from './ConnectivityStatus';
+export {Countdown} from './Countdown';
+export type {CountdownProps} from './Countdown';

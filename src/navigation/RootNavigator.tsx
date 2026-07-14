@@ -16,6 +16,7 @@ import {History} from '../screens/main/History';
 import {Settings} from '../screens/main/Settings';
 import {HeldShards} from '../screens/main/HeldShards';
 import {TransactionDetail} from '../screens/main/TransactionDetail';
+import {ConfirmReceived} from '../screens/main/ConfirmReceived';
 import {Receive} from '../screens/main/Receive';
 import {RecoveryNavigator} from '../screens/recovery/RecoveryNavigator';
 import type {
@@ -96,6 +97,7 @@ function MainNavigator() {
       <MainStack.Screen name="Recovery" component={RecoveryNavigator} />
       <MainStack.Screen name="HeldShards" component={HeldShards} />
       <MainStack.Screen name="TransactionDetail" component={TransactionDetail} />
+      <MainStack.Screen name="ConfirmReceived" component={ConfirmReceived} />
       <MainStack.Screen name="Receive" component={Receive} />
     </MainStack.Navigator>
   );
