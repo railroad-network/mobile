@@ -100,6 +100,9 @@ export function History({navigation}: MainTabScreenProps<'History'>) {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        // ScrollView's base style is flexGrow: 1; without this the horizontal
+        // chip strip expands to fill the column and squeezes the list.
+        style={styles.chipsScroll}
         contentContainerStyle={[styles.chips, {paddingHorizontal: theme.spacing.lg}]}>
         {FILTERS.map(f => (
           <FilterChip
@@ -251,6 +254,7 @@ function HistorySkeleton({theme}: {theme: Theme}) {
 
 const styles = StyleSheet.create({
   fill: {flex: 1},
+  chipsScroll: {flexGrow: 0, flexShrink: 0},
   chips: {gap: 8, paddingTop: 12, paddingBottom: 12},
   chip: {
     height: 34,

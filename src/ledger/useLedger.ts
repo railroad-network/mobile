@@ -19,8 +19,12 @@ import type {Balance, Identity, Transaction} from './types';
  * Shared by {@link useActivity} and {@link useInbox} (same query key, so
  * react-query fetches it once).
  */
-async function activityQueryFn(): Promise<Transaction[]> {
-  return applyDecisions([...getOutbox(), ...(await fetchActivity())]);
+export async function activityQueryFn(): Promise<Transaction[]> {
+  const merged = applyDecisions([...getOutbox(), ...(await fetchActivity())]);
+  // Newest first. Consumers rely on this: History's day grouping only starts a
+  // new section when the day label changes, so out-of-order entries would repeat
+  // a day header.
+  return merged.sort((a, b) => b.timestamp - a.timestamp);
 }
 
 /** Query keys, all under a `ledger` root so a refresh can invalidate them together. */
@@ -40,9 +44,9 @@ export function useBalance(): UseQueryResult<Balance> {
 }
 
 export function useActivity(): UseQueryResult<Transaction[]> {
-  // Locally-queued proposals (the outbox) come first — they are the newest and
-  // are not yet in the mock/station activity. M1.3's real transport reconciles
-  // the two; until then this merge is what makes a just-sent payment appear.
+  // Locally-queued proposals (the outbox) are merged in — they are not yet in
+  // the mock/station activity. M1.3's real transport reconciles the two; until
+  // then this merge is what makes a just-sent payment appear.
   return useQuery({queryKey: ledgerKeys.activity, queryFn: activityQueryFn});
 }
 

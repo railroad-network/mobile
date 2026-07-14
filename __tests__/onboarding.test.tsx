@@ -230,6 +230,21 @@ describe('BiometricSetup', () => {
 // --- GenerateWallet ---------------------------------------------------------
 
 describe('GenerateWallet', () => {
+  // The screen holds for a minimum duration after creation succeeds, so these
+  // tests drive the clock rather than waiting it out.
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
+  /** Settles pending promises and runs out the minimum-visible hold. */
+  async function settle() {
+    await act(async () => {
+      await Promise.resolve();
+    });
+    await act(async () => {
+      jest.runAllTimers();
+    });
+  }
+
   test('creates the wallet with the chosen biometric setting and advances', async () => {
     mockOnboarding.passphrase = 'correcthorsebattery';
     mockOnboarding.biometricEnabled = true;
@@ -237,16 +252,36 @@ describe('GenerateWallet', () => {
 
     const navigation = nav();
     await renderScreen(<GenerateWallet navigation={navigation} route={{} as any} />);
-    // Let the creation promise settle inside act.
-    await act(async () => {
-      await Promise.resolve();
-    });
+    await settle();
 
     expect(mockCreateWallet).toHaveBeenCalledWith('correcthorsebattery', undefined, {
       requireBiometric: true,
     });
     expect(mockOnboarding.setCreatedAddress).toHaveBeenCalledWith('rrn1exampleaddress');
     expect(mockOnboarding.clearSecrets).toHaveBeenCalled();
+    expect(navigation.replace).toHaveBeenCalledWith('WalletReady');
+  });
+
+  test('holds the progress screen when creation returns near-instantly', async () => {
+    mockOnboarding.passphrase = 'correcthorsebattery';
+    mockCreateWallet.mockResolvedValue({address: 'rrn1exampleaddress'});
+
+    const navigation = nav();
+    const r = await renderScreen(
+      <GenerateWallet navigation={navigation} route={{} as any} />,
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    // Creation is already done, but the progress state stays up.
+    expect(mockCreateWallet).toHaveBeenCalledTimes(1);
+    expect(navigation.replace).not.toHaveBeenCalled();
+    expect(hasText(r, 'Creating your identity')).toBe(true);
+
+    await act(async () => {
+      jest.advanceTimersByTime(2200);
+    });
     expect(navigation.replace).toHaveBeenCalledWith('WalletReady');
   });
 
@@ -257,9 +292,7 @@ describe('GenerateWallet', () => {
     const r = await renderScreen(
       <GenerateWallet navigation={nav()} route={{} as any} />,
     );
-    await act(async () => {
-      await Promise.resolve();
-    });
+    await settle();
 
     expect(hasText(r, 'Something went wrong')).toBe(true);
     expect(hasText(r, 'keystore unavailable')).toBe(true);

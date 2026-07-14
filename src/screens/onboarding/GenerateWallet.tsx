@@ -23,6 +23,18 @@ const STEPS = [
   'Storing securely on device',
 ];
 
+/**
+ * Wallet creation can finish in well under a second, which reads as a flicker
+ * rather than as the app having done something consequential. Hold this screen
+ * for at least this long so the progress state is legible.
+ */
+const MIN_VISIBLE_MS = 2200;
+
+function delay(ms: number): Promise<void> {
+  if (ms <= 0) return Promise.resolve();
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 export function GenerateWallet({
   navigation,
 }: OnboardingScreenProps<'GenerateWallet'>) {
@@ -43,12 +55,15 @@ export function GenerateWallet({
     startedRef.current = true;
 
     (async () => {
+      const startedAt = Date.now();
       try {
         const wallet = await createWallet(passphrase, undefined, {
           requireBiometric: biometricEnabled,
         });
         setCreatedAddress(wallet.address);
         clearSecrets();
+        // Only the success path is padded; an error should surface immediately.
+        await delay(MIN_VISIBLE_MS - (Date.now() - startedAt));
         navigation.replace('WalletReady');
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Could not create your wallet.');
