@@ -196,10 +196,27 @@ jobs:
       # ABI here rather than making every developer build a target only CI uses.
       # :rrn-ffi derives its abiFilters from whichever jniLibs it finds, so this
       # flag is the only place the CI ABI is named.
+      # cargo-ndk needs the NDK the app links against — android/build.gradle's
+      # `ndkVersion`. The runner preinstalls a different r27 patch, and AGP only
+      # fetches the pinned one during the Gradle build, which is too late for the
+      # step below. Installing it up front makes that later fetch a no-op.
+      # Read rather than duplicated: a hardcoded copy that drifted from
+      # build.gradle would cross-compile against one NDK and link against
+      # another, which fails quietly rather than loudly.
+      - name: Install the NDK the app pins
+        run: |
+          set -euo pipefail
+          ndk=$(awk -F'"' '/ndkVersion *=/ {print $2; exit}' android/build.gradle)
+          test -n "$ndk" || { echo "No ndkVersion in android/build.gradle"; exit 1; }
+          echo "Pinned NDK: $ndk"
+          echo "NDK_VERSION=$ndk" >> "$GITHUB_ENV"
+          sdkmanager --install "ndk;$ndk"
       - name: Cross-compile the Rust FFI for the emulator ABI
         run: yarn uniffi-bindgen-react-native build android -t x86_64
         env:
-          ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.1.12297006
+          # Both, and matching: cargo-ndk warns when they disagree.
+          ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/${{ env.NDK_VERSION }}
+          ANDROID_NDK_ROOT: ${{ env.ANDROID_HOME }}/ndk/${{ env.NDK_VERSION }}
       - name: Enable KVM for the emulator
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
