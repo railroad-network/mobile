@@ -184,13 +184,32 @@ jobs:
             ~/.cargo/git
           key: ${{ runner.os }}-cargo-android-${{ hashFiles('.station-version') }}
           restore-keys: ${{ runner.os }}-cargo-android-
-      # ubrn shells out to cargo-ndk. No `rustup target add` step is needed:
-      # station's rust-toolchain.toml declares the Android targets, so rustup
-      # installs them against the channel it pins. Adding them by hand from this
-      # directory would land them on the *default* toolchain instead, and the
-      # build would fail with a misleading "can't find crate for `core`".
       - name: Install cargo-ndk
         run: cargo install cargo-ndk --locked
+      # ubrn shells out to cargo-ndk, which cross-compiles from the station
+      # checkout. station's rust-toolchain.toml *declares* the Android targets,
+      # but declaring is not installing: rustup only materializes them when it
+      # installs that toolchain, and nothing here ever asks it to. Without this
+      # step the build runs on the runner's default toolchain and dies with
+      # "can't find crate for `core`".
+      #
+      # The working-directory is the whole point: run from station/, `rustup
+      # target add` resolves through that rust-toolchain.toml and lands on the
+      # channel it pins — the same toolchain cargo-ndk will use. Run from the
+      # mobile repo it would land on the default toolchain and change nothing.
+      # Resolve the channel station pins, and install it. Running rustup from the
+      # station checkout is what makes this work: rustup reads rust-toolchain.toml
+      # there, and installing the channel also installs the Android targets that
+      # file declares. Read rather than hardcoded, so it cannot drift from the pin.
+      - name: Resolve station's pinned Rust toolchain
+        working-directory: ../station
+        run: |
+          set -euo pipefail
+          rustup target add x86_64-linux-android
+          toolchain=$(rustup show active-toolchain | cut -d' ' -f1)
+          test -n "$toolchain" || { echo "Could not resolve station's toolchain"; exit 1; }
+          echo "Station pins: $toolchain"
+          echo "STATION_TOOLCHAIN=$toolchain" >> "$GITHUB_ENV"
       # This job's emulator is x86_64 (Intel runner), while ubrn.config.yaml
       # targets arm64-v8a for real devices and local emulators — so override the
       # ABI here rather than making every developer build a target only CI uses.
@@ -214,6 +233,18 @@ jobs:
       - name: Cross-compile the Rust FFI for the emulator ABI
         run: yarn uniffi-bindgen-react-native build android -t x86_64
         env:
+          # station's rust-toolchain.toml cannot pin this build on its own, so
+          # name the toolchain explicitly. ubrn's CLI launches itself with
+          # `cargo run` from *this* repo, which has no rust-toolchain.toml: rustup
+          # resolves the runner's default channel and exports RUSTUP_TOOLCHAIN
+          # into ubrn's environment. cargo-ndk then inherits it when ubrn shells
+          # out inside station, and RUSTUP_TOOLCHAIN outranks a rust-toolchain.toml
+          # -- so the build silently ran on default stable, which has no Android
+          # targets, and died with "can't find crate for `core`".
+          #
+          # Setting it here overrides that inherited value with station's pin, so
+          # ubrn and cargo-ndk agree on the toolchain the targets are installed on.
+          RUSTUP_TOOLCHAIN: ${{ env.STATION_TOOLCHAIN }}
           # Both, and matching: cargo-ndk warns when they disagree.
           ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/${{ env.NDK_VERSION }}
           ANDROID_NDK_ROOT: ${{ env.ANDROID_HOME }}/ndk/${{ env.NDK_VERSION }}
