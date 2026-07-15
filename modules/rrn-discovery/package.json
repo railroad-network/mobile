@@ -1,0 +1,24 @@
+{
+  "name": "rrn-discovery",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Finds Railroad Network stations on the local network via mDNS.",
+  "license": "(Apache-2.0 OR MIT)",
+  "main": "src/index.ts",
+  "source": "src/index.ts",
+  "files": [
+    "src",
+    "ios",
+    "android",
+    "nitrogen",
+    "nitro.json",
+    "RrnDiscovery.podspec"
+  ],
+  "scripts": {
+    "specs": "nitrogen"
+  },
+  "peerDependencies": {
+    "react-native": "*",
+    "react-native-nitro-modules": "*"
+  }
+}
