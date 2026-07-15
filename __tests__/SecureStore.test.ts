@@ -22,7 +22,10 @@ jest.mock('react-native-keychain', () => {
     },
     ACCESS_CONTROL: {BIOMETRY_ANY: 'BiometryAny'},
     SECURITY_LEVEL: {SECURE_SOFTWARE: 0, SECURE_HARDWARE: 1, ANY: 2},
-    STORAGE_TYPE: {AES_GCM: 'KeystoreAESGCM'},
+    STORAGE_TYPE: {
+      AES_GCM: 'KeystoreAESGCM',
+      AES_GCM_NO_AUTH: 'KeystoreAESGCM_NoAuth',
+    },
     setGenericPassword: jest.fn(
       async (
         username: string,
@@ -177,6 +180,20 @@ describe('SecureStore', () => {
     });
     const options = mock.setGenericPassword.mock.calls[0][2];
     expect(options.accessControl).toBeUndefined();
+    // Not AES_GCM: on Android the storage type carries the gate, and AES_GCM
+    // requires user authentication to encrypt as well as decrypt. Asking for it
+    // here made wallet creation fail outright on a device with no enrolled
+    // biometric, and prompted users who had just declined.
+    expect(options.storage).toBe(Keychain.STORAGE_TYPE.AES_GCM_NO_AUTH);
+  });
+
+  test('requiring biometrics selects the auth-gated storage type (Android)', async () => {
+    setPlatform('android');
+    await getSecureStore().save(SecureStoreKeys.WALLET_FILE, secret, {
+      requireBiometric: true,
+    });
+    const options = mock.setGenericPassword.mock.calls[0][2];
+    expect(options.accessControl).toBe(Keychain.ACCESS_CONTROL.BIOMETRY_ANY);
     expect(options.storage).toBe(Keychain.STORAGE_TYPE.AES_GCM);
   });
 

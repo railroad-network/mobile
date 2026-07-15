@@ -146,8 +146,16 @@ class KeychainSecureStore implements SecureStore {
       accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED,
       securityLevel,
       // AES-GCM keystore entry, gated behind biometric authentication when the
-      // user opted in.
-      storage: Keychain.STORAGE_TYPE.AES_GCM,
+      // user opted in. The storage type — not accessControl — is what carries
+      // the gate on Android: AES_GCM requires user authentication to *encrypt*
+      // as well as decrypt, so using it unconditionally made wallet creation
+      // fail outright ("No fingerprints enrolled") on any device without an
+      // enrolled biometric, and prompted users who had explicitly declined.
+      // AES_GCM_NO_AUTH is the same hardware-backed AES-GCM without that
+      // requirement; the passphrase layer protects the bytes either way.
+      storage: requireBiometric
+        ? Keychain.STORAGE_TYPE.AES_GCM
+        : Keychain.STORAGE_TYPE.AES_GCM_NO_AUTH,
       ...(requireBiometric
         ? {accessControl: Keychain.ACCESS_CONTROL.BIOMETRY_ANY}
         : {}),
