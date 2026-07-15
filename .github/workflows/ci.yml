@@ -87,12 +87,31 @@ jobs:
             ~/.cargo/git
           key: ${{ runner.os }}-cargo-${{ hashFiles('.station-version') }}
           restore-keys: ${{ runner.os }}-cargo-
-      - run: rustup target add aarch64-apple-ios-sim
+      # Same toolchain handling as android-build below, which documents why
+      # RUSTUP_TOOLCHAIN is needed at all: ubrn's CLI runs itself with `cargo run`
+      # from this repo, and the resulting inherited RUSTUP_TOOLCHAIN outranks
+      # station's rust-toolchain.toml, so the pin has to be named explicitly.
+      #
+      # The sim target is added by hand because rust-toolchain.toml deliberately
+      # declares no Apple targets (station's own jobs would fetch an Apple stdlib
+      # they never use). Running rustup from the station checkout is what puts it
+      # on the pinned channel rather than the runner's default toolchain.
+      - name: Resolve station's pinned Rust toolchain
+        working-directory: ../station
+        run: |
+          set -euo pipefail
+          rustup target add aarch64-apple-ios-sim
+          toolchain=$(rustup show active-toolchain | cut -d' ' -f1)
+          test -n "$toolchain" || { echo "Could not resolve station's toolchain"; exit 1; }
+          echo "Station pins: $toolchain"
+          echo "STATION_TOOLCHAIN=$toolchain" >> "$GITHUB_ENV"
       # Builds the Rust crate and assembles RailroadNetworkMobileFramework.xcframework
       # (gitignored build artifact) that RrnMobileFfi.podspec vendors. Simulator-only
       # since this job only ever boots a simulator (see below) — matches the
       # "smoke build only" scope, not a device build.
       - run: yarn ubrn:ios
+        env:
+          RUSTUP_TOOLCHAIN: ${{ env.STATION_TOOLCHAIN }}
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.4'
