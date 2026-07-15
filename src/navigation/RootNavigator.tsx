@@ -21,6 +21,8 @@ import {Receive} from '../screens/main/Receive';
 import {ChangePassphrase} from '../screens/main/ChangePassphrase';
 import {ExportWallet} from '../screens/main/ExportWallet';
 import {FactoryReset} from '../screens/main/FactoryReset';
+import {Discovery} from '../screens/main/Discovery';
+import {PlaceholderScreen} from '../screens/PlaceholderScreen';
 import {RecoveryNavigator} from '../screens/recovery/RecoveryNavigator';
 import type {
   MainStackParamList,
@@ -105,6 +107,11 @@ function MainNavigator() {
       <MainStack.Screen name="ChangePassphrase" component={ChangePassphrase} />
       <MainStack.Screen name="ExportWallet" component={ExportWallet} />
       <MainStack.Screen name="FactoryReset" component={FactoryReset} />
+      <MainStack.Screen name="Discovery" component={Discovery} />
+      {/* T1.3.3 replaces this without touching the wiring or Discovery. */}
+      <MainStack.Screen name="Pairing">
+        {() => <PlaceholderScreen name="Pair with station" />}
+      </MainStack.Screen>
     </MainStack.Navigator>
   );
 }

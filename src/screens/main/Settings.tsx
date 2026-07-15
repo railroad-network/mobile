@@ -191,7 +191,8 @@ export function Settings() {
         <NavRow
           theme={theme}
           title="Station pairing"
-          subtitle="Not paired — pairing arrives with the station link (M1.3)"
+          subtitle="Not paired — find a station on your network"
+          onPress={() => navigation.navigate('Discovery')}
         />
       </Group>
 

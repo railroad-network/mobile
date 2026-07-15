@@ -3,6 +3,8 @@
   "version": "0.0.1",
   "private": true,
   "description": "Finds Railroad Network stations on the local network via mDNS.",
+  "homepage": "https://github.com/railroad-network/mobile",
+  "author": "Railroad Network contributors",
   "license": "(Apache-2.0 OR MIT)",
   "main": "src/index.ts",
   "source": "src/index.ts",

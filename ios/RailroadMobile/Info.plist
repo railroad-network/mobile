@@ -33,8 +33,14 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_rrn-station._tcp</string>
+	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>Railroad Network uses the camera to scan QR codes — recovery shards and payment requests.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Railroad Network finds stations on your local network so you can pair with one and send payments.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string></string>
 	<key>RCTNewArchEnabled</key>

@@ -2245,6 +2245,30 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
+  - RrnDiscovery (0.0.1):
+    - hermes-engine
+    - NitroModules
+    - RCTRequired
+    - RCTTypeSafety
+    - React-callinvoker
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
   - RrnMobileFfi (0.0.1):
     - hermes-engine
     - RCTRequired
@@ -2382,6 +2406,7 @@ DEPENDENCIES:
   - RNScreens (from `../node_modules/react-native-screens`)
   - RNSVG (from `../node_modules/react-native-svg`)
   - RNWorklets (from `../node_modules/react-native-worklets`)
+  - RrnDiscovery (from `../node_modules/rrn-discovery`)
   - RrnMobileFfi (from `..`)
   - uniffi-bindgen-react-native (from `../node_modules/uniffi-bindgen-react-native`)
   - VisionCamera (from `../node_modules/react-native-vision-camera`)
@@ -2555,6 +2580,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-svg"
   RNWorklets:
     :path: "../node_modules/react-native-worklets"
+  RrnDiscovery:
+    :path: "../node_modules/rrn-discovery"
   RrnMobileFfi:
     :path: ".."
   uniffi-bindgen-react-native:
@@ -2648,6 +2675,7 @@ SPEC CHECKSUMS:
   RNScreens: 62693e770c4b73093c018aa7845b691f5ba9988d
   RNSVG: 6cae8d4082913be2eb43eaec2a456222c42195ed
   RNWorklets: 53439575fed8525fb8d1cabcc05a3d4d91e6ffe4
+  RrnDiscovery: 834b46b9b3ddf3726bbfd2f91a053d14d29b7a1a
   RrnMobileFfi: f8e9865453541a4c0ed0bf52531f6cc2fc92d85f
   uniffi-bindgen-react-native: 5a59022841548d4c890e8f259016bdb8a797208a
   VisionCamera: 2d364657571d6b6404830269d05b1de244586a40

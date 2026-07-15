@@ -5,6 +5,8 @@ import type {
 import type {BottomTabScreenProps} from '@react-navigation/bottom-tabs';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 
+import type {Station} from '../network/Discovery';
+
 /** Where the social-recovery flow was entered from — decides how it exits. */
 export type RecoveryOrigin = 'onboarding' | 'settings';
 
@@ -63,6 +65,15 @@ export type MainStackParamList = {
   ExportWallet: undefined;
   /** Factory reset, confirmed by typing the given nickname (T1.2.8). */
   FactoryReset: {nickname: string};
+  /** Find a station on the local network to pair with (T1.3.2). */
+  Discovery: undefined;
+  /**
+   * Pair with a station, discovered or hand-typed (T1.3.3).
+   *
+   * Takes the whole {@link Station} rather than an id because nothing has been
+   * stored yet — pairing is what decides a station is worth remembering.
+   */
+  Pairing: {station: Station};
 };
 
 /** Props for a screen in the main stack. */
