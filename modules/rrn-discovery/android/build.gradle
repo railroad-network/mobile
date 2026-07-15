@@ -1,0 +1,95 @@
+buildscript {
+  repositories {
+    google()
+    mavenCentral()
+  }
+
+  dependencies {
+    classpath "com.android.tools.build:gradle:8.12.0"
+    classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${rootProject.ext.has('kotlinVersion') ? rootProject.ext.get('kotlinVersion') : '2.1.20'}"
+  }
+}
+
+def reactNativeArchitectures() {
+  def value = rootProject.getProperties().get("reactNativeArchitectures")
+  return value ? value.split(",") : ["armeabi-v7a", "x86", "x86_64", "arm64-v8a"]
+}
+
+// The app's root build.gradle sets these in `ext`; the fallbacks only matter if
+// this module is ever built outside it.
+def getExtOrDefault(name, fallback) {
+  return rootProject.ext.has(name) ? rootProject.ext.get(name) : fallback
+}
+
+apply plugin: "com.android.library"
+apply plugin: "org.jetbrains.kotlin.android"
+apply from: '../nitrogen/generated/android/RrnDiscovery+autolinking.gradle'
+
+android {
+  namespace "com.margelo.nitro.rrndiscovery"
+
+  ndkVersion getExtOrDefault("ndkVersion", "27.1.12297006")
+  compileSdk getExtOrDefault("compileSdkVersion", 36)
+
+  defaultConfig {
+    minSdk getExtOrDefault("minSdkVersion", 24)
+
+    externalNativeBuild {
+      cmake {
+        cppFlags "-frtti -fexceptions -Wall -Wextra -fstack-protector-all"
+        arguments "-DANDROID_STL=c++_shared"
+        abiFilters (*reactNativeArchitectures())
+      }
+    }
+  }
+
+  externalNativeBuild {
+    cmake {
+      path "CMakeLists.txt"
+    }
+  }
+
+  buildFeatures {
+    buildConfig true
+    prefab true
+  }
+
+  // These ship with React Native and Nitro already; packaging our own copies
+  // would collide at install time.
+  packagingOptions {
+    excludes = [
+      "META-INF",
+      "META-INF/**",
+      "**/libc++_shared.so",
+      "**/libfbjni.so",
+      "**/libjsi.so",
+      "**/libreactnative.so",
+      "**/libreactnativejni.so",
+      "**/libhermes.so",
+      "**/libturbomodulejsijni.so",
+    ]
+  }
+
+  buildTypes {
+    release {
+      minifyEnabled false
+    }
+  }
+
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_11
+    targetCompatibility JavaVersion.VERSION_11
+  }
+}
+
+repositories {
+  google()
+  mavenCentral()
+}
+
+dependencies {
+  // Replaced by `com.facebook.react:react-android:$version` by the react gradle plugin.
+  //noinspection GradleDynamicVersion
+  implementation "com.facebook.react:react-native:+"
+  implementation project(":react-native-nitro-modules")
+}

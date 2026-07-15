@@ -1,0 +1,16 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Declared by the module rather than the app so the requirement travels
+         with it: anything using rrn-discovery needs these merged in, and an app
+         that drops the module should stop asking for them. INTERNET is also
+         declared by the app; the merger folds the duplicate. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- mDNS is multicast. NsdManager runs discovery in a system process and
+         takes its own multicast lock there, so this is not strictly documented
+         as required — but it is the long-standing convention for NSD, and it is
+         install-time (never prompts), so the cost of keeping it is zero and the
+         cost of guessing wrong on some OEM build is a silent empty list. -->
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+
+</manifest>
