@@ -162,10 +162,44 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('android/gradle/wrapper/gradle-wrapper.properties', 'android/build.gradle', 'android/app/build.gradle') }}
           restore-keys: ${{ runner.os }}-gradle-
       - uses: android-actions/setup-android@v3
-      # NOTE: unlike iOS, the Rust FFI (ADR-0007) has no Android turbo-module
-      # glue wired up yet (no ubrn `android:` config, no generated Kotlin/JNI
-      # bridge in android/app) — this job doesn't build or exercise the FFI at
-      # all yet. Wiring that is separate follow-up work, not a CI-only fix.
+      # The Rust FFI (ADR-0007) lives in the sibling `station` repo, exactly as
+      # in ios-build above: check it out at the relative path ubrn.config.yaml
+      # expects, pinned to .station-version.
+      - name: Read pinned station commit
+        id: station-version
+        run: echo "sha=$(cat .station-version)" >> "$GITHUB_OUTPUT"
+      - name: Checkout station (pinned FFI source)
+        uses: actions/checkout@v4
+        with:
+          repository: railroad-network/station
+          ref: ${{ steps.station-version.outputs.sha }}
+          path: station-checkout
+      - name: Move station checkout next to the mobile repo
+        run: mv station-checkout ../station
+      - name: Cache Cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-android-${{ hashFiles('.station-version') }}
+          restore-keys: ${{ runner.os }}-cargo-android-
+      # ubrn shells out to cargo-ndk. No `rustup target add` step is needed:
+      # station's rust-toolchain.toml declares the Android targets, so rustup
+      # installs them against the channel it pins. Adding them by hand from this
+      # directory would land them on the *default* toolchain instead, and the
+      # build would fail with a misleading "can't find crate for `core`".
+      - name: Install cargo-ndk
+        run: cargo install cargo-ndk --locked
+      # This job's emulator is x86_64 (Intel runner), while ubrn.config.yaml
+      # targets arm64-v8a for real devices and local emulators — so override the
+      # ABI here rather than making every developer build a target only CI uses.
+      # :rrn-ffi derives its abiFilters from whichever jniLibs it finds, so this
+      # flag is the only place the CI ABI is named.
+      - name: Cross-compile the Rust FFI for the emulator ABI
+        run: yarn uniffi-bindgen-react-native build android -t x86_64
+        env:
+          ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.1.12297006
       - name: Enable KVM for the emulator
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -178,6 +212,11 @@ jobs:
       # testing is out of scope here (M1.2, via Maestro).
       - name: Run yarn android --no-packager on emulator
         uses: reactivecircus/android-emulator-runner@v2
+        env:
+          # Gradle reads ORG_GRADLE_PROJECT_* as project properties. Constrains
+          # the app to the one ABI the Rust was built for above; without it the
+          # build fans out to all four and fails on the three with no staticlib.
+          ORG_GRADLE_PROJECT_reactNativeArchitectures: x86_64
         with:
           api-level: 34
           target: google_apis

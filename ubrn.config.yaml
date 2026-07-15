@@ -15,3 +15,19 @@ ios:
   # up AppDelegate.swift into the RrnMobileFfi pod target). Isolate ubrn's
   # generated native glue in its own subdirectory instead.
   directory: ios/rrn-ffi
+android:
+  # Same collision as iOS, worse: ubrn emits a whole Android *library* project
+  # here (build.gradle, AndroidManifest, CMakeLists, cpp-adapter, Package.kt),
+  # and the default "android" is the app's own Gradle project. Isolate it, and
+  # wire it in explicitly via settings.gradle — the exact counterpart of the
+  # Podfile's `pod 'RrnMobileFfi', :path => '..'`. Autolinking never sees this
+  # module on either platform: it is not an npm package.
+  directory: android/rrn-ffi
+  # Only what actually runs this code: the rrn-test emulator (arm64 system
+  # image) and real devices. The debug .so is ~88MB per ABI, so unused targets
+  # cost real build time. Add x86_64 here if an Intel emulator is ever needed.
+  targets:
+    - arm64-v8a
+  # minSdk is 24 (see android/build.gradle); ubrn's default of 23 would build
+  # against an older NDK platform than the app ships.
+  apiLevel: 24

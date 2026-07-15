@@ -22,6 +22,7 @@
     "lint": "eslint .",
     "start": "react-native start",
     "test": "jest",
+    "ubrn:android": "uniffi-bindgen-react-native build android",
     "ubrn:ios": "uniffi-bindgen-react-native build ios --sim-only"
   },
   "dependencies": {

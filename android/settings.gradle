@@ -3,4 +3,10 @@ plugins { id("com.facebook.react.settings") }
 extensions.configure(com.facebook.react.ReactSettingsExtension){ ex -> ex.autolinkLibrariesFromCommand() }
 rootProject.name = 'org.railroadnetwork.mobile'
 include ':app'
+// The uniffi/ubrn Rust crypto glue (ADR-0007). Autolinking cannot find it —
+// it is not an npm package — so it is included by hand, exactly as the Podfile
+// names its podspec explicitly on iOS. Kept out of the app's own Gradle project
+// because ubrn generates a whole library project here.
+include ':rrn-ffi'
+project(':rrn-ffi').projectDir = file('rrn-ffi')
 includeBuild('../node_modules/@react-native/gradle-plugin')

@@ -6,6 +6,7 @@ import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
 import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
 import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
+import com.railroadnetworkmobile.RrnMobileFfiPackage
 
 class MainApplication : Application(), ReactApplication {
 
@@ -14,8 +15,12 @@ class MainApplication : Application(), ReactApplication {
       context = applicationContext,
       packageList =
         PackageList(this).packages.apply {
-          // Packages that cannot be autolinked yet can be added manually here, for example:
-          // add(MyReactNativePackage())
+          // The Rust crypto FFI (ADR-0007). PackageList only covers autolinked
+          // npm packages, and :rrn-ffi is a local Gradle subproject, so it is
+          // registered by hand — the counterpart of RCT_EXPORT_MODULE doing this
+          // implicitly on iOS. Without it every crypto call fails at startup with
+          // "TurboModuleRegistry.getEnforcing(...): 'RrnMobileFfi' could not be found".
+          add(RrnMobileFfiPackage())
         },
     )
   }
