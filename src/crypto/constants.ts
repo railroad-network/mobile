@@ -15,6 +15,12 @@ export const SecureStoreKeys = {
   WALLET_SECRET: 'rrn.wallet.secret',
   /** Token proving this device is paired with a station. */
   STATION_PAIRING_TOKEN: 'rrn.station.pairing_token',
+  /** Stations this device has paired with (T1.3.3): a JSON array of records,
+   * each the station's bech32 identity address (the durable key ADR-0008 binds),
+   * a last-known host hint, and when the pair was confirmed. Non-secret — the
+   * address is public and the record carries no key material — so saved without a
+   * biometric gate. See {@link network/pairedStation}. */
+  PAIRED_STATIONS: 'rrn.station.paired',
   /** Sealed social-recovery shards this device holds *for other people*
    * (T1.2.3): a JSON map keyed by the wallet address each shard helps recover.
    * The payloads are ciphertext (sealed to this holder) and each is below the
