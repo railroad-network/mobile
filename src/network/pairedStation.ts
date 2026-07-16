@@ -31,6 +31,14 @@ export interface PairedStation {
   port: number;
   /** Unix seconds when this device confirmed the pair. */
   pairedAt: number;
+  /**
+   * A human label captured at pairing (the discovered instance name, or the
+   * host for a manual station). Purely cosmetic — it makes the paired list
+   * recognisable when the station is offline and no longer announcing — and
+   * deliberately *not* identity: only {@link address} is trusted, so this is
+   * never matched on. Optional because it carries no security weight.
+   */
+  name?: string;
 }
 
 /**
@@ -149,6 +157,7 @@ function isPairedStation(value: unknown): value is PairedStation {
     typeof v.address === 'string' &&
     typeof v.host === 'string' &&
     typeof v.port === 'number' &&
-    typeof v.pairedAt === 'number'
+    typeof v.pairedAt === 'number' &&
+    (v.name === undefined || typeof v.name === 'string')
   );
 }

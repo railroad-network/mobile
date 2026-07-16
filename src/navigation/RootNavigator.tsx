@@ -23,6 +23,7 @@ import {ExportWallet} from '../screens/main/ExportWallet';
 import {FactoryReset} from '../screens/main/FactoryReset';
 import {Discovery} from '../screens/main/Discovery';
 import {Pairing} from '../screens/main/Pairing';
+import {PairedStations} from '../screens/main/PairedStations';
 import {RecoveryNavigator} from '../screens/recovery/RecoveryNavigator';
 import type {
   MainStackParamList,
@@ -109,6 +110,7 @@ function MainNavigator() {
       <MainStack.Screen name="FactoryReset" component={FactoryReset} />
       <MainStack.Screen name="Discovery" component={Discovery} />
       <MainStack.Screen name="Pairing" component={Pairing} />
+      <MainStack.Screen name="PairedStations" component={PairedStations} />
     </MainStack.Navigator>
   );
 }

@@ -7,8 +7,9 @@
  *
  * Identity (address, community) is read from the ledger identity hook (mocked in
  * M1.2, real in M1.3); the nickname is editable here and persisted locally, and
- * the edit is reflected app-wide via the ledger identity query. Connection /
- * station pairing is a placeholder until the transport layer lands (M1.3).
+ * the edit is reflected app-wide via the ledger identity query. Connection shows
+ * whether this phone is paired with a station (T1.3.3) and opens the paired-list
+ * / unpair screen, or the discovery flow when nothing is paired yet.
  */
 import {useCallback, useState} from 'react';
 import {Linking, Pressable, ScrollView, StyleSheet, Switch, View} from 'react-native';
@@ -20,6 +21,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Badge, Button, Card, Field, Heading, Identicon, StarMark, Text} from '../../components';
 import {ledgerKeys, shortAddress, useIdentity} from '../../ledger';
 import {loadHeldShards} from '../../wallet/heldShards';
+import {loadPairedStations, type PairedStation} from '../../network/pairedStation';
 import {loadProfile, saveProfile} from '../../wallet/profile';
 import {loadRecoveryConfig, type RecoveryConfig} from '../../wallet/recoveryConfig';
 import {setBiometricUnlock} from '../../wallet/Wallet';
@@ -46,6 +48,7 @@ export function Settings() {
 
   const [recovery, setRecovery] = useState<RecoveryConfig | null>(null);
   const [heldCount, setHeldCount] = useState(0);
+  const [paired, setPaired] = useState<PairedStation[]>([]);
   const [biometric, setBiometric] = useState(true);
   const [nickname, setNickname] = useState('');
   const [savedNickname, setSavedNickname] = useState('');
@@ -59,6 +62,9 @@ export function Settings() {
       loadHeldShards()
         .then(m => active && setHeldCount(Object.keys(m).length))
         .catch(() => active && setHeldCount(0));
+      loadPairedStations()
+        .then(s => active && setPaired(s))
+        .catch(() => active && setPaired([]));
       loadProfile()
         .then(p => {
           if (!active) return;
@@ -101,6 +107,13 @@ export function Settings() {
       : `${recovery.threshold}-of-${recovery.total} circle · ${
           recovery.holders.filter(h => h.delivered).length
         } delivered`;
+
+  const pairedSubtitle =
+    paired.length === 0
+      ? 'Not paired — find a station on your network'
+      : paired.length === 1
+        ? `Paired with ${paired[0].name ?? shortAddress(paired[0].address)}`
+        : `Paired with ${paired.length} stations`;
 
   return (
     <ScrollView
@@ -191,8 +204,17 @@ export function Settings() {
         <NavRow
           theme={theme}
           title="Station pairing"
-          subtitle="Not paired — find a station on your network"
-          onPress={() => navigation.navigate('Discovery')}
+          subtitle={pairedSubtitle}
+          right={
+            paired.length > 0 ? (
+              <Badge variant="success" size="sm" dot>
+                Paired
+              </Badge>
+            ) : undefined
+          }
+          onPress={() =>
+            navigation.navigate(paired.length > 0 ? 'PairedStations' : 'Discovery')
+          }
         />
       </Group>
 

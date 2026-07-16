@@ -41,6 +41,11 @@ jest.mock('../src/wallet/profile', () => ({
 jest.mock('../src/wallet/recoveryConfig', () => ({loadRecoveryConfig: () => Promise.resolve(null)}));
 jest.mock('../src/wallet/heldShards', () => ({loadHeldShards: () => Promise.resolve({})}));
 
+let mockPaired: Array<{address: string; host: string; port: number; pairedAt: number; name?: string}>;
+jest.mock('../src/network/pairedStation', () => ({
+  loadPairedStations: () => Promise.resolve(mockPaired),
+}));
+
 const mockSetBiometric = jest.fn(async (_enabled: boolean) => {});
 jest.mock('../src/wallet/Wallet', () => ({
   setBiometricUnlock: (v: boolean) => mockSetBiometric(v),
@@ -93,6 +98,7 @@ async function type(node: Instance, text: string): Promise<void> {
 beforeEach(() => {
   jest.clearAllMocks();
   mockProfile = {nickname: 'asa_wren', biometricEnabled: true};
+  mockPaired = [];
 });
 
 test('renders the settings sections', async () => {
@@ -140,4 +146,30 @@ test('the theme options are selectable', async () => {
   await press(control(r, 'Theme: System'));
   // No throw; the theme buttons are wired to setMode.
   expect(control(r, 'Theme: Light')).toBeTruthy();
+});
+
+test('with no paired station, the pairing row opens discovery', async () => {
+  const r = await renderSettings();
+  expect(hasText(r, 'Not paired — find a station on your network')).toBe(true);
+  await press(control(r, 'Station pairing'));
+  expect(mockNav.navigate).toHaveBeenCalledWith('Discovery');
+});
+
+test('when paired, the pairing row summarises and opens the paired list', async () => {
+  mockPaired = [
+    {address: 'rrn1evening', host: 'evening.local', port: 7500, pairedAt: 1000, name: 'Evening Ridge'},
+  ];
+  const r = await renderSettings();
+  expect(hasText(r, 'Paired with Evening Ridge')).toBe(true);
+  await press(control(r, 'Station pairing'));
+  expect(mockNav.navigate).toHaveBeenCalledWith('PairedStations');
+});
+
+test('multiple paired stations are counted', async () => {
+  mockPaired = [
+    {address: 'rrn1a', host: 'a.local', port: 7500, pairedAt: 1000},
+    {address: 'rrn1b', host: 'b.local', port: 7500, pairedAt: 2000},
+  ];
+  const r = await renderSettings();
+  expect(hasText(r, 'Paired with 2 stations')).toBe(true);
 });

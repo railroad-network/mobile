@@ -107,6 +107,8 @@ export function Pairing({navigation, route}: MainStackScreenProps<'Pairing'>) {
         host: station.host,
         port: station.port,
         pairedAt: Math.floor(Date.now() / 1000),
+        // Cosmetic label for the paired list — the address is the identity.
+        name: station.name,
       });
       setStep('paired');
     } catch {

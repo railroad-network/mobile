@@ -67,6 +67,8 @@ export type MainStackParamList = {
   FactoryReset: {nickname: string};
   /** Find a station on the local network to pair with (T1.3.2). */
   Discovery: undefined;
+  /** The stations this device is paired with, and unpairing them (T1.3.3). */
+  PairedStations: undefined;
   /**
    * Pair with a station, discovered or hand-typed (T1.3.3).
    *
