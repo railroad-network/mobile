@@ -78,6 +78,16 @@ export class Wallet {
   }
 
   /**
+   * Opens a sealed box addressed to this identity's key (ADR-0008 transport
+   * envelope, T1.3.4), returning the plaintext. Used to open a paired station's
+   * sealed reply. Rejects (throws) on a wrong key, wrong context, or tampering —
+   * it never yields wrong plaintext. The secret never leaves Rust.
+   */
+  async open(sealedBox: Uint8Array): Promise<Uint8Array> {
+    return this.contents.keypair().open(sealedBox);
+  }
+
+  /**
    * Splits this identity's secret into a social-recovery package (T1.2.3):
    * one sealed shard per `holderAddresses` entry, any `threshold` (`K`) of
    * which reconstruct the identity. The split runs entirely in Rust — no shard

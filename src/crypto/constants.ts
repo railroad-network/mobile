@@ -35,6 +35,12 @@ export const SecureStoreKeys = {
   /** Local device preferences (T1.2.8): the user's chosen nickname and whether
    * biometric unlock is enabled. Non-secret; saved without a biometric gate. */
   PROFILE: 'rrn.profile',
+  /** Per-station monotonic request nonces for the authenticated channel (T1.3.4):
+   * a JSON map of station address → highest nonce this device has sent. The
+   * station rejects a request whose nonce is not strictly greater, so this must
+   * persist to survive an app restart. Non-secret (a counter, not key material);
+   * saved without a biometric gate. See {@link network/StationClient}. */
+  STATION_NONCES: 'rrn.station.nonces',
 } as const;
 
 /** A value from {@link SecureStoreKeys}. */
