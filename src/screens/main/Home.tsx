@@ -3,9 +3,10 @@
  * are, their balance, the two things they do most (send / request), and their
  * recent activity.
  *
- * Data comes from the ledger hooks (`ledger/useLedger`), which are mocked until
- * the mobile↔station transport lands (M1.3) — pull-to-refresh, offline, and
- * empty states are all wired now so they work unchanged once real data arrives.
+ * Data comes from the ledger hooks (`ledger/useLedger`), which read from the
+ * paired station over the authenticated channel (T1.3.4). When no station is
+ * paired the screen prompts the member to pair one; pull-to-refresh, offline,
+ * and empty states are all wired.
  * Marketplace, reputation, vouching, governance, and the confirmations inbox
  * that the design system's Home also shows are out of scope here (later
  * milestones / T1.2.6).
@@ -37,6 +38,7 @@ import {
   useRefreshLedger,
   type Transaction,
 } from '../../ledger';
+import {useActiveStation} from '../../network/useStation';
 import {useTheme, type Theme} from '../../theme';
 import type {MainTabScreenProps} from '../../navigation/types';
 
@@ -53,6 +55,10 @@ export function Home({navigation}: MainTabScreenProps<'Home'>) {
   const inbox = useInbox();
   const connectivity = useConnectivity();
   const refreshLedger = useRefreshLedger();
+  const {station, isLoading: stationLoading} = useActiveStation();
+  // No station paired yet: the reads have nothing to talk to. Prompt to pair
+  // rather than leave the balance an unexplained dash.
+  const noStation = !stationLoading && station === null;
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
@@ -111,12 +117,30 @@ export function Home({navigation}: MainTabScreenProps<'Home'>) {
             tintColor={theme.colors.textMuted}
           />
         }>
-        {connectivity.isOffline && (
+        {noStation ? (
           <View style={{paddingHorizontal: theme.spacing.lg}}>
-            <Banner variant="warning" title="You’re offline">
-              Showing your last synced balance. New payments will send when you reconnect.
+            <Banner
+              variant="info"
+              title="Connect to a station"
+              action={
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onPress={() => navigation.navigate('Discovery')}>
+                  Find a station
+                </Button>
+              }>
+              Pair with a Railroad station on your network to see your balance and send Commons.
             </Banner>
           </View>
+        ) : (
+          connectivity.isOffline && (
+            <View style={{paddingHorizontal: theme.spacing.lg}}>
+              <Banner variant="warning" title="You’re offline">
+                Showing your last synced balance. New payments will send when you reconnect.
+              </Banner>
+            </View>
+          )
         )}
 
         {/* Balance hero */}

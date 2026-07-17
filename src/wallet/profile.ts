@@ -5,8 +5,8 @@
  * file is gated in the keychain. Persisted through {@link SecureStore} (the
  * app's one persistence backend) as JSON, without a biometric gate.
  *
- * The nickname read here is also merged into the ledger identity (`mockLedger`),
- * so editing it in Settings updates the name shown on Home and elsewhere.
+ * The nickname read here is also merged into the ledger identity (`useLedger`'s
+ * `useIdentity`), so editing it in Settings updates the name shown on Home.
  */
 import {SecureStoreKeys} from '../crypto/constants';
 import {getSecureStore, type SecureStore} from '../crypto/SecureStore';

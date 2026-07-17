@@ -42,6 +42,16 @@ jest.mock('../src/ledger', () => ({
   useRefreshLedger: () => mockRefresh,
 }));
 
+// The "pair a station" prompt reads the active station; default to one paired
+// (so the normal data-bearing states render). Individual tests override it.
+let mockActiveStation: {station: unknown; isLoading: boolean} = {
+  station: {address: 'rrn1station', host: 'h', port: 7500, pairedAt: 1},
+  isLoading: false,
+};
+jest.mock('../src/network/useStation', () => ({
+  useActiveStation: () => mockActiveStation,
+}));
+
 // --- Fixtures ---------------------------------------------------------------
 
 const IDENTITY = {
@@ -122,6 +132,10 @@ beforeEach(() => {
   Object.assign(mockActivity, {data: txns(), isLoading: false});
   Object.assign(mockInbox, {data: [], isLoading: false});
   mockConnectivity = {level: 'mesh', isOffline: false};
+  mockActiveStation = {
+    station: {address: 'rrn1station', host: 'h', port: 7500, pairedAt: 1},
+    isLoading: false,
+  };
 });
 
 test('renders the member, balance, and recent activity', async () => {
@@ -177,6 +191,21 @@ test('shows the offline banner and indicator when the station is unreachable', a
   const r = await renderHome();
   expect(hasText(r, 'You’re offline')).toBe(true);
   expect(hasText(r, 'Offline')).toBe(true); // connectivity pill label
+});
+
+test('prompts to pair a station when none is paired', async () => {
+  mockActiveStation = {station: null, isLoading: false};
+  const navigation = nav();
+  const r = await renderHome(navigation);
+  expect(hasText(r, 'Connect to a station')).toBe(true);
+  await press(button(r, 'Find a station'));
+  expect(navigation.navigate).toHaveBeenCalledWith('Discovery');
+});
+
+test('does not show the pair prompt while the station check is still loading', async () => {
+  mockActiveStation = {station: null, isLoading: true};
+  const r = await renderHome();
+  expect(hasText(r, 'Connect to a station')).toBe(false);
 });
 
 test('shows a placeholder balance until it loads', async () => {

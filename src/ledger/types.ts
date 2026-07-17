@@ -1,9 +1,9 @@
 /**
  * The mobile-side view of ledger data: the member's identity, their balance, and
  * the transactions involving them. These are display models assembled from the
- * station over RPC (M1.3); until that lands they come from a clearly-marked mock
- * ({@link mockLedger}). Amounts are always **signed integer centi**, never a
- * float (see `ledger/format`).
+ * station over the authenticated channel (T1.3.4) — see
+ * {@link network/StationClient} and `useLedger`. Amounts are always **signed
+ * integer centi**, never a float (see `ledger/format`).
  */
 
 /** Where a transaction sits in its lifecycle. Mirrors the station's states. */
