@@ -25,27 +25,22 @@ jest.mock('../src/crypto/address', () => ({
   isValidAddress: (a: string) => mockIsValid(a),
 }));
 
-const mockLoadWallet = jest.fn();
-jest.mock('../src/wallet/Wallet', () => ({
-  loadWallet: (...args: unknown[]) => mockLoadWallet(...args),
-}));
-
-const mockCreateProposal = jest.fn();
-jest.mock('../src/wallet/proposal', () => ({
-  createSendProposal: (...args: unknown[]) => mockCreateProposal(...args),
+jest.mock('../src/wallet/WalletSession', () => ({
+  useWalletSession: () => ({wallet: {address: 'rrn1qme'}}),
 }));
 
 const mockIdentity: {data?: {address: string}} = {};
 const mockBalance: {data?: {centi: number}} = {};
 let mockOffline = false;
-const mockEnqueue = jest.fn(async () => {});
+// The send hook is the seam under test at the screen level: assert the screen
+// calls it with the right args and reacts to its typed result.
+const mockSendProposal = jest.fn();
 jest.mock('../src/ledger', () => ({
   ...jest.requireActual('../src/ledger'),
   useIdentity: () => mockIdentity,
   useBalance: () => mockBalance,
   useConnectivity: () => ({level: 'mesh', isOffline: mockOffline}),
-  useEnqueueTransaction: () => mockEnqueue,
-  outboxCount: () => 0,
+  useSendProposal: () => mockSendProposal,
 }));
 
 // --- Harness ----------------------------------------------------------------
@@ -118,18 +113,7 @@ beforeEach(() => {
   mockIdentity.data = {address: 'rrn1qme'};
   mockBalance.data = {centi: 2400};
   mockOffline = false;
-  mockLoadWallet.mockResolvedValue({address: 'rrn1qme'});
-  mockCreateProposal.mockResolvedValue({
-    id: 'deadbeefcafef00d',
-    senderAddress: 'rrn1qme',
-    receiverAddress: 'rrn1receiver',
-    amountCenti: 350,
-    memo: 'lunch',
-    nonce: 0,
-    proposedAt: 1000,
-    expiresAt: 2000,
-    signature: new Uint8Array([1, 2, 3]),
-  });
+  mockSendProposal.mockResolvedValue({ok: true, id: 'deadbeefcafef00d'});
 });
 
 // --- Tests ------------------------------------------------------------------
@@ -172,41 +156,28 @@ test('an amount above the balance warns but is allowed', async () => {
   expect(hasText(r, 'Review payment')).toBe(true);
 });
 
-test('the happy path signs, queues an outgoing pending tx, and shows success', async () => {
+test('the happy path signs, sends, and shows success — no passphrase re-prompt', async () => {
   const r = await renderSend();
   await toReview(r);
-  await press(button(r, 'Propose payment'));
-  await type(field(r, 'Passphrase'), 'correct horse battery staple');
+  // The wallet is already unlocked for the session; review goes straight to send.
   await press(button(r, 'Sign & propose'));
 
-  // Signed with the positive (sender-pays) amount.
-  expect(mockCreateProposal).toHaveBeenCalledWith(
-    {address: 'rrn1qme'},
-    'rrn1receiver',
-    350,
-    '',
-    expect.objectContaining({nonce: 0}),
-  );
-  // Queued as an outgoing debit in the Pending state.
-  expect(mockEnqueue).toHaveBeenCalledWith(
-    expect.objectContaining({
-      id: 'deadbeefcafef00d',
-      direction: 'out',
-      amountCenti: -350,
-      state: 'pending',
-      counterpartyAddress: 'rrn1receiver',
-    }),
-  );
+  // Sent with the positive (sender-pays) amount to the receiver.
+  expect(mockSendProposal).toHaveBeenCalledWith('rrn1receiver', 350, '');
   expect(hasText(r, 'Payment proposed')).toBe(true);
 });
 
-test('a failed unlock keeps the user on the unlock step with an error', async () => {
-  mockLoadWallet.mockRejectedValue(new Error('bad passphrase'));
+test('a send that cannot reach the station surfaces a failure and stays on review', async () => {
+  mockSendProposal.mockResolvedValue({
+    ok: false,
+    error: 'unreachable',
+    message: 'ECONNREFUSED',
+  });
   const r = await renderSend();
   await toReview(r);
-  await press(button(r, 'Propose payment'));
-  await type(field(r, 'Passphrase'), 'wrong');
   await press(button(r, 'Sign & propose'));
-  expect(mockEnqueue).not.toHaveBeenCalled();
-  expect(hasText(r, 'Could not unlock')).toBe(true);
+  expect(hasText(r, 'Payment not sent')).toBe(true);
+  expect(hasText(r, 'Couldn’t reach your station')).toBe(true);
+  // Still on the review step (not the success screen).
+  expect(hasText(r, 'Payment proposed')).toBe(false);
 });

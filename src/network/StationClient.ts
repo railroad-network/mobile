@@ -133,6 +133,15 @@ export class StationClient {
   }
 
   /**
+   * `next_nonce` — the authoritative nonce this member's next proposal must
+   * carry. Queried before composing a send, because the nonce is signed into the
+   * proposal and the ledger requires it to be exactly the next in sequence.
+   */
+  async nextNonce(address: string): Promise<{nonce: number}> {
+    return this.call('next_nonce', {address}) as Promise<{nonce: number}>;
+  }
+
+  /**
    * `transactions` — the member-relative, structured transaction view the wallet
    * renders. `address` is the member to query (this device's own address).
    */

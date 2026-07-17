@@ -22,11 +22,20 @@ import {
   useActiveStation,
   useStationClient,
 } from '../network/useStation';
-import type {StationTransactionRow} from '../network/StationClient';
+import {
+  StationClientError,
+  type StationErrorKind,
+  type StationTransactionRow,
+} from '../network/StationClient';
+import {createConfirmation} from '../wallet/confirmation';
+import {createSendProposal} from '../wallet/proposal';
 import {applyDecisions, recordDecision, type Decision} from './decisions';
 import {shortAddress} from './format';
 import {addToOutbox, getOutbox} from './outbox';
 import type {Balance, Identity, Transaction} from './types';
+
+/** How long, in seconds, a freshly-sent proposal stays valid before auto-cancel. */
+const PROPOSAL_EXPIRY_SECS = 24 * 3600;
 
 /** Maps one station transaction row to the display {@link Transaction} model. */
 export function stationRowToTransaction(row: StationTransactionRow): Transaction {
@@ -219,4 +228,112 @@ export function useRecordDecision(): (id: string, decision: Decision) => Promise
     },
     [queryClient],
   );
+}
+
+/** The outcome of a station write (send / confirm). Never throws to the screen. */
+export type WriteResult<T = void> =
+  | ({ok: true} & T)
+  | {ok: false; error: StationErrorKind | 'locked'; message: string};
+
+/**
+ * Returns a function that sends a payment: it reads the authoritative ledger
+ * nonce from the station, signs the proposal with the unlocked session wallet,
+ * transmits it over the authenticated channel, and — on success — shows it
+ * locally as pending until the station's view reflects it. Online-only by
+ * design (ADR-0008 / T1.3.4): if the station is unreachable the send fails with
+ * a typed error and nothing is queued for later; the user retries.
+ *
+ * `amountCenti` is the positive transfer amount (station convention: the sender
+ * pays the receiver); the local display row negates it.
+ */
+export function useSendProposal(): (
+  receiverAddress: string,
+  amountCenti: number,
+  memo: string | undefined,
+) => Promise<WriteResult<{id: string}>> {
+  const client = useStationClient();
+  const {wallet} = useWalletSession();
+  const enqueue = useEnqueueTransaction();
+  return useCallback(
+    async (receiverAddress, amountCenti, memo) => {
+      if (client === null || wallet === null) {
+        return {ok: false, error: 'locked', message: 'Unlock your wallet and pair a station.'};
+      }
+      try {
+        // Query-first: the nonce is signed into the proposal, so it must be the
+        // station's authoritative next value before we sign.
+        const {nonce} = await client.nextNonce(wallet.address);
+        const now = Math.floor(Date.now() / 1000);
+        const proposal = await createSendProposal(wallet, receiverAddress, amountCenti, memo, {
+          nonce,
+          proposedAt: now,
+          expiresAt: now + PROPOSAL_EXPIRY_SECS,
+        });
+        await client.submitSignedRecord(
+          'submit_proposal',
+          'signed_proposal',
+          proposal.payloadBytes,
+          proposal.signature,
+        );
+        await enqueue({
+          id: proposal.id,
+          counterparty: shortAddress(receiverAddress),
+          counterpartyAddress: receiverAddress,
+          direction: 'out',
+          amountCenti: -amountCenti, // display: an outgoing payment is a debit
+          memo: proposal.memo,
+          state: 'pending',
+          timestamp: proposal.proposedAt,
+          expiresAt: proposal.expiresAt,
+          nonce: proposal.nonce,
+        });
+        return {ok: true, id: proposal.id};
+      } catch (e) {
+        return asWriteError(e);
+      }
+    },
+    [client, wallet, enqueue],
+  );
+}
+
+/**
+ * Returns a function that confirms an incoming proposal: it signs the
+ * confirmation with the session wallet, transmits it, and overlays the local
+ * `confirmed` state until the station reflects it. Rejecting is a purely local
+ * decision (see {@link useRecordDecision}) — only confirmation is transmitted.
+ */
+export function useConfirmProposal(): (proposalId: string) => Promise<WriteResult> {
+  const client = useStationClient();
+  const {wallet} = useWalletSession();
+  const record = useRecordDecision();
+  return useCallback(
+    async proposalId => {
+      if (client === null || wallet === null) {
+        return {ok: false, error: 'locked', message: 'Unlock your wallet and pair a station.'};
+      }
+      try {
+        const confirmedAt = Math.floor(Date.now() / 1000);
+        const confirmation = await createConfirmation(wallet, proposalId, confirmedAt);
+        await client.submitSignedRecord(
+          'submit_confirmation',
+          'signed_confirmation',
+          confirmation.payloadBytes,
+          confirmation.signature,
+        );
+        await record(proposalId, {state: 'confirmed', confirmedAt});
+        return {ok: true};
+      } catch (e) {
+        return asWriteError(e);
+      }
+    },
+    [client, wallet, record],
+  );
+}
+
+/** Normalises a thrown error into a typed {@link WriteResult} failure. */
+function asWriteError(e: unknown): {ok: false; error: StationErrorKind | 'locked'; message: string} {
+  if (e instanceof StationClientError) {
+    return {ok: false, error: e.kind, message: e.message};
+  }
+  return {ok: false, error: 'malformed', message: e instanceof Error ? e.message : String(e)};
 }

@@ -55,7 +55,13 @@ export interface SignedSendProposal {
   proposedAt: number;
   /** Unix seconds after which the proposal auto-cancels if unconfirmed. */
   expiresAt: number;
-  /** The sender's Ed25519 signature over the canonical bytes. */
+  /**
+   * The canonical dCBOR bytes that were signed — the payload the station's
+   * `frame_signed_record` re-assembles and the ledger re-verifies. Carried so
+   * the transport (T1.3.4) can transmit the record without rebuilding it.
+   */
+  payloadBytes: Uint8Array;
+  /** The sender's Ed25519 signature over {@link payloadBytes}. */
   signature: Uint8Array;
 }
 
@@ -115,6 +121,7 @@ export async function createSendProposal(
     nonce: envelope.nonce,
     proposedAt: envelope.proposedAt,
     expiresAt: envelope.expiresAt,
+    payloadBytes: canonical,
     signature: signature.toBytes(),
   };
 }

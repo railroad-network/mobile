@@ -21,22 +21,16 @@ const PROPOSAL_ID = 'a1b2c3d4e5f60718293a4b5c6d7e8f90112233445566778899aabbccdde
 
 // --- Mocks ------------------------------------------------------------------
 
-const mockLoadWallet = jest.fn();
-jest.mock('../src/wallet/Wallet', () => ({
-  loadWallet: (...args: unknown[]) => mockLoadWallet(...args),
-}));
-
-const mockCreateConfirmation = jest.fn();
-jest.mock('../src/wallet/confirmation', () => ({
-  createConfirmation: (...args: unknown[]) => mockCreateConfirmation(...args),
-}));
-
 const mockActivity: {data?: Transaction[]} = {};
 const mockRecord = jest.fn(async () => {});
+// The confirm hook signs + transmits; the screen test asserts it's called with
+// the proposal id and reacts to its typed result.
+const mockConfirmProposal = jest.fn();
 jest.mock('../src/ledger', () => ({
   ...jest.requireActual('../src/ledger'),
   useActivity: () => mockActivity,
   useRecordDecision: () => mockRecord,
+  useConfirmProposal: () => mockConfirmProposal,
 }));
 
 // --- Harness ----------------------------------------------------------------
@@ -98,16 +92,9 @@ const buttons = (r: Renderer, name: string): Instance[] =>
       (n.props.accessibilityLabel === name || textOf(n).includes(name)),
   );
 const button = (r: Renderer, name: string): Instance => buttons(r, name)[0];
-const field = (r: Renderer, label: string): Instance =>
-  r.root.find(n => n.props.accessibilityLabel === label && typeof n.props.onChangeText === 'function');
 async function press(node: Instance): Promise<void> {
   await act(async () => {
     node.props.onPress?.();
-  });
-}
-async function type(node: Instance, text: string): Promise<void> {
-  await act(async () => {
-    node.props.onChangeText?.(text);
   });
 }
 
@@ -120,13 +107,7 @@ afterEach(() => {
 beforeEach(() => {
   jest.clearAllMocks();
   mockActivity.data = [proposal()];
-  mockLoadWallet.mockResolvedValue({address: 'rrn1qme'});
-  mockCreateConfirmation.mockResolvedValue({
-    proposalId: PROPOSAL_ID,
-    confirmerAddress: 'rrn1qme',
-    confirmedAt: 1_700_000_100,
-    signature: new Uint8Array([1]),
-  });
+  mockConfirmProposal.mockResolvedValue({ok: true});
 });
 
 // --- Tests ------------------------------------------------------------------
@@ -137,21 +118,12 @@ test('shows the proposal detail', async () => {
   expect(hasText(r, 'Split the seed order')).toBe(true);
 });
 
-test('confirming unlocks, signs, records the decision, and shows the countdown', async () => {
+test('confirming signs + sends via the hook and shows the countdown — no re-prompt', async () => {
   const r = await renderScreen();
-  await press(button(r, 'Confirm — I received this'));
-  await type(field(r, 'Passphrase'), 'correct horse battery staple');
+  // The wallet is unlocked for the session; one tap signs, sends, and advances.
   await press(button(r, 'Confirm — I received this'));
 
-  expect(mockCreateConfirmation).toHaveBeenCalledWith(
-    {address: 'rrn1qme'},
-    PROPOSAL_ID,
-    expect.any(Number),
-  );
-  expect(mockRecord).toHaveBeenCalledWith(
-    PROPOSAL_ID,
-    expect.objectContaining({state: 'confirmed', confirmedAt: expect.any(Number)}),
-  );
+  expect(mockConfirmProposal).toHaveBeenCalledWith(PROPOSAL_ID);
   expect(hasText(r, 'You confirmed receipt')).toBe(true);
   expect(hasText(r, 'WILL SETTLE IN')).toBe(true);
 });
@@ -163,7 +135,7 @@ test('rejecting records a cancelled decision with the right reason', async () =>
     state: 'cancelled',
     reason: 'rejected_by_receiver',
   });
-  expect(mockCreateConfirmation).not.toHaveBeenCalled();
+  expect(mockConfirmProposal).not.toHaveBeenCalled();
   expect(hasText(r, 'Proposal rejected')).toBe(true);
 });
 
@@ -174,12 +146,15 @@ test('an expired proposal cannot be confirmed', async () => {
   expect(buttons(r, 'Confirm — I received this')).toHaveLength(0);
 });
 
-test('a failed unlock keeps the user on the unlock step', async () => {
-  mockLoadWallet.mockRejectedValue(new Error('bad passphrase'));
+test('a confirm that cannot reach the station surfaces a failure and stays on the detail', async () => {
+  mockConfirmProposal.mockResolvedValue({
+    ok: false,
+    error: 'unreachable',
+    message: 'ECONNREFUSED',
+  });
   const r = await renderScreen();
   await press(button(r, 'Confirm — I received this'));
-  await type(field(r, 'Passphrase'), 'wrong');
-  await press(button(r, 'Confirm — I received this'));
-  expect(mockRecord).not.toHaveBeenCalled();
-  expect(hasText(r, 'Could not unlock')).toBe(true);
+  expect(hasText(r, 'Not confirmed')).toBe(true);
+  expect(hasText(r, 'Couldn’t reach your station')).toBe(true);
+  expect(hasText(r, 'You confirmed receipt')).toBe(false);
 });

@@ -31,7 +31,12 @@ export interface SignedConfirmation {
   confirmerAddress: string;
   /** Unix seconds when the confirmation was made. */
   confirmedAt: number;
-  /** The confirmer's Ed25519 signature over the canonical bytes. */
+  /**
+   * The canonical dCBOR bytes that were signed — the payload the station's
+   * `frame_signed_record` re-assembles and the ledger re-verifies (T1.3.4).
+   */
+  payloadBytes: Uint8Array;
+  /** The confirmer's Ed25519 signature over {@link payloadBytes}. */
   signature: Uint8Array;
 }
 
@@ -76,6 +81,7 @@ export async function createConfirmation(
     proposalId: proposalIdHex,
     confirmerAddress: wallet.address,
     confirmedAt,
+    payloadBytes: canonical,
     signature: signature.toBytes(),
   };
 }

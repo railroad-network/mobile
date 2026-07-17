@@ -38,30 +38,21 @@ import {isValidAddress} from '../../crypto/address';
 import {
   amountSign,
   formatCommons,
-  outboxCount,
   parseCommons,
   shortAddress,
   useBalance,
   useConnectivity,
-  useEnqueueTransaction,
   useIdentity,
-  type Transaction,
+  useSendProposal,
 } from '../../ledger';
-import {createSendProposal} from '../../wallet/proposal';
-import {loadWallet} from '../../wallet/Wallet';
+import {useWalletSession} from '../../wallet/WalletSession';
 import {useTheme, type Theme} from '../../theme';
 import type {MainTabScreenProps} from '../../navigation/types';
 
 /** Memo length cap (plain text). */
 const MEMO_MAX = 200;
 
-/**
- * ⚠️ MOCK expiry window — the real settlement/expiry window comes from station
- * config in M1.3 / T1.2.6. Until then a proposal auto-cancels after a week.
- */
-const EXPIRY_SECS = 7 * 86400;
-
-type Step = 'recipient' | 'amount' | 'review' | 'unlock' | 'success';
+type Step = 'recipient' | 'amount' | 'review' | 'success';
 
 export function Send({navigation}: MainTabScreenProps<'Send'>) {
   const theme = useTheme();
@@ -70,7 +61,8 @@ export function Send({navigation}: MainTabScreenProps<'Send'>) {
   const {data: identity} = useIdentity();
   const {data: balance} = useBalance();
   const {isOffline} = useConnectivity();
-  const enqueue = useEnqueueTransaction();
+  const {wallet} = useWalletSession();
+  const sendProposal = useSendProposal();
 
   const [step, setStep] = useState<Step>('recipient');
   const [recipient, setRecipient] = useState('');
@@ -80,10 +72,8 @@ export function Send({navigation}: MainTabScreenProps<'Send'>) {
   const [recipientError, setRecipientError] = useState<string | null>(null);
   const [amountError, setAmountError] = useState<string | null>(null);
 
-  // Unlock step.
-  const [passphrase, setPassphrase] = useState('');
-  const [showPass, setShowPass] = useState(false);
-  const [unlockError, setUnlockError] = useState<string | null>(null);
+  // Submit step.
+  const [sendError, setSendError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   // Result of a completed send, for the success screen.
@@ -103,8 +93,7 @@ export function Send({navigation}: MainTabScreenProps<'Send'>) {
     setMemo('');
     setRecipientError(null);
     setAmountError(null);
-    setPassphrase('');
-    setUnlockError(null);
+    setSendError(null);
     setSentId('');
   }
 
@@ -137,54 +126,35 @@ export function Send({navigation}: MainTabScreenProps<'Send'>) {
     setStep('review');
   }
 
-  async function unlockAndSend() {
-    if (passphrase.length === 0 || busy) {
+  async function submitSend() {
+    if (busy) {
+      return;
+    }
+    const addr = recipient.trim();
+    // Authoritative self-send guard against the *real* wallet address (the
+    // recipient step only knows the displayed identity).
+    if (wallet !== null && wallet.address === addr) {
+      setSendError('That’s your own address — you can’t pay yourself.');
       return;
     }
     setBusy(true);
-    setUnlockError(null);
-    try {
-      const wallet = await loadWallet(passphrase);
-      if (wallet === null) {
-        setUnlockError('No wallet found on this device.');
-        return;
-      }
-      const addr = recipient.trim();
-      // Authoritative self-send guard against the *real* wallet address (the
-      // recipient step only knows the displayed identity).
-      if (wallet.address === addr) {
-        setUnlockError('That’s your own address — you can’t pay yourself.');
-        return;
-      }
-      const proposal = await createSendProposal(wallet, addr, amountCenti, memo, {
-        nonce: outboxCount(),
-        proposedAt: Math.floor(Date.now() / 1000),
-        expiresAt: Math.floor(Date.now() / 1000) + EXPIRY_SECS,
-      });
-      const tx: Transaction = {
-        id: proposal.id,
-        counterparty: shortAddress(addr),
-        counterpartyAddress: addr,
-        direction: 'out',
-        // Display model: an outgoing payment is a debit (negative).
-        amountCenti: -amountCenti,
-        memo: proposal.memo,
-        state: 'pending',
-        timestamp: proposal.proposedAt,
-        expiresAt: proposal.expiresAt,
-        nonce: proposal.nonce,
-      };
-      await enqueue(tx);
-      setSentId(proposal.id);
-      setPassphrase('');
+    setSendError(null);
+    // The wallet is already unlocked for the session (the lock screen handled
+    // that), so signing and sending happen with no further prompt.
+    const result = await sendProposal(addr, amountCenti, memo);
+    setBusy(false);
+    if (result.ok) {
+      setSentId(result.id);
       setStep('success');
-    } catch {
-      // A wrong passphrase, a cancelled biometric prompt, or a bad receiver all
-      // surface as one message — we never say which part failed.
-      setUnlockError('Could not unlock. Check your passphrase and try again.');
-    } finally {
-      setBusy(false);
+      return;
     }
+    // Online-only: a payment that could not reach the station is not queued for
+    // later — the user is told plainly and can retry when connected.
+    setSendError(
+      result.error === 'unreachable'
+        ? 'Couldn’t reach your station. Connect to it and try again.'
+        : `Couldn’t send: ${result.message}`,
+    );
   }
 
   // --- Rendering ------------------------------------------------------------
@@ -323,66 +293,21 @@ export function Send({navigation}: MainTabScreenProps<'Send'>) {
           </Banner>
         )}
         {isOffline && (
-          <Banner variant="info" title="You’re offline">
-            This sends when your station next syncs. Nothing is lost in the meantime.
+          <Banner variant="warning" title="You’re offline">
+            Connect to your station to send this payment.
           </Banner>
         )}
-        <Button variant="primary" size="lg" fullWidth onPress={() => setStep('unlock')}>
-          Propose payment
-        </Button>
-      </ScrollView>
-    );
-  }
-
-  // Step: unlock -------------------------------------------------------------
-  if (step === 'unlock') {
-    return (
-      <ScrollView style={{backgroundColor: theme.colors.bg}} contentContainerStyle={contentPad}>
-        <Header
-          theme={theme}
-          title="Confirm it’s you"
-          subtitle="Unlock your wallet to sign this payment."
-          onBack={() => {
-            setPassphrase('');
-            setUnlockError(null);
-            setStep('review');
-          }}
-        />
-        <Field
-          label="Passphrase"
-          value={passphrase}
-          onChangeText={t => {
-            setPassphrase(t);
-            if (unlockError !== null) setUnlockError(null);
-          }}
-          error={unlockError ?? undefined}
-          secureTextEntry={!showPass}
-          autoCapitalize="none"
-          autoCorrect={false}
-          spellCheck={false}
-          autoComplete="off"
-          textContentType="none"
-          importantForAutofill="no"
-          onSubmitEditing={unlockAndSend}
-          returnKeyType="go"
-          suffix={
-            <Text
-              variant="label"
-              color={theme.colors.primary}
-              onPress={() => setShowPass(s => !s)}
-              accessibilityRole="button"
-              accessibilityLabel={showPass ? 'Hide passphrase' : 'Show passphrase'}>
-              {showPass ? 'Hide' : 'Show'}
-            </Text>
-          }
-        />
+        {sendError !== null && (
+          <Banner variant="danger" title="Payment not sent">
+            {sendError}
+          </Banner>
+        )}
         <Button
           variant="primary"
           size="lg"
           fullWidth
           loading={busy}
-          disabled={passphrase.length === 0}
-          onPress={unlockAndSend}>
+          onPress={submitSend}>
           Sign &amp; propose
         </Button>
       </ScrollView>

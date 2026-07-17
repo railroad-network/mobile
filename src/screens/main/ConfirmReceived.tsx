@@ -3,15 +3,15 @@
  *
  * Opened from the Home inbox for one incoming proposal. The receiver reviews who
  * is paying, how much, the memo, and how long until the proposal expires, then
- * either **confirms** — which re-unlocks the wallet and signs a real
- * `TransactionConfirmation` via the FFI ({@link createConfirmation}), moving the
- * transaction into its settlement window — or **rejects** it (a local state
- * change to `cancelled` with reason `rejected_by_receiver`; nothing is signed).
- * An expired proposal can no longer be confirmed.
+ * either **confirms** — which signs a real `TransactionConfirmation` with the
+ * unlocked session wallet and transmits it to the station over the authenticated
+ * channel ({@link useConfirmProposal}), moving the transaction into its
+ * settlement window — or **rejects** it (a local state change to `cancelled` with
+ * reason `rejected_by_receiver`; nothing is signed or sent, and the proposal
+ * simply expires on the station). An expired proposal can no longer be confirmed.
  *
- * The decision is recorded in the local overlay and shows immediately in
- * Home/History; transmitting the signed confirmation to the station is M1.3, as
- * is the balance change when the window elapses.
+ * The confirmed/rejected state shows immediately via the local overlay; the
+ * balance change follows when the settlement window elapses on the station.
  */
 import {useState} from 'react';
 import {ScrollView, StyleSheet, View} from 'react-native';
@@ -23,7 +23,6 @@ import {
   Button,
   Card,
   Countdown,
-  Field,
   Heading,
   Identicon,
   Text,
@@ -33,27 +32,25 @@ import {
   settlementAt,
   shortAddress,
   useActivity,
+  useConfirmProposal,
   useRecordDecision,
 } from '../../ledger';
-import {createConfirmation} from '../../wallet/confirmation';
-import {loadWallet} from '../../wallet/Wallet';
 import {useTheme} from '../../theme';
 import type {MainStackScreenProps} from '../../navigation/types';
 
-type Step = 'detail' | 'unlock' | 'confirmed' | 'rejected';
+type Step = 'detail' | 'confirmed' | 'rejected';
 
 export function ConfirmReceived({route, navigation}: MainStackScreenProps<'ConfirmReceived'>) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const {data} = useActivity();
   const recordDecision = useRecordDecision();
+  const confirmProposal = useConfirmProposal();
   const tx = data?.find(t => t.id === route.params.id);
 
   const [step, setStep] = useState<Step>('detail');
   const [confirmedAt, setConfirmedAt] = useState(0);
-  const [passphrase, setPassphrase] = useState('');
-  const [showPass, setShowPass] = useState(false);
-  const [unlockError, setUnlockError] = useState<string | null>(null);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const contentPad = {
@@ -95,29 +92,28 @@ export function ConfirmReceived({route, navigation}: MainStackScreenProps<'Confi
     setStep('rejected');
   }
 
-  async function unlockAndConfirm() {
-    if (tx === undefined || passphrase.length === 0 || busy) {
+  async function confirmReceipt() {
+    if (tx === undefined || busy) {
       return;
     }
     setBusy(true);
-    setUnlockError(null);
-    try {
-      const wallet = await loadWallet(passphrase);
-      if (wallet === null) {
-        setUnlockError('No wallet found on this device.');
-        return;
-      }
-      const when = Math.floor(Date.now() / 1000);
-      await createConfirmation(wallet, tx.id, when);
-      await recordDecision(tx.id, {state: 'confirmed', confirmedAt: when});
+    setConfirmError(null);
+    // The wallet is already unlocked for the session (lock screen), so this signs
+    // and transmits the confirmation with no further prompt. The hook records the
+    // local `confirmed` overlay on success.
+    const when = Math.floor(Date.now() / 1000);
+    const result = await confirmProposal(tx.id);
+    setBusy(false);
+    if (result.ok) {
       setConfirmedAt(when);
-      setPassphrase('');
       setStep('confirmed');
-    } catch {
-      setUnlockError('Could not unlock. Check your passphrase and try again.');
-    } finally {
-      setBusy(false);
+      return;
     }
+    setConfirmError(
+      result.error === 'unreachable'
+        ? 'Couldn’t reach your station. Connect to it and try again.'
+        : `Couldn’t confirm: ${result.message}`,
+    );
   }
 
   // Step: confirmed (success) ------------------------------------------------
@@ -160,62 +156,6 @@ export function ConfirmReceived({route, navigation}: MainStackScreenProps<'Confi
         </View>
         <Button variant="primary" size="lg" fullWidth onPress={() => navigation.goBack()}>
           Back to inbox
-        </Button>
-      </ScrollView>
-    );
-  }
-
-  // Step: unlock -------------------------------------------------------------
-  if (step === 'unlock') {
-    return (
-      <ScrollView style={{backgroundColor: theme.colors.bg}} contentContainerStyle={contentPad}>
-        <View style={{gap: theme.spacing.xs}}>
-          {back('Back', () => {
-            setPassphrase('');
-            setUnlockError(null);
-            setStep('detail');
-          })}
-          <Heading level="headingLarge">Confirm it’s you</Heading>
-          <Text variant="body" color={theme.colors.textSecondary}>
-            Unlock your wallet to sign that you received this.
-          </Text>
-        </View>
-        <Field
-          label="Passphrase"
-          value={passphrase}
-          onChangeText={t => {
-            setPassphrase(t);
-            if (unlockError !== null) setUnlockError(null);
-          }}
-          error={unlockError ?? undefined}
-          secureTextEntry={!showPass}
-          autoCapitalize="none"
-          autoCorrect={false}
-          spellCheck={false}
-          autoComplete="off"
-          textContentType="none"
-          importantForAutofill="no"
-          onSubmitEditing={unlockAndConfirm}
-          returnKeyType="go"
-          suffix={
-            <Text
-              variant="label"
-              color={theme.colors.primary}
-              onPress={() => setShowPass(s => !s)}
-              accessibilityRole="button"
-              accessibilityLabel={showPass ? 'Hide passphrase' : 'Show passphrase'}>
-              {showPass ? 'Hide' : 'Show'}
-            </Text>
-          }
-        />
-        <Button
-          variant="primary"
-          size="lg"
-          fullWidth
-          loading={busy}
-          disabled={passphrase.length === 0}
-          onPress={unlockAndConfirm}>
-          Confirm — I received this
         </Button>
       </ScrollView>
     );
@@ -267,7 +207,17 @@ export function ConfirmReceived({route, navigation}: MainStackScreenProps<'Confi
             Confirming signs your name to “I received this.” If you didn’t, reject it — your word is
             part of the ledger.
           </Banner>
-          <Button variant="primary" size="lg" fullWidth onPress={() => setStep('unlock')}>
+          {confirmError !== null && (
+            <Banner variant="danger" title="Not confirmed">
+              {confirmError}
+            </Banner>
+          )}
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            loading={busy}
+            onPress={confirmReceipt}>
             Confirm — I received this
           </Button>
           <Button variant="ghost" size="lg" fullWidth onPress={reject}>
