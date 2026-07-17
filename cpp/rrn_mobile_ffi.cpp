@@ -185,6 +185,11 @@ extern "C" {
     );
     /*handle*/ uint64_t uniffi_rrn_mobile_ffi_fn_constructor_keypair_generate(RustCallStatus *uniffi_out_err
     );
+    RustBuffer uniffi_rrn_mobile_ffi_fn_method_keypair_open(
+        /*handle*/ uint64_t ptr, 
+        RustBuffer sealed_box, 
+        RustCallStatus *uniffi_out_err
+    );
     /*handle*/ uint64_t uniffi_rrn_mobile_ffi_fn_method_keypair_public_key(
         /*handle*/ uint64_t ptr, 
         RustCallStatus *uniffi_out_err
@@ -208,6 +213,11 @@ extern "C" {
     );
     /*handle*/ uint64_t uniffi_rrn_mobile_ffi_fn_constructor_publickey_from_bytes(
         RustBuffer data, 
+        RustCallStatus *uniffi_out_err
+    );
+    RustBuffer uniffi_rrn_mobile_ffi_fn_method_publickey_seal(
+        /*handle*/ uint64_t ptr, 
+        RustBuffer plaintext, 
         RustCallStatus *uniffi_out_err
     );
     RustBuffer uniffi_rrn_mobile_ffi_fn_method_publickey_to_address(
@@ -524,9 +534,13 @@ extern "C" {
     );
     uint16_t uniffi_rrn_mobile_ffi_checksum_method_hash_to_hex(
     );
+    uint16_t uniffi_rrn_mobile_ffi_checksum_method_keypair_open(
+    );
     uint16_t uniffi_rrn_mobile_ffi_checksum_method_keypair_public_key(
     );
     uint16_t uniffi_rrn_mobile_ffi_checksum_method_keypair_sign(
+    );
+    uint16_t uniffi_rrn_mobile_ffi_checksum_method_publickey_seal(
     );
     uint16_t uniffi_rrn_mobile_ffi_checksum_method_publickey_to_address(
     );
@@ -2144,6 +2158,14 @@ NativeRrnMobileFfi::NativeRrnMobileFfi(
             return this->cpp_uniffi_rrn_mobile_ffi_fn_constructor_keypair_generate(rt, thisVal, args, count);
         }
     );
+    props["ubrn_uniffi_rrn_mobile_ffi_fn_method_keypair_open"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_fn_method_keypair_open"),
+        2,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_fn_method_keypair_open(rt, thisVal, args, count);
+        }
+    );
     props["ubrn_uniffi_rrn_mobile_ffi_fn_method_keypair_public_key"] = jsi::Function::createFromHostFunction(
         rt,
         jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_fn_method_keypair_public_key"),
@@ -2190,6 +2212,14 @@ NativeRrnMobileFfi::NativeRrnMobileFfi(
         1,
         [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
             return this->cpp_uniffi_rrn_mobile_ffi_fn_constructor_publickey_from_bytes(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_rrn_mobile_ffi_fn_method_publickey_seal"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_fn_method_publickey_seal"),
+        2,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_fn_method_publickey_seal(rt, thisVal, args, count);
         }
     );
     props["ubrn_uniffi_rrn_mobile_ffi_fn_method_publickey_to_address"] = jsi::Function::createFromHostFunction(
@@ -2448,6 +2478,14 @@ NativeRrnMobileFfi::NativeRrnMobileFfi(
             return this->cpp_uniffi_rrn_mobile_ffi_checksum_method_hash_to_hex(rt, thisVal, args, count);
         }
     );
+    props["ubrn_uniffi_rrn_mobile_ffi_checksum_method_keypair_open"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_checksum_method_keypair_open"),
+        0,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_checksum_method_keypair_open(rt, thisVal, args, count);
+        }
+    );
     props["ubrn_uniffi_rrn_mobile_ffi_checksum_method_keypair_public_key"] = jsi::Function::createFromHostFunction(
         rt,
         jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_checksum_method_keypair_public_key"),
@@ -2462,6 +2500,14 @@ NativeRrnMobileFfi::NativeRrnMobileFfi(
         0,
         [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
             return this->cpp_uniffi_rrn_mobile_ffi_checksum_method_keypair_sign(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_rrn_mobile_ffi_checksum_method_publickey_seal"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_checksum_method_publickey_seal"),
+        0,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_checksum_method_publickey_seal(rt, thisVal, args, count);
         }
     );
     props["ubrn_uniffi_rrn_mobile_ffi_checksum_method_publickey_to_address"] = jsi::Function::createFromHostFunction(
@@ -3046,6 +3092,16 @@ jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_fn_constructor_keypair_
         
         return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker, value);
 }
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_fn_method_keypair_open(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        RustCallStatus status = uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
+        auto value = uniffi_rrn_mobile_ffi_fn_method_keypair_open(uniffi_jsi::Bridging</*handle*/ uint64_t>::fromJs(rt, callInvoker, args[0]), uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[1]), 
+            &status
+        );
+        uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::copyIntoJs(rt, callInvoker, status, args[count - 1]);
+
+        
+        return uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::toJs(rt, callInvoker, value);
+}
 jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_fn_method_keypair_public_key(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
         RustCallStatus status = uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
         auto value = uniffi_rrn_mobile_ffi_fn_method_keypair_public_key(uniffi_jsi::Bridging</*handle*/ uint64_t>::fromJs(rt, callInvoker, args[0]), 
@@ -3105,6 +3161,16 @@ jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_fn_constructor_publicke
 
         
         return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_fn_method_publickey_seal(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        RustCallStatus status = uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
+        auto value = uniffi_rrn_mobile_ffi_fn_method_publickey_seal(uniffi_jsi::Bridging</*handle*/ uint64_t>::fromJs(rt, callInvoker, args[0]), uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[1]), 
+            &status
+        );
+        uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::copyIntoJs(rt, callInvoker, status, args[count - 1]);
+
+        
+        return uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::toJs(rt, callInvoker, value);
 }
 jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_fn_method_publickey_to_address(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
         RustCallStatus status = uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
@@ -3404,6 +3470,13 @@ jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_checksum_method_hash_to
         
         return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
 }
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_checksum_method_keypair_open(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_rrn_mobile_ffi_checksum_method_keypair_open(
+        );
+
+        
+        return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
 jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_checksum_method_keypair_public_key(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
         auto value = uniffi_rrn_mobile_ffi_checksum_method_keypair_public_key(
         );
@@ -3413,6 +3486,13 @@ jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_checksum_method_keypair
 }
 jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_checksum_method_keypair_sign(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
         auto value = uniffi_rrn_mobile_ffi_checksum_method_keypair_sign(
+        );
+
+        
+        return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_checksum_method_publickey_seal(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_rrn_mobile_ffi_checksum_method_publickey_seal(
         );
 
         

@@ -69,6 +69,9 @@ class FakePublicKey implements PublicKey {
   verify(): boolean {
     throw new Error('verify not exercised by address tests');
   }
+  seal(): Uint8Array {
+    throw new Error('seal not exercised by address tests');
+  }
 }
 
 const fakeFfi: RrnCryptoFfi = {

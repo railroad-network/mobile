@@ -233,6 +233,7 @@ export enum CryptoError_Tags {
   InvalidEncoding = 'InvalidEncoding',
   InvalidSignature = 'InvalidSignature',
   InvalidAddress = 'InvalidAddress',
+  SealFailed = 'SealFailed',
 }
 export const CryptoError = (() => {
   class WrongLength extends UniffiError {
@@ -323,6 +324,28 @@ export const CryptoError = (() => {
       return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 4;
     }
   }
+  class SealFailed extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = 'CryptoError';
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 5;
+
+    readonly tag = CryptoError_Tags.SealFailed;
+
+    constructor(message: string) {
+      super('CryptoError', 'SealFailed', message);
+    }
+
+    static instanceOf(e: any): e is SealFailed {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 5;
+    }
+  }
 
   // Utility function which does not rely on instanceof.
   function instanceOf(e: any): e is CryptoError {
@@ -333,6 +356,7 @@ export const CryptoError = (() => {
     InvalidEncoding,
     InvalidSignature,
     InvalidAddress,
+    SealFailed,
     instanceOf,
   };
 })();
@@ -343,7 +367,8 @@ export type CryptoError = InstanceType<
     | 'WrongLength'
     | 'InvalidEncoding'
     | 'InvalidSignature'
-    | 'InvalidAddress']
+    | 'InvalidAddress'
+    | 'SealFailed']
 >;
 
 const FfiConverterTypeCryptoError = (() => {
@@ -365,6 +390,9 @@ const FfiConverterTypeCryptoError = (() => {
 
         case 4:
           return new CryptoError.InvalidAddress(FfiConverterString.read(from));
+
+        case 5:
+          return new CryptoError.SealFailed(FfiConverterString.read(from));
 
         default:
           throw new UniffiInternalError.UnexpectedEnumCase();
@@ -1103,6 +1131,7 @@ const FfiConverterTypeSignature = new FfiConverterObject(
 );
 
 export interface PublicKeyLike {
+  seal(plaintext: ArrayBuffer): /*throws*/ ArrayBuffer;
   toAddress(): string;
   toBytes(): ArrayBuffer;
   verify(message: ArrayBuffer, signature: SignatureLike): boolean;
@@ -1151,6 +1180,33 @@ export class PublicKey extends UniffiAbstractObject implements PublicKeyLike {
           return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_constructor_publickey_from_bytes(
             FfiConverterArrayBuffer.lower(
               data,
+              nativeModule().rustbuffer_alloc,
+            ),
+            callStatus,
+          );
+        },
+        /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      ),
+    );
+  }
+
+  seal(plaintext: ArrayBuffer): ArrayBuffer /*throws*/ {
+    return ((__rb: Uint8Array) => {
+      try {
+        return FfiConverterArrayBuffer.lift(__rb);
+      } finally {
+        nativeModule().rustbuffer_free(__rb);
+      }
+    })(
+      uniffiCaller.rustCallWithError(
+        /*liftError:*/ FfiConverterTypeCryptoError.lift.bind(
+          FfiConverterTypeCryptoError,
+        ),
+        /*caller:*/ callStatus => {
+          return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_method_publickey_seal(
+            uniffiTypePublicKeyObjectFactory.clonePointer(this),
+            FfiConverterArrayBuffer.lower(
+              plaintext,
               nativeModule().rustbuffer_alloc,
             ),
             callStatus,
@@ -1307,6 +1363,7 @@ const FfiConverterTypePublicKey = new FfiConverterObject(
 );
 
 export interface KeypairLike {
+  open(sealedBox: ArrayBuffer): /*throws*/ ArrayBuffer;
   publicKey(): PublicKeyLike;
   sign(message: ArrayBuffer): SignatureLike;
 }
@@ -1331,6 +1388,33 @@ export class Keypair extends UniffiAbstractObject implements KeypairLike {
       uniffiCaller.rustCall(
         /*caller:*/ callStatus => {
           return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_constructor_keypair_generate(
+            callStatus,
+          );
+        },
+        /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      ),
+    );
+  }
+
+  open(sealedBox: ArrayBuffer): ArrayBuffer /*throws*/ {
+    return ((__rb: Uint8Array) => {
+      try {
+        return FfiConverterArrayBuffer.lift(__rb);
+      } finally {
+        nativeModule().rustbuffer_free(__rb);
+      }
+    })(
+      uniffiCaller.rustCallWithError(
+        /*liftError:*/ FfiConverterTypeCryptoError.lift.bind(
+          FfiConverterTypeCryptoError,
+        ),
+        /*caller:*/ callStatus => {
+          return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_method_keypair_open(
+            uniffiTypeKeypairObjectFactory.clonePointer(this),
+            FfiConverterArrayBuffer.lower(
+              sealedBox,
+              nativeModule().rustbuffer_alloc,
+            ),
             callStatus,
           );
         },
@@ -2336,6 +2420,14 @@ function uniffiEnsureInitialized() {
     );
   }
   if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_method_keypair_open() !==
+    48670
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_method_keypair_open',
+    );
+  }
+  if (
     nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_method_keypair_public_key() !==
     61753
   ) {
@@ -2365,6 +2457,14 @@ function uniffiEnsureInitialized() {
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       'uniffi_rrn_mobile_ffi_checksum_constructor_publickey_from_bytes',
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_method_publickey_seal() !==
+    16228
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_method_publickey_seal',
     );
   }
   if (

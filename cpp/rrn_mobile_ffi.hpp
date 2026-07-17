@@ -36,12 +36,14 @@ class NativeRrnMobileFfi : public jsi::HostObject {
     jsi::Value cpp_uniffi_rrn_mobile_ffi_fn_clone_keypair(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_rrn_mobile_ffi_fn_free_keypair(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_rrn_mobile_ffi_fn_constructor_keypair_generate(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
+    jsi::Value cpp_uniffi_rrn_mobile_ffi_fn_method_keypair_open(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_rrn_mobile_ffi_fn_method_keypair_public_key(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_rrn_mobile_ffi_fn_method_keypair_sign(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_rrn_mobile_ffi_fn_clone_publickey(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_rrn_mobile_ffi_fn_free_publickey(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_rrn_mobile_ffi_fn_constructor_publickey_from_address(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_rrn_mobile_ffi_fn_constructor_publickey_from_bytes(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
+    jsi::Value cpp_uniffi_rrn_mobile_ffi_fn_method_publickey_seal(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_rrn_mobile_ffi_fn_method_publickey_to_address(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_rrn_mobile_ffi_fn_method_publickey_to_bytes(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_rrn_mobile_ffi_fn_method_publickey_verify(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
@@ -74,8 +76,10 @@ class NativeRrnMobileFfi : public jsi::HostObject {
     jsi::Value cpp_uniffi_rrn_mobile_ffi_checksum_method_encryptedwallet_to_bytes(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_rrn_mobile_ffi_checksum_method_hash_to_bytes(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_rrn_mobile_ffi_checksum_method_hash_to_hex(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
+    jsi::Value cpp_uniffi_rrn_mobile_ffi_checksum_method_keypair_open(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_rrn_mobile_ffi_checksum_method_keypair_public_key(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_rrn_mobile_ffi_checksum_method_keypair_sign(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
+    jsi::Value cpp_uniffi_rrn_mobile_ffi_checksum_method_publickey_seal(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_rrn_mobile_ffi_checksum_method_publickey_to_address(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_rrn_mobile_ffi_checksum_method_publickey_to_bytes(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_rrn_mobile_ffi_checksum_method_publickey_verify(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);

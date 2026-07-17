@@ -102,6 +102,9 @@ class FakePublicKey implements PublicKey {
       bytesToHex(deriveSig(this.pubkeyHex, message))
     );
   }
+  seal(): Uint8Array {
+    throw new Error('seal not exercised by wallet tests');
+  }
 }
 
 class FakeKeypair implements Keypair {
@@ -111,6 +114,9 @@ class FakeKeypair implements Keypair {
   }
   sign(message: Uint8Array): Signature {
     return new FakeSignature(deriveSig(this.pubkeyHex, message));
+  }
+  open(): Uint8Array {
+    throw new Error('open not exercised by wallet tests');
   }
 }
 

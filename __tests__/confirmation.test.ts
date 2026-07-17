@@ -32,6 +32,9 @@ class FakePublicKey implements PublicKey {
   verify(): boolean {
     return true;
   }
+  seal(): Uint8Array {
+    throw new Error('seal not exercised by confirmation tests');
+  }
 }
 class FakeSignature implements Signature {
   constructor(private readonly data: Uint8Array) {}

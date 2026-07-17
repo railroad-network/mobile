@@ -153,6 +153,9 @@ class FakePublicKey implements PublicKey {
       )}`,
     );
   }
+  seal(): Uint8Array {
+    throw new Error('seal not exercised by ffi invariant tests');
+  }
 }
 
 class FakeKeypair implements Keypair {
@@ -166,6 +169,9 @@ class FakeKeypair implements Keypair {
       throw new Error('fake FFI has no signature for this (key, message)');
     }
     return new FakeSignature(hexToBytes(sig));
+  }
+  open(): Uint8Array {
+    throw new Error('open not exercised by ffi invariant tests');
   }
 }
 

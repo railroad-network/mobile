@@ -26,6 +26,13 @@ export interface PublicKey {
   /** The bech32m `rrn1…` address for this key. */
   toAddress(): string;
   verify(message: Uint8Array, signature: Signature): boolean;
+  /**
+   * Seals `plaintext` so only the holder of this key's secret can open it
+   * (ADR-0008 transport envelope). Returns opaque `eph ‖ nonce ‖ ct` bytes the
+   * app treats as a black box and never parses; the matching secret opens it via
+   * {@link Keypair.open}. Throws (crypto error) only on a malformed key.
+   */
+  seal(plaintext: Uint8Array): Uint8Array;
 }
 
 /** Opaque handle to an Ed25519 signature. */
@@ -37,6 +44,14 @@ export interface Signature {
 export interface Keypair {
   publicKey(): PublicKey;
   sign(message: Uint8Array): Signature;
+  /**
+   * Opens a sealed box addressed to this keypair's public key (ADR-0008
+   * transport envelope), returning the plaintext. `sealedBox` is the opaque
+   * framing {@link PublicKey.seal} produced. Throws (crypto error) on a wrong
+   * key, wrong context, truncated framing, or tampering — never yields wrong
+   * plaintext. The secret seed never leaves Rust.
+   */
+  open(sealedBox: Uint8Array): Uint8Array;
 }
 
 /** Opaque handle to a Blake3 hash. */

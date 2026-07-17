@@ -265,6 +265,11 @@ interface NativeModuleInterface {
   ubrn_uniffi_rrn_mobile_ffi_fn_constructor_keypair_generate(
     uniffi_out_err: UniffiRustCallStatus,
   ): bigint;
+  ubrn_uniffi_rrn_mobile_ffi_fn_method_keypair_open(
+    uniffiSelf: bigint,
+    sealedBox: Uint8Array,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): Uint8Array;
   ubrn_uniffi_rrn_mobile_ffi_fn_method_keypair_public_key(
     uniffiSelf: bigint,
     uniffi_out_err: UniffiRustCallStatus,
@@ -282,6 +287,11 @@ interface NativeModuleInterface {
     data: Uint8Array,
     uniffi_out_err: UniffiRustCallStatus,
   ): bigint;
+  ubrn_uniffi_rrn_mobile_ffi_fn_method_publickey_seal(
+    uniffiSelf: bigint,
+    plaintext: Uint8Array,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): Uint8Array;
   ubrn_uniffi_rrn_mobile_ffi_fn_method_publickey_to_address(
     uniffiSelf: bigint,
     uniffi_out_err: UniffiRustCallStatus,
@@ -362,10 +372,12 @@ interface NativeModuleInterface {
   ubrn_uniffi_rrn_mobile_ffi_checksum_method_hash_to_bytes(): number;
   ubrn_uniffi_rrn_mobile_ffi_checksum_method_hash_to_hex(): number;
   ubrn_uniffi_rrn_mobile_ffi_checksum_constructor_keypair_generate(): number;
+  ubrn_uniffi_rrn_mobile_ffi_checksum_method_keypair_open(): number;
   ubrn_uniffi_rrn_mobile_ffi_checksum_method_keypair_public_key(): number;
   ubrn_uniffi_rrn_mobile_ffi_checksum_method_keypair_sign(): number;
   ubrn_uniffi_rrn_mobile_ffi_checksum_constructor_publickey_from_address(): number;
   ubrn_uniffi_rrn_mobile_ffi_checksum_constructor_publickey_from_bytes(): number;
+  ubrn_uniffi_rrn_mobile_ffi_checksum_method_publickey_seal(): number;
   ubrn_uniffi_rrn_mobile_ffi_checksum_method_publickey_to_address(): number;
   ubrn_uniffi_rrn_mobile_ffi_checksum_method_publickey_to_bytes(): number;
   ubrn_uniffi_rrn_mobile_ffi_checksum_method_publickey_verify(): number;

@@ -76,6 +76,9 @@ function makePublicKey(bytes: Uint8Array): PublicKey {
         bytesEqual(sig.slice(32), fold(message))
       );
     },
+    seal: () => {
+      throw new Error('seal not exercised by pairing tests');
+    },
   };
 }
 
@@ -83,6 +86,9 @@ function makeKeypair(pk: Uint8Array): Keypair {
   return {
     publicKey: () => makePublicKey(pk),
     sign: message => makeSignature(toySign(pk, message)),
+    open: () => {
+      throw new Error('open not exercised by pairing tests');
+    },
   };
 }
 

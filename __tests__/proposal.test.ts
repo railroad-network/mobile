@@ -40,6 +40,9 @@ class FakePublicKey implements PublicKey {
   verify(): boolean {
     return true;
   }
+  seal(): Uint8Array {
+    throw new Error('seal not exercised by proposal tests');
+  }
 }
 class FakeHash implements Hash {
   constructor(private readonly data: Uint8Array) {}

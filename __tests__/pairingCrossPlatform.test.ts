@@ -105,6 +105,9 @@ function makePublicKey(bytes: Uint8Array, address: string): PublicKey {
       validTriples.has(
         [bytesToHex(bytes), bytesToHex(message), bytesToHex(signature.toBytes())].join('|'),
       ),
+    seal: () => {
+      throw new Error('seal not exercised by pairing cross-platform tests');
+    },
   };
 }
 

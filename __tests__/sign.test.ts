@@ -86,6 +86,9 @@ class FakePublicKey implements PublicKey {
     )}`;
     return validTriples.has(key);
   }
+  seal(): Uint8Array {
+    throw new Error('seal not exercised by sign tests');
+  }
 }
 
 class FakeKeypair implements Keypair {
@@ -101,6 +104,9 @@ class FakeKeypair implements Keypair {
       throw new Error('fake FFI has no signature for this (key, message)');
     }
     return new FakeSignature(hexToBytes(sig));
+  }
+  open(): Uint8Array {
+    throw new Error('open not exercised by sign tests');
   }
 }
 

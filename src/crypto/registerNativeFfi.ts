@@ -60,6 +60,7 @@ function wrapPublicKey(publicKey: gen.PublicKeyLike): PublicKey {
       }
       return publicKey.verify(toArrayBuffer(message), native);
     },
+    seal: plaintext => toU8(publicKey.seal(toArrayBuffer(plaintext))),
   };
 }
 
@@ -67,6 +68,7 @@ function wrapKeypair(keypair: gen.KeypairLike): Keypair {
   return {
     publicKey: () => wrapPublicKey(keypair.publicKey()),
     sign: message => wrapSignature(keypair.sign(toArrayBuffer(message))),
+    open: sealedBox => toU8(keypair.open(toArrayBuffer(sealedBox))),
   };
 }
 
