@@ -199,11 +199,9 @@ function StationRow({
           </View>
         </View>
       ) : (
-        <View style={styles.unpairRow}>
-          <Button variant="ghost" size="md" onPress={onAskRemove}>
-            Unpair
-          </Button>
-        </View>
+        <Button variant="danger" size="md" fullWidth onPress={onAskRemove}>
+          Unpair
+        </Button>
       )}
     </Card>
   );
@@ -211,6 +209,5 @@ function StationRow({
 
 const styles = StyleSheet.create({
   rowText: {minWidth: 0, gap: 2},
-  unpairRow: {alignItems: 'flex-start'},
   confirmButtons: {flexDirection: 'row', justifyContent: 'flex-end', gap: 8},
 });
