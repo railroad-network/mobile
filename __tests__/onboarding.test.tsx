@@ -32,18 +32,22 @@ interface MockOnboarding {
   passphrase: string;
   biometricEnabled: boolean;
   createdAddress: string | null;
+  createdWallet: unknown;
   setPassphrase: jest.Mock;
   setBiometricEnabled: jest.Mock;
   setCreatedAddress: jest.Mock;
+  setCreatedWallet: jest.Mock;
   clearSecrets: jest.Mock;
 }
 const mockOnboarding: MockOnboarding = {
   passphrase: '',
   biometricEnabled: false,
   createdAddress: null,
+  createdWallet: null,
   setPassphrase: jest.fn((v: string) => (mockOnboarding.passphrase = v)),
   setBiometricEnabled: jest.fn((v: boolean) => (mockOnboarding.biometricEnabled = v)),
   setCreatedAddress: jest.fn((v: string) => (mockOnboarding.createdAddress = v)),
+  setCreatedWallet: jest.fn((v: unknown) => (mockOnboarding.createdWallet = v)),
   clearSecrets: jest.fn(() => (mockOnboarding.passphrase = '')),
 };
 jest.mock('../src/screens/onboarding/OnboardingContext', () => ({
@@ -57,8 +61,14 @@ jest.mock('../src/wallet/Wallet', () => ({
 }));
 
 const mockRefresh = jest.fn();
+const mockAdopt = jest.fn();
 jest.mock('../src/wallet/WalletSession', () => ({
-  useWalletSession: () => ({hasWallet: false, refresh: mockRefresh}),
+  useWalletSession: () => ({
+    hasWallet: false,
+    wallet: null,
+    refresh: mockRefresh,
+    adopt: mockAdopt,
+  }),
   WalletSessionProvider: ({children}: {children: React.ReactNode}) => children,
 }));
 
@@ -348,13 +358,16 @@ describe('WalletReady', () => {
     expect(mockRefresh).not.toHaveBeenCalled();
   });
 
-  test('"Set up later" refreshes the wallet session (entering the app)', async () => {
+  test('"Set up later" adopts the created wallet (entering the app unlocked)', async () => {
     mockOnboarding.createdAddress = 'rrn1readyaddress';
+    const created = {address: 'rrn1readyaddress'};
+    mockOnboarding.createdWallet = created;
     const r = await renderScreen(
       <WalletReady navigation={nav()} route={{} as any} />,
     );
 
     await press(button(r, 'Set up later'));
-    expect(mockRefresh).toHaveBeenCalled();
+    expect(mockAdopt).toHaveBeenCalledWith(created);
+    mockOnboarding.createdWallet = null;
   });
 });

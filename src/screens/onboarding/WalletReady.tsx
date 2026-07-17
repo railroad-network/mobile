@@ -21,13 +21,19 @@ const QR_SIZE = 180;
 
 export function WalletReady({navigation}: OnboardingScreenProps<'WalletReady'>) {
   const theme = useTheme();
-  const {createdAddress} = useOnboarding();
-  const {refresh} = useWalletSession();
+  const {createdAddress, createdWallet} = useOnboarding();
+  const {adopt, refresh} = useWalletSession();
 
-  // Refreshing the session flips the root navigator from the onboarding stack
-  // to the main app; the stack unmounts, so no explicit navigation is needed.
+  // Entering the app flips the root navigator from the onboarding stack to the
+  // main app; the stack unmounts, so no explicit navigation is needed. Adopting
+  // the just-created wallet lands the user in the app unlocked; if the handle is
+  // somehow missing, fall back to a plain refresh (the lock screen then asks).
   async function onSkip() {
-    await refresh();
+    if (createdWallet !== null) {
+      adopt(createdWallet);
+    } else {
+      await refresh();
+    }
   }
 
   return (

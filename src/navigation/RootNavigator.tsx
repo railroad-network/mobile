@@ -24,6 +24,7 @@ import {FactoryReset} from '../screens/main/FactoryReset';
 import {Discovery} from '../screens/main/Discovery';
 import {Pairing} from '../screens/main/Pairing';
 import {PairedStations} from '../screens/main/PairedStations';
+import {Lock} from '../screens/main/Lock';
 import {RecoveryNavigator} from '../screens/recovery/RecoveryNavigator';
 import {
   HomeTabIcon,
@@ -138,15 +139,20 @@ function MainNavigator() {
 }
 
 /**
- * Top-level routing: `OnboardingStack` when no wallet has been created on this
- * device yet, `MainStack` once one exists. The wallet-existence flag comes from
- * {@link useWalletSession}, so when onboarding finishes creating a wallet and
- * refreshes the session, this swaps stacks automatically. A `null` flag (initial
- * check in flight, or no native SecureStore as under Jest) shows a blank canvas.
+ * Top-level routing, driven by {@link useWalletSession}:
+ *   - no wallet on this device → onboarding;
+ *   - a wallet exists but is not unlocked this session → the lock screen (the
+ *     authenticated channel signs every request, so the app unlocks once and
+ *     holds the wallet for the foreground session, per T1.3.4);
+ *   - a wallet exists and is unlocked → the main app.
+ *
+ * A `null` existence flag (initial check in flight, or no native SecureStore as
+ * under Jest) shows a blank canvas. Onboarding adopts the wallet it creates, so
+ * a brand-new user lands unlocked in the main app without a lock-screen detour.
  */
 export function RootNavigator() {
   const theme = useTheme();
-  const {hasWallet: walletExists} = useWalletSession();
+  const {hasWallet: walletExists, wallet} = useWalletSession();
 
   if (walletExists === null) {
     return <View style={[styles.fill, {backgroundColor: theme.colors.bg}]} />;
@@ -154,10 +160,12 @@ export function RootNavigator() {
 
   return (
     <RootStack.Navigator screenOptions={{headerShown: false}}>
-      {walletExists ? (
-        <RootStack.Screen name="Main" component={MainNavigator} />
-      ) : (
+      {!walletExists ? (
         <RootStack.Screen name="Onboarding" component={OnboardingNavigator} />
+      ) : wallet === null ? (
+        <RootStack.Screen name="Lock" component={Lock} />
+      ) : (
+        <RootStack.Screen name="Main" component={MainNavigator} />
       )}
     </RootStack.Navigator>
   );

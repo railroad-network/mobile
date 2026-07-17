@@ -10,6 +10,8 @@
  */
 import {createContext, useContext, useMemo, useState, type ReactNode} from 'react';
 
+import type {Wallet} from '../../wallet/Wallet';
+
 export interface OnboardingState {
   passphrase: string;
   setPassphrase: (value: string) => void;
@@ -22,6 +24,15 @@ export interface OnboardingState {
   createdAddress: string | null;
   setCreatedAddress: (value: string) => void;
 
+  /**
+   * The freshly-created, unlocked wallet handle — handed to the session on the
+   * last onboarding screen ({@link WalletSession.adopt}) so a new user lands in
+   * the app unlocked rather than at the lock screen. Not a secret (the seed
+   * stays in Rust); held only until onboarding completes.
+   */
+  createdWallet: Wallet | null;
+  setCreatedWallet: (value: Wallet) => void;
+
   /** Forgets the passphrase once it is no longer needed. */
   clearSecrets: () => void;
 }
@@ -32,6 +43,7 @@ export function OnboardingProvider({children}: {children: ReactNode}) {
   const [passphrase, setPassphrase] = useState('');
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [createdAddress, setCreatedAddress] = useState<string | null>(null);
+  const [createdWallet, setCreatedWallet] = useState<Wallet | null>(null);
 
   const value = useMemo<OnboardingState>(
     () => ({
@@ -41,9 +53,11 @@ export function OnboardingProvider({children}: {children: ReactNode}) {
       setBiometricEnabled,
       createdAddress,
       setCreatedAddress,
+      createdWallet,
+      setCreatedWallet,
       clearSecrets: () => setPassphrase(''),
     }),
-    [passphrase, biometricEnabled, createdAddress],
+    [passphrase, biometricEnabled, createdAddress, createdWallet],
   );
 
   return (

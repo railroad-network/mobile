@@ -72,8 +72,9 @@ jest.mock('../src/wallet/recoveryConfig', () => ({
 }));
 
 const mockRefresh = jest.fn();
+const mockAdopt = jest.fn();
 jest.mock('../src/wallet/WalletSession', () => ({
-  useWalletSession: () => ({hasWallet: true, refresh: mockRefresh}),
+  useWalletSession: () => ({hasWallet: true, refresh: mockRefresh, adopt: mockAdopt}),
 }));
 
 // --- Harness ----------------------------------------------------------------
@@ -426,7 +427,7 @@ describe('RecoveryComplete', () => {
     );
   });
 
-  test('Done enters the app when launched from onboarding', async () => {
+  test('Done enters the app (unlocked) when launched from onboarding', async () => {
     mockRecovery.origin = 'onboarding';
     const navigation = nav();
     const r = await renderScreen(
@@ -435,7 +436,9 @@ describe('RecoveryComplete', () => {
     await press(button(r, 'Done'));
 
     expect(mockRecovery.clear).toHaveBeenCalled();
-    expect(mockRefresh).toHaveBeenCalled();
+    // Adopts the unlocked wallet recovery just split, so the new user lands in
+    // the app unlocked rather than at the lock screen.
+    expect(mockAdopt).toHaveBeenCalledWith(mockRecovery.wallet);
     expect(navigation.getParent().goBack).not.toHaveBeenCalled();
   });
 

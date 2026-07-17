@@ -39,7 +39,7 @@ export function GenerateWallet({
   navigation,
 }: OnboardingScreenProps<'GenerateWallet'>) {
   const theme = useTheme();
-  const {passphrase, biometricEnabled, setCreatedAddress, clearSecrets} =
+  const {passphrase, biometricEnabled, setCreatedAddress, setCreatedWallet, clearSecrets} =
     useOnboarding();
   const [error, setError] = useState<string | null>(null);
   // Guards against the effect running twice (React strict-mode double invoke /
@@ -61,6 +61,10 @@ export function GenerateWallet({
           requireBiometric: biometricEnabled,
         });
         setCreatedAddress(wallet.address);
+        // Keep the unlocked handle so the last onboarding screen can hand it to
+        // the session — a new user should not have to re-unlock what they just
+        // created. The passphrase (the actual secret) is still wiped below.
+        setCreatedWallet(wallet);
         clearSecrets();
         // Only the success path is padded; an error should surface immediately.
         await delay(MIN_VISIBLE_MS - (Date.now() - startedAt));

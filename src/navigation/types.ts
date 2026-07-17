@@ -95,5 +95,7 @@ export type MainTabScreenProps<T extends keyof MainTabParamList> =
 
 export type RootStackParamList = {
   Onboarding: NavigatorScreenParams<OnboardingStackParamList>;
+  /** Shown when a wallet exists but is locked this session (T1.3.4). */
+  Lock: undefined;
   Main: NavigatorScreenParams<MainStackParamList>;
 };

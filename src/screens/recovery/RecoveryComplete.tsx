@@ -23,7 +23,7 @@ import {RecoveryScaffold} from './RecoveryScaffold';
 export function RecoveryComplete({navigation}: RecoveryScreenProps<'RecoveryComplete'>) {
   const theme = useTheme();
   const {origin, wallet, holders, threshold, delivered, clear} = useRecovery();
-  const {refresh} = useWalletSession();
+  const {adopt, refresh} = useWalletSession();
 
   const deliveredCount = delivered.size;
   const savedRef = useRef(false);
@@ -49,12 +49,20 @@ export function RecoveryComplete({navigation}: RecoveryScreenProps<'RecoveryComp
   }, [wallet, holders, threshold, delivered]);
 
   function done() {
-    clear();
     if (origin === 'onboarding') {
-      // Flips the root navigator from the onboarding stack into the app.
-      refresh();
+      // Flips the root navigator from the onboarding stack into the app. Adopt
+      // the unlocked wallet (the one recovery just split) so the new user lands
+      // in the app unlocked rather than at the lock screen; fall back to refresh
+      // if the handle is missing. Read `wallet` before `clear()` wipes it.
+      if (wallet !== null) {
+        adopt(wallet);
+      } else {
+        refresh();
+      }
+      clear();
     } else {
       // Launched from Settings — pop the whole recovery flow off the main stack.
+      clear();
       navigation.getParent()?.goBack();
     }
   }
