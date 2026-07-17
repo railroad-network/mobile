@@ -99,7 +99,7 @@ export function Button({
       ) : (
         <>
           {iconLeft}
-          <Text variant="label" style={{color: palette.text}}>
+          <Text variant="label" numberOfLines={1} style={{color: palette.text}}>
             {children}
           </Text>
           {iconRight}

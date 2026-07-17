@@ -235,7 +235,7 @@ export function Send({navigation}: MainTabScreenProps<'Send'>) {
               spellCheck={false}
               autoComplete="off"
             />
-            <Button variant="secondary" size="lg" fullWidth onPress={() => setScanning(true)}>
+            <Button variant="accent" size="lg" fullWidth onPress={() => setScanning(true)}>
               Scan a QR code
             </Button>
           </View>
