@@ -119,6 +119,13 @@ describe('Pairing screen', () => {
     const tree = render();
     expect(textOf(tree)).toContain('Railroad Station — Evening Ridge');
     expect(textOf(tree)).toContain('railroad-station-evening-ridge.local.');
+    // The station card carries a station avatar (StarMark tile).
+    const avatar = tree.root.find(
+      node =>
+        node.props.accessibilityLabel === 'Station' &&
+        node.props.accessibilityRole === 'image',
+    );
+    expect(avatar).toBeTruthy();
   });
 
   it('runs the handshake and shows the confirmation code', async () => {

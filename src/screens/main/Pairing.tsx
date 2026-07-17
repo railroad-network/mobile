@@ -18,7 +18,7 @@ import {useState} from 'react';
 import {ScrollView, StyleSheet, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
-import {Banner, Button, Card, Field, Heading, Text} from '../../components';
+import {Banner, Button, Card, Field, Heading, StationAvatar, Text} from '../../components';
 import {useTheme, type Theme} from '../../theme';
 import type {MainStackScreenProps} from '../../navigation/types';
 import {requestPairing, type PairingFailure} from '../../network/Pairing';
@@ -128,20 +128,23 @@ export function Pairing({navigation, route}: MainStackScreenProps<'Pairing'>) {
           subtitle={`Confirm it’s you to pair with ${station.name}.`}
           onBack={() => navigation.goBack()}
         />
-        <Card style={{gap: theme.spacing.xs}}>
-          <Text variant="label" color={theme.colors.textSecondary}>
-            Station
-          </Text>
-          <Text variant="body" color={theme.colors.text} numberOfLines={1}>
-            {station.name}
-          </Text>
-          <Text
-            variant="caption"
-            color={theme.colors.textMuted}
-            numberOfLines={1}
-            ellipsizeMode="middle">
-            {station.host}:{station.port}
-          </Text>
+        <Card style={styles.stationHeader}>
+          <StationAvatar size={44} radius={12} />
+          <View style={styles.stationText}>
+            <Text variant="label" color={theme.colors.textSecondary}>
+              Station
+            </Text>
+            <Text variant="body" color={theme.colors.text} numberOfLines={1}>
+              {station.name}
+            </Text>
+            <Text
+              variant="caption"
+              color={theme.colors.textMuted}
+              numberOfLines={1}
+              ellipsizeMode="middle">
+              {station.host}:{station.port}
+            </Text>
+          </View>
         </Card>
         {error !== null ? (
           <Banner variant="warning" title="Couldn’t pair">
@@ -294,6 +297,8 @@ function Header({
 }
 
 const styles = StyleSheet.create({
+  stationHeader: {flexDirection: 'row', alignItems: 'center', gap: 12},
+  stationText: {flex: 1, minWidth: 0, gap: 2},
   sasCard: {alignItems: 'center', paddingVertical: 28},
   sas: {fontSize: 40, letterSpacing: 8, fontWeight: '600'},
   centered: {textAlign: 'center'},

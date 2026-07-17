@@ -22,6 +22,8 @@ export {Banner} from './Banner';
 export type {BannerProps, BannerVariant} from './Banner';
 export {Identicon} from './Identicon';
 export type {IdenticonProps} from './Identicon';
+export {StationAvatar} from './StationAvatar';
+export type {StationAvatarProps} from './StationAvatar';
 export {ConnectivityStatus} from './ConnectivityStatus';
 export type {ConnectivityStatusProps, ConnectivityLevel} from './ConnectivityStatus';
 export {Countdown} from './Countdown';

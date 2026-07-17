@@ -16,7 +16,7 @@ import {ScrollView, StyleSheet, View} from 'react-native';
 import {useFocusEffect} from '@react-navigation/native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
-import {Banner, Button, Card, Heading, Text} from '../../components';
+import {Banner, Button, Card, Heading, StationAvatar, Text} from '../../components';
 import {shortAddress} from '../../ledger';
 import {useTheme, type Theme} from '../../theme';
 import type {MainStackScreenProps} from '../../navigation/types';
@@ -155,24 +155,27 @@ function StationRow({
 
   return (
     <Card style={{gap: theme.spacing.sm}}>
-      <View style={styles.rowText}>
-        <Text variant="label" color={theme.colors.text} numberOfLines={1}>
-          {title}
-        </Text>
-        <Text
-          variant="caption"
-          color={theme.colors.textSecondary}
-          numberOfLines={1}
-          ellipsizeMode="middle">
-          {station.host}:{station.port}
-        </Text>
-        <Text
-          variant="caption"
-          color={theme.colors.textMuted}
-          numberOfLines={1}
-          ellipsizeMode="middle">
-          {station.address}
-        </Text>
+      <View style={styles.rowHeader}>
+        <StationAvatar size={40} radius={11} />
+        <View style={styles.rowText}>
+          <Text variant="label" color={theme.colors.text} numberOfLines={1}>
+            {title}
+          </Text>
+          <Text
+            variant="caption"
+            color={theme.colors.textSecondary}
+            numberOfLines={1}
+            ellipsizeMode="middle">
+            {station.host}:{station.port}
+          </Text>
+          <Text
+            variant="caption"
+            color={theme.colors.textMuted}
+            numberOfLines={1}
+            ellipsizeMode="middle">
+            {station.address}
+          </Text>
+        </View>
       </View>
 
       {confirming ? (
@@ -208,6 +211,7 @@ function StationRow({
 }
 
 const styles = StyleSheet.create({
-  rowText: {minWidth: 0, gap: 2},
+  rowHeader: {flexDirection: 'row', alignItems: 'center', gap: 12},
+  rowText: {flex: 1, minWidth: 0, gap: 2},
   confirmButtons: {flexDirection: 'row', justifyContent: 'flex-end', gap: 8},
 });

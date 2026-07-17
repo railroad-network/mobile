@@ -17,7 +17,7 @@ import {useState} from 'react';
 import {Pressable, ScrollView, StyleSheet, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
-import {Badge, Button, Card, Field, Heading, Text} from '../../components';
+import {Badge, Button, Card, Field, Heading, StationAvatar, Text} from '../../components';
 import {useTheme} from '../../theme';
 import type {MainStackScreenProps} from '../../navigation/types';
 import {
@@ -204,6 +204,7 @@ function StationRow({
       accessibilityRole="button"
       accessibilityLabel={`Pair with ${station.name}`}>
       <Card style={styles.row}>
+        <StationAvatar size={40} radius={11} />
         <View style={styles.rowText}>
           <Text variant="label" color={theme.colors.text} numberOfLines={1}>
             {station.name}

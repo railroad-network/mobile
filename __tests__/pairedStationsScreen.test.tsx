@@ -114,6 +114,15 @@ describe('Paired stations screen', () => {
     // A station with no captured name falls back to its shortened address.
     expect(text).toContain('192.168.1.20');
     expect(text).toContain('rrn1forest');
+    // Each station row leads with a station avatar (StarMark tile), not a
+    // person identicon.
+    const avatars = tree.root.findAll(
+      node =>
+        typeof node.type === 'string' &&
+        node.props.accessibilityLabel === 'Station' &&
+        node.props.accessibilityRole === 'image',
+    );
+    expect(avatars).toHaveLength(2);
   });
 
   it('unpairs only after a confirm step, targeting the address', async () => {

@@ -124,6 +124,14 @@ describe('Discovery screen', () => {
     expect(text).toContain('7500');
     expect(text).toContain('v0.1.0');
     expect(text).toContain('1 station found');
+    // The row leads with a station avatar (StarMark tile).
+    const avatars = tree.root.findAll(
+      node =>
+        typeof node.type === 'string' &&
+        node.props.accessibilityLabel === 'Station' &&
+        node.props.accessibilityRole === 'image',
+    );
+    expect(avatars).toHaveLength(1);
   });
 
   it('pluralises the count', () => {
