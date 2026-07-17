@@ -25,6 +25,12 @@ import {Discovery} from '../screens/main/Discovery';
 import {Pairing} from '../screens/main/Pairing';
 import {PairedStations} from '../screens/main/PairedStations';
 import {RecoveryNavigator} from '../screens/recovery/RecoveryNavigator';
+import {
+  HomeTabIcon,
+  SendTabIcon,
+  HistoryTabIcon,
+  SettingsTabIcon,
+} from '../components/icons/TabIcons';
 import type {
   MainStackParamList,
   MainTabParamList,
@@ -84,10 +90,26 @@ function MainTabs() {
           borderTopColor: theme.colors.border,
         },
       }}>
-      <MainTab.Screen name="Home" component={Home} />
-      <MainTab.Screen name="Send" component={Send} />
-      <MainTab.Screen name="History" component={History} />
-      <MainTab.Screen name="Settings" component={Settings} />
+      <MainTab.Screen
+        name="Home"
+        component={Home}
+        options={{tabBarIcon: HomeTabIcon}}
+      />
+      <MainTab.Screen
+        name="Send"
+        component={Send}
+        options={{tabBarIcon: SendTabIcon}}
+      />
+      <MainTab.Screen
+        name="History"
+        component={History}
+        options={{tabBarIcon: HistoryTabIcon}}
+      />
+      <MainTab.Screen
+        name="Settings"
+        component={Settings}
+        options={{tabBarIcon: SettingsTabIcon}}
+      />
     </MainTab.Navigator>
   );
 }
