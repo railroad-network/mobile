@@ -348,4 +348,59 @@ describe('StationClient', () => {
     const err = await clientWith(store, fetchImpl).whoami().catch(e => e);
     expect(err.kind).toBe('malformed');
   });
+
+  test('subscribe posts to /subscribe with the cursor and returns events', async () => {
+    const store = await pairedStore();
+    let seenUrl = '';
+    let seenMethod = '';
+    let seenParams = '';
+    const events = [
+      {
+        id: 5,
+        kind: 'proposal_received',
+        transaction: {
+          id: 'tx1',
+          counterparty_address: 'rrn1x',
+          direction: 'in',
+          amount_centi: 500,
+          state: 'pending',
+          timestamp: 1,
+          nonce: 0,
+        },
+      },
+    ];
+    const fetchImpl = (async (url: string, init: {body: Uint8Array}) => {
+      seenUrl = url;
+      const req = readRequest(init.body);
+      seenMethod = req.method;
+      seenParams = req.params;
+      return okResponse(
+        stationReply(init.body, () => ({
+          result: JSON.stringify({last_seen_event_id: 5, events}),
+        })),
+      );
+    }) as unknown as typeof fetch;
+
+    const result = await clientWith(store, fetchImpl).subscribe(3);
+    expect(seenUrl).toBe('http://192.168.1.5:7500/subscribe');
+    expect(seenMethod).toBe('subscribe');
+    expect(JSON.parse(seenParams)).toEqual({last_seen_event_id: 3});
+    expect(result.lastSeenEventId).toBe(5);
+    expect(result.events).toHaveLength(1);
+    expect(result.events[0].kind).toBe('proposal_received');
+  });
+
+  test('an empty subscribe heartbeat carries no events but advances the cursor', async () => {
+    const store = await pairedStore();
+    const fetchImpl = (async (_url: string, init: {body: Uint8Array}) =>
+      okResponse(
+        stationReply(init.body, () => ({
+          result: JSON.stringify({last_seen_event_id: 7, events: []}),
+        })),
+      )) as unknown as typeof fetch;
+
+    const result = await clientWith(store, fetchImpl).subscribe(7);
+    expect(result.events).toEqual([]);
+    expect(result.lastSeenEventId).toBe(7);
+  });
 });

@@ -42,6 +42,8 @@ import {updatePairedStationHost} from './pairedStation';
 const ENVELOPE_VERSION = 1;
 /** The station's authenticated-channel route. */
 const RPC_PATH = '/rpc';
+/** The station's long-poll subscribe route (T1.3.5). */
+const SUBSCRIBE_PATH = '/subscribe';
 /** Length of an Ed25519 signature, in bytes. */
 const SIG_LEN = 64;
 /** Length of the big-endian u32 payload-length prefix. */
@@ -52,6 +54,14 @@ const LEN_PREFIX = 4;
  * on the local network; a station silent this long is unreachable, not slow.
  */
 const REQUEST_TIMEOUT_MS = 10_000;
+
+/**
+ * How long to wait on a `/subscribe` long-poll before giving up. The station
+ * holds it open up to ~30s (its `subscribe_hold`), so this must exceed that —
+ * the client only aborts when the station is truly gone, not on a normal empty
+ * heartbeat.
+ */
+const SUBSCRIBE_TIMEOUT_MS = 35_000;
 
 /** Why a channel request did not return a result. */
 export type StationErrorKind =
@@ -159,6 +169,28 @@ export class StationClient {
   }
 
   /**
+   * `subscribe` — the long-poll for push updates (T1.3.5). Sends the device's
+   * cursor (`lastSeen`, a log seq); the station returns the events after it that
+   * concern this member, holding the connection open up to ~30s if there are
+   * none (an empty heartbeat that still advances the cursor). Pass a `signal` to
+   * abort the in-flight poll promptly (e.g. when the app backgrounds).
+   */
+  async subscribe(
+    lastSeen: number,
+    opts: {signal?: AbortSignal} = {},
+  ): Promise<{lastSeenEventId: number; events: StationEvent[]}> {
+    const result = await this.call(
+      'subscribe',
+      {last_seen_event_id: lastSeen},
+      {path: SUBSCRIBE_PATH, timeoutMs: SUBSCRIBE_TIMEOUT_MS, signal: opts.signal},
+    );
+    const lastSeenEventId =
+      typeof result.last_seen_event_id === 'number' ? result.last_seen_event_id : lastSeen;
+    const events = Array.isArray(result.events) ? (result.events as StationEvent[]) : [];
+    return {lastSeenEventId, events};
+  }
+
+  /**
    * Submits a mobile-signed record (a proposal or confirmation) over the write
    * path. `field` is the station's params field (`signed_proposal` /
    * `signed_confirmation`); `canonicalPayload` is the record's canonical dCBOR
@@ -188,6 +220,7 @@ export class StationClient {
   private async call(
     method: string,
     params: unknown,
+    opts: {path?: string; timeoutMs?: number; signal?: AbortSignal} = {},
   ): Promise<Record<string, unknown>> {
     const endpoint = await resolveEndpoint(this.stationAddress, this.store);
     if (isResolveError(endpoint)) {
@@ -209,7 +242,13 @@ export class StationClient {
     const frame = frameWithSig(payload, signature);
     const sealed = await seal(this.stationKey, frame);
 
-    const replyBytes = await this.post(endpoint.baseUrl, sealed);
+    const replyBytes = await this.post(
+      endpoint.baseUrl,
+      sealed,
+      opts.path ?? RPC_PATH,
+      opts.timeoutMs ?? REQUEST_TIMEOUT_MS,
+      opts.signal,
+    );
     const reply = await this.openReply(replyBytes, nonce);
 
     // A successful round-trip confirms the host hint is good; keep it fresh (a
@@ -256,13 +295,26 @@ export class StationClient {
     return canonicalBytes(envelope);
   }
 
-  /** POSTs the sealed request; returns the sealed reply bytes or throws. */
-  private async post(baseUrl: string, sealed: Uint8Array): Promise<Uint8Array> {
+  /** POSTs the sealed request to `path`; returns the sealed reply bytes or throws. */
+  private async post(
+    baseUrl: string,
+    sealed: Uint8Array,
+    path: string,
+    timeoutMs: number,
+    externalSignal?: AbortSignal,
+  ): Promise<Uint8Array> {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    // An external abort (e.g. the app backgrounding) cancels the in-flight poll
+    // immediately rather than waiting out the timeout.
+    const onExternalAbort = () => controller.abort();
+    externalSignal?.addEventListener('abort', onExternalAbort, {once: true});
+    if (externalSignal?.aborted) {
+      controller.abort();
+    }
     let res: Response;
     try {
-      res = await this.fetchImpl(`${baseUrl}${RPC_PATH}`, {
+      res = await this.fetchImpl(`${baseUrl}${path}`, {
         method: 'POST',
         headers: {'Content-Type': 'application/octet-stream'},
         body: sealed as unknown as BodyInit_,
@@ -276,6 +328,7 @@ export class StationClient {
       );
     } finally {
       clearTimeout(timer);
+      externalSignal?.removeEventListener('abort', onExternalAbort);
     }
 
     if (!res.ok) {
@@ -353,6 +406,31 @@ export interface StationTransactionRow {
   confirmed_at?: number;
   settled_at?: number;
   nonce: number;
+}
+
+/**
+ * A push-event kind (T1.3.5). The full set is the station's wire contract; only
+ * the first four have a live source in M1.3 — the rest arrive with later
+ * milestones and are here so the router does not choke on one it does not know.
+ */
+export type StationEventKind =
+  | 'proposal_received'
+  | 'confirmation_received'
+  | 'settlement'
+  | 'cancellation'
+  | 'vouch_received'
+  | 'listing_match'
+  | 'governance_proposal'
+  | 'vote_needed';
+
+/** One push event from the station's subscribe long-poll (T1.3.5). */
+export interface StationEvent {
+  /** The event id — a monotonic log seq; the device's cursor is the highest seen. */
+  id: number;
+  /** What happened. */
+  kind: StationEventKind;
+  /** The affected transaction, member-relative (same shape as the read view). */
+  transaction: StationTransactionRow;
 }
 
 /** The station's reply shape (parsed from the JSON reply payload). */

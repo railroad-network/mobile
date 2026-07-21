@@ -41,6 +41,13 @@ export const SecureStoreKeys = {
    * persist to survive an app restart. Non-secret (a counter, not key material);
    * saved without a biometric gate. See {@link network/StationClient}. */
   STATION_NONCES: 'rrn.station.nonces',
+  /** Per-station push-event cursor for the subscribe long-poll (T1.3.5): a JSON
+   * map of station address → the highest event id (log seq) this device has
+   * processed. Sent as `last_seen_event_id` each subscribe so the station returns
+   * only newer events; persisted so a restart resumes where it left off rather
+   * than replaying or missing. Non-secret; saved without a biometric gate. See
+   * {@link network/stationSubscription}. */
+  STATION_CURSORS: 'rrn.station.cursors',
 } as const;
 
 /** A value from {@link SecureStoreKeys}. */

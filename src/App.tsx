@@ -9,6 +9,7 @@ import {NavigationContainer} from '@react-navigation/native';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 
 import {RootNavigator} from './navigation/RootNavigator';
+import {StationSubscription} from './network/useStationSubscription';
 import {ThemeProvider, useTheme} from './theme';
 import {WalletSessionProvider} from './wallet/WalletSession';
 
@@ -40,6 +41,8 @@ function AppContent() {
       <NavigationContainer>
         <RootNavigator />
       </NavigationContainer>
+      {/* Runs the subscribe long-poll while unlocked + paired (T1.3.5). */}
+      <StationSubscription />
     </>
   );
 }
