@@ -48,6 +48,24 @@ export const SecureStoreKeys = {
    * than replaying or missing. Non-secret; saved without a biometric gate. See
    * {@link network/stationSubscription}. */
   STATION_CURSORS: 'rrn.station.cursors',
+  /** Local notification preferences (T1.3.6): a JSON object holding the master
+   * on/off, the opt-in background-sync flag, and a per-event-kind allow map.
+   * Non-secret (user preferences); saved without a biometric gate. See
+   * {@link notifications/notificationPrefs}. */
+  NOTIFICATION_PREFS: 'rrn.notifications.prefs',
+  /** The self-contained wallet blob re-encrypted under {@link BG_SYNC_SECRET}
+   * for background sync (T1.3.6). Provisioned only when the user opts into
+   * background sync; stored at device-unlock accessibility (no biometric gate)
+   * so a headless background task can open it without a passphrase prompt. The
+   * secret still never leaves Rust — this is `saveWalletToBytes` output under a
+   * random secret, not raw key material. Cleared when background sync is turned
+   * off, on factory reset, or when the last station is unpaired. See
+   * {@link network/backgroundCredential}. */
+  BG_SYNC_BLOB: 'rrn.bgsync.blob',
+  /** The random high-entropy secret that decrypts {@link BG_SYNC_BLOB} (T1.3.6).
+   * Stored alongside it at device-unlock accessibility; the pair together is a
+   * background-usable signing wallet. Cleared with the blob. */
+  BG_SYNC_SECRET: 'rrn.bgsync.secret',
 } as const;
 
 /** A value from {@link SecureStoreKeys}. */

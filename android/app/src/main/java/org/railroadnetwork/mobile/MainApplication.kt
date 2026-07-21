@@ -21,6 +21,9 @@ class MainApplication : Application(), ReactApplication {
           // implicitly on iOS. Without it every crypto call fails at startup with
           // "TurboModuleRegistry.getEnforcing(...): 'RrnMobileFfi' could not be found".
           add(RrnMobileFfiPackage())
+          // Battery-optimization exemption request for background sync (T1.3.6);
+          // a small local module, not an autolinked npm package.
+          add(BatteryOptimizationPackage())
         },
     )
   }

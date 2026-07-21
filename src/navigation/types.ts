@@ -69,6 +69,8 @@ export type MainStackParamList = {
   Discovery: undefined;
   /** The stations this device is paired with, and unpairing them (T1.3.3). */
   PairedStations: undefined;
+  /** Local notification + background-sync preferences (T1.3.6). */
+  NotificationSettings: undefined;
   /**
    * Pair with a station, discovered or hand-typed (T1.3.3).
    *

@@ -24,6 +24,7 @@ import {FactoryReset} from '../screens/main/FactoryReset';
 import {Discovery} from '../screens/main/Discovery';
 import {Pairing} from '../screens/main/Pairing';
 import {PairedStations} from '../screens/main/PairedStations';
+import {NotificationSettings} from '../screens/main/NotificationSettings';
 import {Lock} from '../screens/main/Lock';
 import {RecoveryNavigator} from '../screens/recovery/RecoveryNavigator';
 import {
@@ -134,6 +135,7 @@ function MainNavigator() {
       <MainStack.Screen name="Discovery" component={Discovery} />
       <MainStack.Screen name="Pairing" component={Pairing} />
       <MainStack.Screen name="PairedStations" component={PairedStations} />
+      <MainStack.Screen name="NotificationSettings" component={NotificationSettings} />
     </MainStack.Navigator>
   );
 }

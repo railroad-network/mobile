@@ -24,6 +24,7 @@ import {loadHeldShards} from '../../wallet/heldShards';
 import {loadPairedStations, type PairedStation} from '../../network/pairedStation';
 import {loadProfile, saveProfile} from '../../wallet/profile';
 import {loadRecoveryConfig, type RecoveryConfig} from '../../wallet/recoveryConfig';
+import {getPrefs, type NotificationPrefs} from '../../notifications/notificationPrefs';
 import {setBiometricUnlock} from '../../wallet/Wallet';
 import {useTheme, useThemeMode, type Theme, type ThemeMode} from '../../theme';
 import type {MainStackParamList} from '../../navigation/types';
@@ -52,6 +53,7 @@ export function Settings() {
   const [biometric, setBiometric] = useState(true);
   const [nickname, setNickname] = useState('');
   const [savedNickname, setSavedNickname] = useState('');
+  const [notifPrefs, setNotifPrefs] = useState<NotificationPrefs | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -65,6 +67,9 @@ export function Settings() {
       loadPairedStations()
         .then(s => active && setPaired(s))
         .catch(() => active && setPaired([]));
+      getPrefs()
+        .then(p => active && setNotifPrefs(p))
+        .catch(() => {});
       loadProfile()
         .then(p => {
           if (!active) return;
@@ -107,6 +112,15 @@ export function Settings() {
       : `${recovery.threshold}-of-${recovery.total} circle · ${
           recovery.holders.filter(h => h.delivered).length
         } delivered`;
+
+  const notificationsSubtitle =
+    notifPrefs === null
+      ? 'Local alerts for ledger activity'
+      : !notifPrefs.notificationsEnabled
+        ? 'Off'
+        : notifPrefs.backgroundSyncEnabled
+          ? 'On · background sync'
+          : 'On';
 
   const pairedSubtitle =
     paired.length === 0
@@ -215,6 +229,15 @@ export function Settings() {
           onPress={() =>
             navigation.navigate(paired.length > 0 ? 'PairedStations' : 'Discovery')
           }
+        />
+      </Group>
+
+      <Group theme={theme} label="Notifications">
+        <NavRow
+          theme={theme}
+          title="Notifications"
+          subtitle={notificationsSubtitle}
+          onPress={() => navigation.navigate('NotificationSettings')}
         />
       </Group>
 

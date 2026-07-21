@@ -1,6 +1,16 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Post local notifications for ledger events (T1.3.6). Runtime-requested on
+         Android 13+ (API 33) when the user turns notifications on; declared here
+         so the request is permitted. notifee also declares it, but we keep it
+         explicit rather than rely on manifest merge. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Background sync (T1.3.6) opens a network request to the paired station
+         from a background task; aggressive OEM battery optimization blocks that
+         network. This lets the app show the system "allow unrestricted background"
+         dialog when the user enables background sync. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <!-- Camera is used to scan QR codes (recovery shards, payment requests).
          `required=false` so the app still installs on camera-less devices; the
          scanner degrades to its no-device fallback. -->

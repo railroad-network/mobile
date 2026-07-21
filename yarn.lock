@@ -1925,6 +1925,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@notifee/react-native@npm:^9.1.8":
+  version: 9.1.8
+  resolution: "@notifee/react-native@npm:9.1.8"
+  peerDependencies:
+    react-native: "*"
+  checksum: 10/7c5237fba99906d8da02146afbfe8ff6de9f4047eecd806dea889bfd76b1cfe7ad3c181881bf2729aa348b83e035f4d02cfc3ac8eb8c4ba3a4415b445b439c38
+  languageName: node
+  linkType: hard
+
 "@react-native-clipboard/clipboard@npm:^1.16.3":
   version: 1.16.3
   resolution: "@react-native-clipboard/clipboard@npm:1.16.3"
@@ -2561,6 +2570,13 @@ __metadata:
   peerDependencies:
     react: ^18 || ^19
   checksum: 10/0837c176b6afb01e3632010bbd8bdfeee7f46c4a25a50ed2ba9ddddce11c34431161d80dd8e53a2f55190c2313bbfb22a84a77308e6ccf29877b4818de68c4b3
+  languageName: node
+  linkType: hard
+
+"@transistorsoft/background-fetch-types@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "@transistorsoft/background-fetch-types@npm:1.0.0"
+  checksum: 10/182624bda99f61fff6627018f1ac3df7a0f62f34d225e9cd2226900a02b80b8a7fd7ccd8f1b3e50a2b04e89c8e8c0da58878d949e02cd4fe9b217bd357a7ea98
   languageName: node
   linkType: hard
 
@@ -7990,6 +8006,7 @@ __metadata:
     "@babel/core": "npm:^7.25.2"
     "@babel/preset-env": "npm:^7.25.3"
     "@babel/runtime": "npm:^7.25.0"
+    "@notifee/react-native": "npm:^9.1.8"
     "@react-native-clipboard/clipboard": "npm:^1.16.3"
     "@react-native-community/cli": "npm:20.1.0"
     "@react-native-community/cli-platform-android": "npm:20.1.0"
@@ -8016,6 +8033,7 @@ __metadata:
     prettier: "npm:2.8.8"
     react: "npm:19.2.3"
     react-native: "npm:0.86.0"
+    react-native-background-fetch: "npm:^4.4.2"
     react-native-keychain: "npm:^10.0.0"
     react-native-nitro-image: "npm:^0.15.1"
     react-native-nitro-modules: "npm:^0.36.1"
@@ -8090,6 +8108,20 @@ __metadata:
   version: 19.2.7
   resolution: "react-is@npm:19.2.7"
   checksum: 10/ae0d3ae7638aa2fa2a82a78a817daf2806e57fa0aef357d07e1e8d1e9a301902e5967168e9334b5816db0df8fa980a725cd57569ba5a9e6e76a71e117b18be04
+  languageName: node
+  linkType: hard
+
+"react-native-background-fetch@npm:^4.4.2":
+  version: 4.4.2
+  resolution: "react-native-background-fetch@npm:4.4.2"
+  dependencies:
+    "@transistorsoft/background-fetch-types": "npm:^1.0.0"
+  peerDependencies:
+    "@expo/config-plugins": ">=10.0.0"
+  peerDependenciesMeta:
+    "@expo/config-plugins":
+      optional: true
+  checksum: 10/a7487bbc92a69e53550a1accafa2d7c0781c05c099301a5db7a70f8af015d05f021b2cadb045f3bbba2305a79c990dbc5c4d184d0cb7e187a3cde29cce4af045
   languageName: node
   linkType: hard
 
