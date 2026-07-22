@@ -131,9 +131,13 @@ export class StationClient {
     this.stationKey = key;
   }
 
-  /** `whoami` — the station's own address (a cheap reachability probe). */
-  async whoami(): Promise<{address: string}> {
-    return this.call('whoami', {}) as Promise<{address: string}>;
+  /**
+   * `whoami` — the station's own address (a cheap reachability probe), plus the
+   * `community` a member stamps into a vouch (T1.4.3; `undefined` from a station
+   * that predates the field).
+   */
+  async whoami(): Promise<{address: string; community?: string}> {
+    return this.call('whoami', {}) as Promise<{address: string; community?: string}>;
   }
 
   /** `balance` — the signed-integer centi balance of `address` (defaults to us). */
@@ -199,8 +203,8 @@ export class StationClient {
    * `frame_signed_record`) and sends them hex-encoded.
    */
   async submitSignedRecord(
-    method: 'submit_proposal' | 'submit_confirmation',
-    field: 'signed_proposal' | 'signed_confirmation',
+    method: 'submit_proposal' | 'submit_confirmation' | 'submit_vouch',
+    field: 'signed_proposal' | 'signed_confirmation' | 'signed_vouch',
     canonicalPayload: Uint8Array,
     signature: Uint8Array,
   ): Promise<Record<string, unknown>> {
@@ -210,6 +214,26 @@ export class StationClient {
       signature,
     );
     return this.call(method, {[field]: bytesToHex(frame)});
+  }
+
+  /**
+   * Submits a mobile-signed vouch (T1.4.3). `canonicalPayload`/`signature` come
+   * from `createSignedVouch`; the station verifies the voucher is this paired
+   * mobile, appends the vouch, and returns its content-address `vouch_id`.
+   */
+  async submitVouch(
+    canonicalPayload: Uint8Array,
+    signature: Uint8Array,
+  ): Promise<{vouchId: string}> {
+    const result = await this.submitSignedRecord(
+      'submit_vouch',
+      'signed_vouch',
+      canonicalPayload,
+      signature,
+    );
+    return {
+      vouchId: typeof result.vouch_id === 'string' ? result.vouch_id : '',
+    };
   }
 
   /**
