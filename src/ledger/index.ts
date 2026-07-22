@@ -21,6 +21,7 @@ export {
   SETTLEMENT_WINDOW_SECS,
   type StateBadge,
 } from './txDisplay';
+export {encodeAddressQr, parseAddressQr, type ScannedAddress} from './addressQr';
 export {outboxCount} from './outbox';
 export {clearDecisions, getDecision, type CancelReason, type Decision} from './decisions';
 export {
