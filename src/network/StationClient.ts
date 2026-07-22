@@ -447,14 +447,36 @@ export type StationEventKind =
   | 'governance_proposal'
   | 'vote_needed';
 
-/** One push event from the station's subscribe long-poll (T1.3.5). */
+/** The display payload of a `vouch_received` event (T1.4.1). */
+export interface StationVouchRow {
+  /** Content address: hex of the Blake3 hash of the signed canonical bytes. */
+  vouch_id: string;
+  /** The voucher's bech32m `rrn1…` address. */
+  voucher_address: string;
+  /** The community the vouch was stamped into. */
+  community: string;
+  /** The voucher's free-text statement about the subject. */
+  statement: string;
+  /** Reputation staked, in centipoints. */
+  stake_centi: number;
+  /** Unix seconds when the vouch was issued. */
+  issued_at: number;
+}
+
+/**
+ * One push event from the station's subscribe long-poll (T1.3.5). Exactly one
+ * of the payload fields is present: `transaction` for the four ledger kinds,
+ * `vouch` for a `vouch_received` (T1.4.1).
+ */
 export interface StationEvent {
   /** The event id — a monotonic log seq; the device's cursor is the highest seen. */
   id: number;
   /** What happened. */
   kind: StationEventKind;
   /** The affected transaction, member-relative (same shape as the read view). */
-  transaction: StationTransactionRow;
+  transaction?: StationTransactionRow;
+  /** The vouch, for a `vouch_received` event. */
+  vouch?: StationVouchRow;
 }
 
 /** The station's reply shape (parsed from the JSON reply payload). */

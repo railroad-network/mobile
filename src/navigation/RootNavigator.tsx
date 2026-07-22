@@ -12,6 +12,8 @@ import {GenerateWallet} from '../screens/onboarding/GenerateWallet';
 import {WalletReady} from '../screens/onboarding/WalletReady';
 import {Home} from '../screens/main/Home';
 import {Send} from '../screens/main/Send';
+import {Community} from '../screens/main/Community';
+import {Vouch} from '../screens/main/Vouch';
 import {History} from '../screens/main/History';
 import {Settings} from '../screens/main/Settings';
 import {HeldShards} from '../screens/main/HeldShards';
@@ -30,6 +32,7 @@ import {RecoveryNavigator} from '../screens/recovery/RecoveryNavigator';
 import {
   HomeTabIcon,
   SendTabIcon,
+  CommunityTabIcon,
   HistoryTabIcon,
   SettingsTabIcon,
 } from '../components/icons/TabIcons';
@@ -77,7 +80,10 @@ function OnboardingNavigator() {
   );
 }
 
-/** Bottom-tab main nav: Home / Send / History / Settings (T1.2.1's confirmed 4-tab scope). */
+/**
+ * Bottom-tab main nav: Home / Send / Community / History / Settings (T1.2.1's
+ * confirmed 4-tab scope, plus the Community tab added for M1.4's vouching flow).
+ */
 function MainTabs() {
   const theme = useTheme();
 
@@ -101,6 +107,11 @@ function MainTabs() {
         name="Send"
         component={Send}
         options={{tabBarIcon: SendTabIcon}}
+      />
+      <MainTab.Screen
+        name="Community"
+        component={Community}
+        options={{tabBarIcon: CommunityTabIcon}}
       />
       <MainTab.Screen
         name="History"
@@ -136,6 +147,7 @@ function MainNavigator() {
       <MainStack.Screen name="Pairing" component={Pairing} />
       <MainStack.Screen name="PairedStations" component={PairedStations} />
       <MainStack.Screen name="NotificationSettings" component={NotificationSettings} />
+      <MainStack.Screen name="Vouch" component={Vouch} />
     </MainStack.Navigator>
   );
 }

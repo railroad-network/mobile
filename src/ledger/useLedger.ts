@@ -29,6 +29,7 @@ import {
 } from '../network/StationClient';
 import {createConfirmation} from '../wallet/confirmation';
 import {createSendProposal} from '../wallet/proposal';
+import {createSignedVouch} from '../wallet/vouch';
 import {applyDecisions, recordDecision, type Decision} from './decisions';
 import {shortAddress} from './format';
 import {addToOutbox, getOutbox} from './outbox';
@@ -327,6 +328,56 @@ export function useConfirmProposal(): (proposalId: string) => Promise<WriteResul
       }
     },
     [client, wallet, record],
+  );
+}
+
+/**
+ * Returns a function that vouches for a subject: it reads the station's
+ * community from `whoami`, builds and signs the vouch attestation on-device
+ * ({@link createSignedVouch}), and transmits it over the authenticated channel
+ * (T1.4.1). Online-only like a send — the community is stamped into the signed
+ * bytes, so it must be the station's authoritative value at vouch time; if the
+ * station is unreachable nothing is queued and the user retries.
+ */
+export function useSubmitVouch(): (
+  subjectAddress: string,
+  statement: string,
+  stakeCenti: number,
+) => Promise<WriteResult<{vouchId: string; community: string}>> {
+  const client = useStationClient();
+  const {wallet} = useWalletSession();
+  return useCallback(
+    async (subjectAddress, statement, stakeCenti) => {
+      if (client === null || wallet === null) {
+        return {ok: false, error: 'locked', message: 'Unlock your wallet and pair a station.'};
+      }
+      try {
+        const {community} = await client.whoami();
+        if (community === undefined) {
+          // A station that predates the community field cannot accept a vouch
+          // that stamps one; surface it as a station-side rejection.
+          return {
+            ok: false,
+            error: 'rejected',
+            message: 'Your station is too old to accept vouches — update it first.',
+          };
+        }
+        const issuedAt = Math.floor(Date.now() / 1000);
+        const vouch = await createSignedVouch(
+          wallet,
+          subjectAddress,
+          community,
+          statement,
+          stakeCenti,
+          issuedAt,
+        );
+        const {vouchId} = await client.submitVouch(vouch.payloadBytes, vouch.signature);
+        return {ok: true, vouchId: vouchId.length > 0 ? vouchId : vouch.vouchId, community};
+      } catch (e) {
+        return asWriteError(e);
+      }
+    },
+    [client, wallet],
   );
 }
 

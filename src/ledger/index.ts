@@ -36,6 +36,7 @@ export {
   useRecordDecision,
   useRefreshLedger,
   useSendProposal,
+  useSubmitVouch,
   type Connectivity,
   type WriteResult,
 } from './useLedger';

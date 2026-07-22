@@ -2,9 +2,15 @@
  * @format
  *
  * Event → notification mapping (T1.3.6): the copy built from a transaction row,
- * the per-kind preference gate, and the kinds that never notify.
+ * the per-kind preference gate, and the kinds that never notify. T1.4.1 adds
+ * the vouch_received copy, built from the event's vouch row.
  */
-import type {StationEvent, StationEventKind, StationTransactionRow} from '../src/network/StationClient';
+import type {
+  StationEvent,
+  StationEventKind,
+  StationTransactionRow,
+  StationVouchRow,
+} from '../src/network/StationClient';
 import {buildEventNotification} from '../src/notifications/eventNotification';
 import {DEFAULT_PREFS, type NotificationPrefs} from '../src/notifications/notificationPrefs';
 
@@ -23,6 +29,22 @@ function row(over: Partial<StationTransactionRow> = {}): StationTransactionRow {
 
 function event(kind: StationEventKind, over: Partial<StationTransactionRow> = {}): StationEvent {
   return {id: 7, kind, transaction: row(over)};
+}
+
+function vouchEvent(over: Partial<StationVouchRow> = {}): StationEvent {
+  return {
+    id: 9,
+    kind: 'vouch_received',
+    vouch: {
+      vouch_id: 'ab'.repeat(32),
+      voucher_address: 'rrn1voucheraddressxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      community: 'rrn-phase0',
+      statement: 'I know them in person',
+      stake_centi: 150,
+      issued_at: 1_700_000_000,
+      ...over,
+    },
+  };
 }
 
 const allOn: NotificationPrefs = {
@@ -81,10 +103,36 @@ describe('buildEventNotification', () => {
     const prefs: NotificationPrefs = {
       notificationsEnabled: true,
       backgroundSyncEnabled: false,
-      kinds: {vouch_received: true, listing_match: true, governance_proposal: true, vote_needed: true},
+      kinds: {listing_match: true, governance_proposal: true, vote_needed: true},
     };
-    for (const kind of ['vouch_received', 'listing_match', 'governance_proposal', 'vote_needed'] as const) {
+    for (const kind of ['listing_match', 'governance_proposal', 'vote_needed'] as const) {
       expect(buildEventNotification(event(kind), prefs)).toBeNull();
     }
+  });
+
+  test('vouch_received builds a notification from the voucher and statement', () => {
+    const prefs = {...DEFAULT_PREFS, kinds: {}}; // vouch_received defaults on
+    const n = buildEventNotification(vouchEvent(), prefs);
+    expect(n).not.toBeNull();
+    expect(n!.id).toBe('event-9');
+    expect(n!.title).toBe('Someone vouched for you');
+    expect(n!.body).toContain('rrn1vouch…'); // shortened
+    expect(n!.body).toContain('I know them in person');
+  });
+
+  test('vouch_received with an empty statement still reads sensibly', () => {
+    const n = buildEventNotification(vouchEvent({statement: ''}), {...DEFAULT_PREFS, kinds: {}});
+    expect(n!.body).toContain('vouched for you');
+  });
+
+  test('an event missing its payload row never notifies', () => {
+    // A vouch event without a vouch row, and a ledger event without a
+    // transaction row: malformed on the wire, dropped rather than crashed on.
+    expect(
+      buildEventNotification({id: 1, kind: 'vouch_received'}, {...DEFAULT_PREFS, kinds: {}}),
+    ).toBeNull();
+    expect(
+      buildEventNotification({id: 2, kind: 'proposal_received'}, {...DEFAULT_PREFS, kinds: {}}),
+    ).toBeNull();
   });
 });

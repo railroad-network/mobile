@@ -40,6 +40,8 @@ export type RecoveryScreenProps<T extends keyof RecoveryStackParamList> =
 export type MainTabParamList = {
   Home: undefined;
   Send: undefined;
+  /** The community surfaces: vouching now, more as M1.4+ specs land. */
+  Community: undefined;
   History: undefined;
   Settings: undefined;
 };
@@ -71,6 +73,8 @@ export type MainStackParamList = {
   PairedStations: undefined;
   /** Local notification + background-sync preferences (T1.3.6). */
   NotificationSettings: undefined;
+  /** Vouch for someone: scan their address QR, review, sign & submit (T1.4.1). */
+  Vouch: undefined;
   /**
    * Pair with a station, discovered or hand-typed (T1.3.3).
    *

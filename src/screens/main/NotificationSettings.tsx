@@ -46,6 +46,7 @@ const KIND_LABEL: Record<string, string> = {
   confirmation_received: 'Payments confirmed',
   settlement: 'Payments settled',
   cancellation: 'Payments cancelled',
+  vouch_received: 'Someone vouches for you',
 };
 
 export function NotificationSettings({navigation}: MainStackScreenProps<'NotificationSettings'>) {

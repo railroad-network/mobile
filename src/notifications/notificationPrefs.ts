@@ -13,9 +13,11 @@
  *     in M1.3 are meaningful; the rest arrive with later milestones.
  *
  * Defaults (decided with the user): notify on `proposal_received` (needs the user
- * to act) and `settlement` (money settled); stay quiet on `confirmation_received`
- * and `cancellation` (informational, visible in-app). The master switch defaults
- * on so enabling background sync alone is enough to get the intended alerts.
+ * to act), `settlement` (money settled), and `vouch_received` (rare and socially
+ * meaningful — someone staked reputation on you); stay quiet on
+ * `confirmation_received` and `cancellation` (informational, visible in-app). The
+ * master switch defaults on so enabling background sync alone is enough to get
+ * the intended alerts.
  *
  * Persisted through {@link SecureStore} like {@link network/stationCursor}: these
  * are preferences, not secrets, so they are stored without a biometric gate. A
@@ -32,6 +34,7 @@ export const NOTIFIABLE_KINDS: readonly StationEventKind[] = [
   'confirmation_received',
   'settlement',
   'cancellation',
+  'vouch_received',
 ];
 
 /** Per-kind notification allow map. */
@@ -47,13 +50,13 @@ export interface NotificationPrefs {
   kinds: KindPrefs;
 }
 
-/** Per-kind defaults: proposal + settlement on, the rest off. */
+/** Per-kind defaults: proposal + settlement + vouch on, the rest off. */
 const DEFAULT_KINDS: Record<StationEventKind, boolean> = {
   proposal_received: true,
   confirmation_received: false,
   settlement: true,
   cancellation: false,
-  vouch_received: false,
+  vouch_received: true,
   listing_match: false,
   governance_proposal: false,
   vote_needed: false,
