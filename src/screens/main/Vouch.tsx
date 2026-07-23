@@ -399,19 +399,23 @@ function VouchSuccess({
 
       <Animated.View
         style={{gap: theme.spacing.lg, opacity: progress, transform: [{translateY: rise}]}}>
-        <View style={styles.pair}>
+        <View style={styles.chain}>
           <View style={styles.party}>
-            <Identicon seed={selfSeed} size={48} />
+            <Identicon seed={selfSeed} size={52} />
             <Text variant="body" color={theme.colors.text}>
               You
             </Text>
           </View>
-          <Text variant="body" color={theme.colors.textSecondary}>
+          <Text variant="caption" color={theme.colors.textSecondary}>
             vouched for
           </Text>
           <View style={styles.party}>
-            <Identicon seed={subjectSeed} size={48} />
-            <Text variant="mono" color={theme.colors.text} numberOfLines={1}>
+            <Identicon seed={subjectSeed} size={52} />
+            <Text
+              variant="mono"
+              color={theme.colors.text}
+              numberOfLines={1}
+              style={styles.partyLabel}>
               {subjectLabel}
             </Text>
           </View>
@@ -531,6 +535,7 @@ const styles = StyleSheet.create({
   row: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12},
   rowValue: {flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1},
   centered: {textAlign: 'center'},
-  pair: {flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 14},
-  party: {alignItems: 'center', gap: 6, flexShrink: 1, maxWidth: 130},
+  chain: {alignItems: 'center', gap: 10},
+  party: {alignItems: 'center', gap: 8},
+  partyLabel: {maxWidth: 240, textAlign: 'center'},
 });
