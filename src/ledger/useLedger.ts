@@ -86,9 +86,12 @@ export const ledgerKeys = {
 };
 
 export function useIdentity(): UseQueryResult<Identity> {
+  const client = useStationClient();
   const {wallet} = useWalletSession();
   return useQuery({
-    queryKey: [...ledgerKeys.identity, wallet?.address],
+    // The client's presence is part of the key so pairing (or unpairing)
+    // refetches and fills in / drops the community line.
+    queryKey: [...ledgerKeys.identity, wallet?.address, client !== null],
     enabled: wallet !== null,
     queryFn: async (): Promise<Identity> => {
       const address = wallet!.address;
@@ -101,7 +104,16 @@ export function useIdentity(): UseQueryResult<Identity> {
       } catch {
         // No secure store (e.g. tests) — the address alone is a valid identity.
       }
-      return {address, nickname};
+      let community: string | undefined;
+      if (client !== null) {
+        try {
+          community = (await client.whoami()).community;
+        } catch {
+          // Offline or unreachable — the identity is still valid without the
+          // community line; a later refetch fills it in.
+        }
+      }
+      return {address, nickname, community};
     },
   });
 }

@@ -42,6 +42,21 @@ function tint(
   }
 }
 
+/**
+ * True when `children` is bare text: a string/number, or an array of them —
+ * which is what JSX produces for interpolations like `text{cond ? 'a' : ''}`.
+ * Such children must be wrapped in a `<Text>`, not rendered into the `View`.
+ */
+function isBareText(children: ReactNode): children is string | number | (string | number)[] {
+  if (typeof children === 'string' || typeof children === 'number') {
+    return true;
+  }
+  return (
+    Array.isArray(children) &&
+    children.every(c => typeof c === 'string' || typeof c === 'number')
+  );
+}
+
 export function Banner({variant = 'info', title, children, action}: BannerProps) {
   const {colors, spacing, radius} = useTheme();
   const {bg, border, accent} = tint(variant, colors);
@@ -62,7 +77,7 @@ export function Banner({variant = 'info', title, children, action}: BannerProps)
         {title}
       </Text>
       {children !== undefined &&
-        (typeof children === 'string' ? (
+        (isBareText(children) ? (
           <Text variant="caption" color={colors.textSecondary}>
             {children}
           </Text>
