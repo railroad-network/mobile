@@ -35,6 +35,13 @@ export const SecureStoreKeys = {
   /** Local device preferences (T1.2.8): the user's chosen nickname and whether
    * biometric unlock is enabled. Non-secret; saved without a biometric gate. */
   PROFILE: 'rrn.profile',
+  /** Local labels for people this wallet has vouched for (T1.4.5): a JSON map of
+   * subject `rrn1…` address → the nickname the voucher typed at vouch time, so
+   * the vouching browser can show a human name instead of a bare address. The
+   * label is a private display hint that never leaves the device (deliberately
+   * not part of the signed attestation); non-secret, saved without a biometric
+   * gate. See {@link wallet/vouchNicknames}. */
+  VOUCH_NICKNAMES: 'rrn.vouch.nicknames',
   /** Per-station monotonic request nonces for the authenticated channel (T1.3.4):
    * a JSON map of station address → highest nonce this device has sent. The
    * station rejects a request whose nonce is not strictly greater, so this must

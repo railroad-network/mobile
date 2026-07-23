@@ -171,16 +171,29 @@ test('a malformed stake is rejected; an empty stake means zero', async () => {
   await press(button(r, 'Review vouch'));
   expect(hasText(r, '0.00 points')).toBe(true);
   await press(button(r, 'Sign & vouch'));
-  expect(mockSubmitVouch).toHaveBeenCalledWith('rrn1subject', '', 0);
+  expect(mockSubmitVouch).toHaveBeenCalledWith('rrn1subject', '', 0, '');
 });
 
 test('the happy path submits the vouch and shows success with the community', async () => {
   const r = await renderVouch();
   await toReview(r);
   await press(button(r, 'Sign & vouch'));
-  expect(mockSubmitVouch).toHaveBeenCalledWith('rrn1subject', 'I know them', 150);
+  expect(mockSubmitVouch).toHaveBeenCalledWith('rrn1subject', 'I know them', 150, '');
   expect(hasText(r, 'Vouch recorded')).toBe(true);
   expect(hasText(r, 'rrn-phase0')).toBe(true);
+});
+
+test('a typed nickname is forwarded to the vouch submit (T1.4.5)', async () => {
+  const r = await renderVouch();
+  await type(field(r, 'Vouch for'), 'rrn1subject');
+  await press(button(r, 'Continue'));
+  await type(field(r, 'Their name (kept on your phone)'), 'Maria');
+  await type(field(r, 'Your statement'), 'I know them');
+  await type(field(r, 'Reputation to stake'), '1.50');
+  await press(button(r, 'Review vouch'));
+  await press(button(r, 'Sign & vouch'));
+  // The nickname rides along so the vouching browser can label the subject.
+  expect(mockSubmitVouch).toHaveBeenCalledWith('rrn1subject', 'I know them', 150, 'Maria');
 });
 
 test('the success screen shows the truthful vouching-chain counts', async () => {

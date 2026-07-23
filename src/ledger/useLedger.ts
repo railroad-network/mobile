@@ -27,10 +27,12 @@ import {
   type StationErrorKind,
   type StationTransactionRow,
   type StationVouchCounts,
+  type StationVouchLists,
 } from '../network/StationClient';
 import {createConfirmation} from '../wallet/confirmation';
 import {createSendProposal} from '../wallet/proposal';
 import {createSignedVouch} from '../wallet/vouch';
+import {saveVouchNickname} from '../wallet/vouchNicknames';
 import {applyDecisions, recordDecision, type Decision} from './decisions';
 import {shortAddress} from './format';
 import {addToOutbox, getOutbox} from './outbox';
@@ -85,6 +87,7 @@ export const ledgerKeys = {
   balance: ['ledger', 'balance'] as const,
   activity: ['ledger', 'activity'] as const,
   vouchCounts: ['ledger', 'vouchCounts'] as const,
+  vouches: ['ledger', 'vouches'] as const,
 };
 
 export function useIdentity(): UseQueryResult<Identity> {
@@ -187,6 +190,24 @@ export function useVouchCounts(enabled: boolean): UseQueryResult<StationVouchCou
     queryFn: (): Promise<StationVouchCounts> => client!.vouchCounts(),
     staleTime: 0,
     retry: false,
+  });
+}
+
+/**
+ * This member's vouches for the vouching browser (T1.4.5): the lists it has
+ * `given` (signed) and `received` (is the subject of), newest first. Disabled
+ * when locked / unpaired; keyed by the client's presence so pairing refetches.
+ * Fetched fresh (no stale window) so a just-made vouch shows on next open
+ * without a manual refresh.
+ */
+export function useVouches(): UseQueryResult<StationVouchLists> {
+  const client = useStationClient();
+  const {wallet} = useWalletSession();
+  return useQuery({
+    queryKey: [...ledgerKeys.vouches, wallet?.address, client !== null],
+    enabled: client !== null && wallet !== null,
+    queryFn: (): Promise<StationVouchLists> => client!.listVouches(),
+    staleTime: 0,
   });
 }
 
@@ -377,11 +398,12 @@ export function useSubmitVouch(): (
   subjectAddress: string,
   statement: string,
   stakeCenti: number,
+  nickname?: string,
 ) => Promise<WriteResult<{vouchId: string; community: string}>> {
   const client = useStationClient();
   const {wallet} = useWalletSession();
   return useCallback(
-    async (subjectAddress, statement, stakeCenti) => {
+    async (subjectAddress, statement, stakeCenti, nickname) => {
       if (client === null || wallet === null) {
         return {ok: false, error: 'locked', message: 'Unlock your wallet and pair a station.'};
       }
@@ -406,6 +428,12 @@ export function useSubmitVouch(): (
           issuedAt,
         );
         const {vouchId} = await client.submitVouch(vouch.payloadBytes, vouch.signature);
+        // Persist the local nickname only once the vouch is safely recorded, so
+        // the browser can label this subject. A private display hint, kept on
+        // this device (never part of the signed attestation).
+        if (nickname !== undefined) {
+          await saveVouchNickname(subjectAddress, nickname).catch(() => {});
+        }
         return {ok: true, vouchId: vouchId.length > 0 ? vouchId : vouch.vouchId, community};
       } catch (e) {
         return asWriteError(e);

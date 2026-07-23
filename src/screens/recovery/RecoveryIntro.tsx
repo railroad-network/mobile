@@ -10,6 +10,7 @@ import {Button, Heading, Text} from '../../components';
 import {useTheme} from '../../theme';
 import type {RecoveryScreenProps} from '../../navigation/types';
 import {RECOMMENDED_HOLDERS, useRecovery} from './RecoveryContext';
+import {InlineNotice} from './InlineNotice';
 import {RecoveryScaffold} from './RecoveryScaffold';
 
 interface Point {
@@ -20,7 +21,7 @@ interface Point {
 
 export function RecoveryIntro({navigation}: RecoveryScreenProps<'RecoveryIntro'>) {
   const theme = useTheme();
-  const {threshold} = useRecovery();
+  const {threshold, isRefresh} = useRecovery();
 
   const points: Point[] = [
     {
@@ -42,7 +43,7 @@ export function RecoveryIntro({navigation}: RecoveryScreenProps<'RecoveryIntro'>
 
   return (
     <RecoveryScaffold
-      title="Set up social recovery"
+      title={isRefresh ? 'Update your recovery circle' : 'Set up social recovery'}
       onBack={() => navigation.goBack()}
       footer={
         <Button
@@ -50,14 +51,23 @@ export function RecoveryIntro({navigation}: RecoveryScreenProps<'RecoveryIntro'>
           size="lg"
           fullWidth
           onPress={() => navigation.navigate('ChooseHolders')}>
-          Choose my circle
+          {isRefresh ? 'Update my circle' : 'Choose my circle'}
         </Button>
       }>
       <View style={{gap: theme.spacing.lg, marginTop: theme.spacing.md}}>
         <Text variant="body" color={theme.colors.textSecondary}>
-          Recover your identity even if you lose this phone — without trusting any
-          company to hold your keys.
+          {isRefresh
+            ? 'Change who holds a piece of your key. Your identity and address stay the same — only the circle changes.'
+            : 'Recover your identity even if you lose this phone — without trusting any company to hold your keys.'}
         </Text>
+        {isRefresh && (
+          <InlineNotice
+            variant="warning"
+            title="Your old pieces stop working">
+            Updating re-splits your key from scratch, so every current holder’s
+            piece becomes useless. Hand out the new pieces to your updated circle.
+          </InlineNotice>
+        )}
         {points.map(p => (
           <View key={p.title} style={styles.row}>
             <View

@@ -12,9 +12,11 @@ import {ThemeProvider} from '../src/theme';
 import {Community} from '../src/screens/main/Community';
 
 const mockIdentity: {data?: {address: string; community?: string}} = {};
+const mockCounts: {data?: {given: number; received: number}} = {};
 jest.mock('../src/ledger', () => ({
   ...jest.requireActual('../src/ledger'),
   useIdentity: () => mockIdentity,
+  useVouchCounts: () => mockCounts,
 }));
 
 const metrics = {

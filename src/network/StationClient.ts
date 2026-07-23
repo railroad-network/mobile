@@ -251,6 +251,29 @@ export class StationClient {
   }
 
   /**
+   * `list_vouches` — this member's own vouches for the vouching browser
+   * (T1.4.5), split into `given` (it signed) and `received` (it is the subject
+   * of), newest first. Like {@link vouchCounts} the member is the authenticated
+   * signer server-side, so there is no address param. `limit`/`offset` window
+   * each list; the browser fetches the member's set and searches client-side.
+   */
+  async listVouches(
+    opts: {limit?: number; offset?: number} = {},
+  ): Promise<StationVouchLists> {
+    const params: Record<string, unknown> = {};
+    if (opts.limit !== undefined) {
+      params.limit = opts.limit;
+    }
+    if (opts.offset !== undefined) {
+      params.offset = opts.offset;
+    }
+    const result = await this.call('list_vouches', params);
+    const rows = (v: unknown): StationVouchListRow[] =>
+      Array.isArray(v) ? (v as StationVouchListRow[]) : [];
+    return {given: rows(result.given), received: rows(result.received)};
+  }
+
+  /**
    * The full request→reply round-trip: reserve a nonce, build+sign+seal the
    * envelope, POST it, open and verify the reply, return the parsed result.
    * Throws a {@link StationClientError} for every failure mode.
@@ -483,6 +506,36 @@ export interface StationVouchCounts {
   given: number;
   /** Vouches naming this member as the subject (someone vouched for them). */
   received: number;
+}
+
+/**
+ * One vouch row from the station's vouching browser view (T1.4.5). Unlike the
+ * push-only {@link StationVouchRow}, a browser row names *both* parties so the
+ * "made" and "received" lists render from one shape.
+ */
+export interface StationVouchListRow {
+  /** Content address: hex of the Blake3 hash of the signed canonical bytes. */
+  vouch_id: string;
+  /** The voucher's bech32m `rrn1…` address (the log entry's signer). */
+  voucher_address: string;
+  /** The vouched-for member's bech32m `rrn1…` address (attestation subject). */
+  subject_address: string;
+  /** The community the vouch was stamped into. */
+  community: string;
+  /** The voucher's free-text statement about the subject. */
+  statement: string;
+  /** Reputation staked, in centipoints. */
+  stake_centi: number;
+  /** Unix seconds when the vouch was issued. */
+  issued_at: number;
+}
+
+/** A member's vouches split by direction (T1.4.5), for the vouching browser. */
+export interface StationVouchLists {
+  /** Vouches this member signed (they are the voucher). */
+  given: StationVouchListRow[];
+  /** Vouches naming this member as the subject. */
+  received: StationVouchListRow[];
 }
 
 /**

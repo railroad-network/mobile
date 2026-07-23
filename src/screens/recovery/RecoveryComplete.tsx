@@ -22,7 +22,7 @@ import {RecoveryScaffold} from './RecoveryScaffold';
 
 export function RecoveryComplete({navigation}: RecoveryScreenProps<'RecoveryComplete'>) {
   const theme = useTheme();
-  const {origin, wallet, holders, threshold, delivered, clear} = useRecovery();
+  const {origin, wallet, holders, threshold, delivered, clear, isRefresh} = useRecovery();
   const {adopt, refresh} = useWalletSession();
 
   const deliveredCount = delivered.size;
@@ -69,7 +69,7 @@ export function RecoveryComplete({navigation}: RecoveryScreenProps<'RecoveryComp
 
   return (
     <RecoveryScaffold
-      title="Recovery ready"
+      title={isRefresh ? 'Circle updated' : 'Recovery ready'}
       step={3}
       center
       footer={
@@ -82,7 +82,7 @@ export function RecoveryComplete({navigation}: RecoveryScreenProps<'RecoveryComp
           <Text style={styles.markGlyph}>🛡️</Text>
         </View>
         <Heading level="headingMedium" style={styles.centerText}>
-          Your circle has you
+          {isRefresh ? 'Your new circle has you' : 'Your circle has you'}
         </Heading>
         <Text variant="body" color={theme.colors.textSecondary} style={styles.centerText}>
           {deliveredCount} of {holders.length} shards delivered. If you ever lose

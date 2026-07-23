@@ -6,9 +6,13 @@ import type {BottomTabScreenProps} from '@react-navigation/bottom-tabs';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 
 import type {Station} from '../network/Discovery';
+import type {StationVouchListRow} from '../network/StationClient';
 
 /** Where the social-recovery flow was entered from — decides how it exits. */
 export type RecoveryOrigin = 'onboarding' | 'settings';
+
+/** Which side of the vouching browser a row belongs to (T1.4.5). */
+export type VouchDirection = 'given' | 'received';
 
 export type OnboardingStackParamList = {
   Welcome: undefined;
@@ -75,6 +79,10 @@ export type MainStackParamList = {
   NotificationSettings: undefined;
   /** Vouch for someone: scan their address QR, review, sign & submit (T1.4.1). */
   Vouch: undefined;
+  /** The vouching browser (T1.4.5): given/received vouch lists, opened on a tab. */
+  VouchList: {initial: VouchDirection};
+  /** A single vouch's full detail (T1.4.5); the row travels in as a param. */
+  VouchDetail: {vouch: StationVouchListRow; mode: VouchDirection};
   /**
    * Pair with a station, discovered or hand-typed (T1.3.3).
    *

@@ -13,7 +13,7 @@ import {Pressable, ScrollView, StyleSheet, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 import {Card, Heading, Text} from '../../components';
-import {useIdentity} from '../../ledger';
+import {useIdentity, useVouchCounts} from '../../ledger';
 import {useTheme, type Theme} from '../../theme';
 import type {MainTabScreenProps} from '../../navigation/types';
 
@@ -21,6 +21,7 @@ export function Community({navigation}: MainTabScreenProps<'Community'>) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const {data: identity} = useIdentity();
+  const {data: counts} = useVouchCounts(true);
 
   return (
     <ScrollView
@@ -48,8 +49,40 @@ export function Community({navigation}: MainTabScreenProps<'Community'>) {
           onPress={() => navigation.navigate('Vouch')}
         />
       </Group>
+
+      <Group theme={theme} label="Your vouches">
+        <NavRow
+          theme={theme}
+          title="Vouches I’ve made"
+          subtitle={peopleSubtitle(counts?.given, 'given')}
+          onPress={() => navigation.navigate('VouchList', {initial: 'given'})}
+        />
+        <NavRow
+          theme={theme}
+          title="Vouches I’ve received"
+          subtitle={peopleSubtitle(counts?.received, 'received')}
+          onPress={() => navigation.navigate('VouchList', {initial: 'received'})}
+        />
+      </Group>
     </ScrollView>
   );
+}
+
+/** "3 people you’ve vouched for" / "1 person has vouched for you" / "No one
+ * yet", or a neutral hint while the count is unknown (loading or offline — never
+ * a fabricated number). Verb agreement follows the count. */
+function peopleSubtitle(count: number | undefined, kind: 'given' | 'received'): string {
+  if (count === undefined) {
+    return 'Tap to view';
+  }
+  if (count === 0) {
+    return 'No one yet';
+  }
+  const noun = count === 1 ? 'person' : 'people';
+  if (kind === 'given') {
+    return `${count} ${noun} you’ve vouched for`;
+  }
+  return `${count} ${noun} ${count === 1 ? 'has' : 'have'} vouched for you`;
 }
 
 /** A titled group: a section label above a card of rows (mirrors Settings). */

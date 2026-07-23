@@ -9,11 +9,20 @@
  * once setup finishes. The secret seed itself never enters JS; the handle only
  * references the Rust-side wallet.
  */
-import {createContext, useCallback, useContext, useMemo, useState, type ReactNode} from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 
 import type {RecoveryPackage} from '../../crypto/ffi';
 import type {Wallet} from '../../wallet/Wallet';
-import type {RecoveryHolder} from '../../wallet/recoveryConfig';
+import {loadRecoveryConfig, type RecoveryHolder} from '../../wallet/recoveryConfig';
 import type {RecoveryOrigin} from '../../navigation/types';
 
 /** Fixed threshold: any `RECOVERY_THRESHOLD` holders can restore the wallet. */
@@ -34,6 +43,12 @@ export interface RecoveryState {
   /** The re-unlocked wallet, available after RecoveryUnlock. */
   wallet: Wallet | null;
   setWallet: (wallet: Wallet) => void;
+
+  /** Whether an existing recovery circle is being *refreshed* (re-split to a new
+   * holder set) rather than set up for the first time. True only when the flow
+   * was launched from Settings and a saved config was found. Drives the copy
+   * (T1.4.5 shard refresh). */
+  isRefresh: boolean;
 
   /** The holders the key will be / was split across. */
   holders: ChosenHolder[];
@@ -67,6 +82,28 @@ export function RecoveryProvider({
   const [holders, setHolders] = useState<ChosenHolder[]>([]);
   const [recoveryPackage, setRecoveryPackage] = useState<RecoveryPackage | null>(null);
   const [delivered, setDelivered] = useState<Set<number>>(new Set());
+  const [isRefresh, setIsRefresh] = useState(false);
+
+  // A refresh launched from Settings pre-loads the current circle so the member
+  // edits it (add/remove a holder) rather than starting blank; the flow then
+  // re-splits the same key to the new set (see `RecoveryPackage.refresh`, which
+  // is a fresh `create`). Onboarding always starts empty. Seed once.
+  const seededRef = useRef(false);
+  useEffect(() => {
+    if (origin !== 'settings' || seededRef.current) {
+      return;
+    }
+    seededRef.current = true;
+    loadRecoveryConfig()
+      .then(cfg => {
+        if (cfg === null) {
+          return;
+        }
+        setIsRefresh(true);
+        setHolders(cfg.holders.map(h => ({address: h.address, nickname: h.nickname})));
+      })
+      .catch(() => {});
+  }, [origin]);
 
   const markDelivered = useCallback((index: number) => {
     setDelivered(prev => {
@@ -86,6 +123,7 @@ export function RecoveryProvider({
       origin,
       wallet,
       setWallet,
+      isRefresh,
       holders,
       setHolders,
       threshold: RECOVERY_THRESHOLD,
@@ -95,7 +133,7 @@ export function RecoveryProvider({
       markDelivered,
       clear,
     }),
-    [origin, wallet, holders, recoveryPackage, delivered, markDelivered, clear],
+    [origin, wallet, isRefresh, holders, recoveryPackage, delivered, markDelivered, clear],
   );
 
   return <RecoveryContext.Provider value={value}>{children}</RecoveryContext.Provider>;

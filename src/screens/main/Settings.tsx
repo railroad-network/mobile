@@ -111,7 +111,7 @@ export function Settings() {
       ? 'Not set up — protect access if you lose this phone'
       : `${recovery.threshold}-of-${recovery.total} circle · ${
           recovery.holders.filter(h => h.delivered).length
-        } delivered`;
+        } delivered · tap to refresh`;
 
   const notificationsSubtitle =
     notifPrefs === null

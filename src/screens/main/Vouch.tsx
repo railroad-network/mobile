@@ -130,7 +130,7 @@ export function Vouch({navigation}: MainStackScreenProps<'Vouch'>) {
     }
     setBusy(true);
     setSubmitError(null);
-    const result = await submitVouch(subject, statement.trim(), stakeCenti);
+    const result = await submitVouch(subject, statement.trim(), stakeCenti, nickname.trim());
     setBusy(false);
     if (result.ok) {
       setVouchId(result.vouchId);
