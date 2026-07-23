@@ -18,8 +18,8 @@
  * review step says what staking means. Online-only like Send: if the station is
  * unreachable nothing is queued — the user retries when connected.
  */
-import {useState} from 'react';
-import {ScrollView, StyleSheet, View} from 'react-native';
+import {useEffect, useRef, useState} from 'react';
+import {AccessibilityInfo, Animated, Easing, ScrollView, StyleSheet, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 import {
@@ -30,6 +30,7 @@ import {
   Heading,
   Identicon,
   QRScanner,
+  StarMark,
   Text,
 } from '../../components';
 import {
@@ -40,6 +41,7 @@ import {
   useConnectivity,
   useIdentity,
   useSubmitVouch,
+  useVouchCounts,
 } from '../../ledger';
 import {useWalletSession} from '../../wallet/WalletSession';
 import {useTheme, type Theme} from '../../theme';
@@ -309,23 +311,166 @@ export function Vouch({navigation}: MainStackScreenProps<'Vouch'>) {
 
   // Step: success ------------------------------------------------------------
   return (
+    <VouchSuccess
+      theme={theme}
+      contentPad={contentPad}
+      selfSeed={identity?.address ?? wallet?.address ?? ''}
+      subjectSeed={subject}
+      subjectLabel={subjectLabel}
+      statement={statement.trim()}
+      stakeCenti={stakeCenti}
+      community={community}
+      vouchId={vouchId}
+      onDone={() => navigation.goBack()}
+    />
+  );
+}
+
+/**
+ * The vouch success screen (T1.4.4): a subtle one-shot reveal of the brand mark,
+ * the voucher→subject pair, the statement and stake, and the member's truthful
+ * "vouching chain" counts. The counts come from {@link useVouchCounts}, fetched
+ * fresh now that the vouch is recorded; if that read fails the chain line is
+ * hidden rather than showing a fabricated number.
+ */
+function VouchSuccess({
+  theme,
+  contentPad,
+  selfSeed,
+  subjectSeed,
+  subjectLabel,
+  statement,
+  stakeCenti,
+  community,
+  vouchId,
+  onDone,
+}: {
+  theme: Theme;
+  contentPad: object;
+  selfSeed: string;
+  subjectSeed: string;
+  subjectLabel: string;
+  statement: string;
+  stakeCenti: number;
+  community: string;
+  vouchId: string;
+  onDone: () => void;
+}) {
+  const counts = useVouchCounts(true);
+
+  // One-shot reveal: a 0→1 progress drives the mark's scale/opacity and the
+  // summary's fade/rise. Respect reduced-motion by jumping to the final state.
+  const progress = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    let cancelled = false;
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then(reduced => {
+        if (cancelled) {
+          return;
+        }
+        if (reduced) {
+          progress.setValue(1);
+          return;
+        }
+        Animated.timing(progress, {
+          toValue: 1,
+          duration: 420,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }).start();
+      })
+      .catch(() => progress.setValue(1));
+    return () => {
+      cancelled = true;
+    };
+  }, [progress]);
+
+  const rise = progress.interpolate({inputRange: [0, 1], outputRange: [8, 0]});
+  const markScale = progress.interpolate({inputRange: [0, 1], outputRange: [0.9, 1]});
+
+  return (
     <ScrollView style={{backgroundColor: theme.colors.bg}} contentContainerStyle={contentPad}>
       <View style={{alignItems: 'center', gap: theme.spacing.md, marginTop: theme.spacing.lg}}>
+        <Animated.View style={{opacity: progress, transform: [{scale: markScale}]}}>
+          <StarMark size={56} color={theme.colors.primary} />
+        </Animated.View>
         <Heading level="headingLarge">Vouch recorded</Heading>
-        <Text variant="body" color={theme.colors.textSecondary} style={styles.centered}>
-          Your vouch for {subjectLabel} is on the {community} record.
-        </Text>
-        {vouchId.length > 0 && (
-          <Text variant="caption" color={theme.colors.textMuted} style={styles.centered}>
-            Vouch {shortId(vouchId)}
+      </View>
+
+      <Animated.View
+        style={{gap: theme.spacing.lg, opacity: progress, transform: [{translateY: rise}]}}>
+        <View style={styles.pair}>
+          <View style={styles.party}>
+            <Identicon seed={selfSeed} size={48} />
+            <Text variant="body" color={theme.colors.text}>
+              You
+            </Text>
+          </View>
+          <Text variant="body" color={theme.colors.textSecondary}>
+            vouched for
+          </Text>
+          <View style={styles.party}>
+            <Identicon seed={subjectSeed} size={48} />
+            <Text variant="mono" color={theme.colors.text} numberOfLines={1}>
+              {subjectLabel}
+            </Text>
+          </View>
+        </View>
+
+        {statement.length > 0 && (
+          <Text variant="body" color={theme.colors.textSecondary} style={styles.centered}>
+            “{statement}”
           </Text>
         )}
-      </View>
-      <Button variant="primary" size="lg" fullWidth onPress={() => navigation.goBack()}>
+
+        {!counts.isError && (
+          <Card style={{gap: theme.spacing.sm}}>
+            <Text variant="label" color={theme.colors.textSecondary}>
+              Your vouching chain
+            </Text>
+            {counts.data !== undefined ? (
+              <>
+                <Row theme={theme} label="You’ve vouched for">
+                  <Text variant="body" color={theme.colors.text}>
+                    {peopleCount(counts.data.given)}
+                  </Text>
+                </Row>
+                <Row theme={theme} label="Vouched for you">
+                  <Text variant="body" color={theme.colors.text}>
+                    {peopleCount(counts.data.received)}
+                  </Text>
+                </Row>
+              </>
+            ) : (
+              <Text variant="body" color={theme.colors.textMuted}>
+                Counting…
+              </Text>
+            )}
+          </Card>
+        )}
+
+        <View style={{gap: theme.spacing.xs, alignItems: 'center'}}>
+          <Text variant="caption" color={theme.colors.textMuted} style={styles.centered}>
+            On the {community} record{stakeCenti > 0 ? ` · ${formatCommons(stakeCenti)} staked` : ''}
+          </Text>
+          {vouchId.length > 0 && (
+            <Text variant="caption" color={theme.colors.textMuted} style={styles.centered}>
+              Vouch {shortId(vouchId)}
+            </Text>
+          )}
+        </View>
+      </Animated.View>
+
+      <Button variant="primary" size="lg" fullWidth onPress={onDone}>
         Done
       </Button>
     </ScrollView>
   );
+}
+
+/** "N person" / "N people" — the human count for the vouching-chain line. */
+function peopleCount(n: number): string {
+  return `${n} ${n === 1 ? 'person' : 'people'}`;
 }
 
 /** Shared step header: an optional back link, a title, and an optional subtitle. */
@@ -386,4 +531,6 @@ const styles = StyleSheet.create({
   row: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12},
   rowValue: {flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1},
   centered: {textAlign: 'center'},
+  pair: {flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 14},
+  party: {alignItems: 'center', gap: 6, flexShrink: 1, maxWidth: 130},
 });

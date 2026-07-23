@@ -34,11 +34,18 @@ let mockOffline = false;
 // The submit hook is the seam under test at the screen level: assert the screen
 // calls it with the right args and reacts to its typed result.
 const mockSubmitVouch = jest.fn();
+// The success screen's truthful "vouching chain" counts (T1.4.4). Controllable
+// per test so we can exercise the loaded / errored states.
+let mockVouchCounts: {
+  data?: {given: number; received: number};
+  isError: boolean;
+} = {data: {given: 1, received: 0}, isError: false};
 jest.mock('../src/ledger', () => ({
   ...jest.requireActual('../src/ledger'),
   useIdentity: () => mockIdentity,
   useConnectivity: () => ({level: 'mesh', isOffline: mockOffline}),
   useSubmitVouch: () => mockSubmitVouch,
+  useVouchCounts: () => mockVouchCounts,
 }));
 
 // --- Harness ----------------------------------------------------------------
@@ -114,6 +121,7 @@ beforeEach(() => {
   mockIsValid.mockReturnValue(true);
   mockIdentity.data = {address: 'rrn1qme'};
   mockOffline = false;
+  mockVouchCounts = {data: {given: 1, received: 0}, isError: false};
   mockSubmitVouch.mockResolvedValue({
     ok: true,
     vouchId: 'ab'.repeat(32),
@@ -173,6 +181,36 @@ test('the happy path submits the vouch and shows success with the community', as
   expect(mockSubmitVouch).toHaveBeenCalledWith('rrn1subject', 'I know them', 150);
   expect(hasText(r, 'Vouch recorded')).toBe(true);
   expect(hasText(r, 'rrn-phase0')).toBe(true);
+});
+
+test('the success screen shows the truthful vouching-chain counts', async () => {
+  mockVouchCounts = {data: {given: 3, received: 1}, isError: false};
+  const r = await renderVouch();
+  await toReview(r);
+  await press(button(r, 'Sign & vouch'));
+  expect(hasText(r, 'Your vouching chain')).toBe(true);
+  // Given uses the plural; received (1) uses the singular.
+  expect(hasText(r, '3 people')).toBe(true);
+  expect(hasText(r, '1 person')).toBe(true);
+});
+
+test('a singular given count is not pluralised', async () => {
+  mockVouchCounts = {data: {given: 1, received: 0}, isError: false};
+  const r = await renderVouch();
+  await toReview(r);
+  await press(button(r, 'Sign & vouch'));
+  expect(hasText(r, '1 person')).toBe(true);
+  expect(hasText(r, '0 people')).toBe(true);
+});
+
+test('a failed counts read hides the chain line rather than faking a number', async () => {
+  mockVouchCounts = {isError: true};
+  const r = await renderVouch();
+  await toReview(r);
+  await press(button(r, 'Sign & vouch'));
+  // The vouch still succeeded — the celebratory screen shows — but no chain line.
+  expect(hasText(r, 'Vouch recorded')).toBe(true);
+  expect(hasText(r, 'Your vouching chain')).toBe(false);
 });
 
 test('a vouch that cannot reach the station surfaces a failure and stays on review', async () => {

@@ -237,6 +237,20 @@ export class StationClient {
   }
 
   /**
+   * `vouch_counts` — this member's own vouching tallies (T1.4.4): how many
+   * vouches it has given (signed) and received (is the subject of). The member is
+   * the authenticated signer server-side, so there is no address param — a mobile
+   * only ever reads its own counts.
+   */
+  async vouchCounts(): Promise<StationVouchCounts> {
+    const result = await this.call('vouch_counts', {});
+    return {
+      given: typeof result.given === 'number' ? result.given : 0,
+      received: typeof result.received === 'number' ? result.received : 0,
+    };
+  }
+
+  /**
    * The full request→reply round-trip: reserve a nonce, build+sign+seal the
    * envelope, POST it, open and verify the reply, return the parsed result.
    * Throws a {@link StationClientError} for every failure mode.
@@ -461,6 +475,14 @@ export interface StationVouchRow {
   stake_centi: number;
   /** Unix seconds when the vouch was issued. */
   issued_at: number;
+}
+
+/** A member's vouching tallies (T1.4.4), for the "your vouching chain" display. */
+export interface StationVouchCounts {
+  /** Vouches this member signed (vouched for someone else). */
+  given: number;
+  /** Vouches naming this member as the subject (someone vouched for them). */
+  received: number;
 }
 
 /**

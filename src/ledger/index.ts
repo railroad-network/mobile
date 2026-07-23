@@ -37,6 +37,7 @@ export {
   useRefreshLedger,
   useSendProposal,
   useSubmitVouch,
+  useVouchCounts,
   type Connectivity,
   type WriteResult,
 } from './useLedger';

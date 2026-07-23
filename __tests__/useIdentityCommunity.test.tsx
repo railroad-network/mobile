@@ -55,7 +55,7 @@ async function renderProbe(onData: (identity: unknown) => void): Promise<void> {
   // (bounded so a genuine failure still fails fast).
   for (let i = 0; i < 20 && !received; i++) {
     await act(async () => {
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise<void>(resolve => setTimeout(() => resolve(), 0));
     });
   }
 }

@@ -26,6 +26,7 @@ import {
   StationClientError,
   type StationErrorKind,
   type StationTransactionRow,
+  type StationVouchCounts,
 } from '../network/StationClient';
 import {createConfirmation} from '../wallet/confirmation';
 import {createSendProposal} from '../wallet/proposal';
@@ -83,6 +84,7 @@ export const ledgerKeys = {
   identity: ['ledger', 'identity'] as const,
   balance: ['ledger', 'balance'] as const,
   activity: ['ledger', 'activity'] as const,
+  vouchCounts: ['ledger', 'vouchCounts'] as const,
 };
 
 export function useIdentity(): UseQueryResult<Identity> {
@@ -165,6 +167,26 @@ export function useInbox(): UseQueryResult<Transaction[]> {
       return assembleActivity(transactions.map(stationRowToTransaction));
     },
     select: txs => txs.filter(tx => tx.direction === 'in' && tx.state === 'pending'),
+  });
+}
+
+/**
+ * This member's vouching tallies for the "your vouching chain" line on the
+ * vouch success screen (T1.4.4). Gated by `enabled` so the caller fetches only
+ * once it needs them (i.e. after a vouch is recorded); fetched fresh (no stale
+ * window) so the just-appended vouch is included in `given`. On failure or
+ * offline the query errors and the caller hides the line — it never shows a
+ * fabricated number.
+ */
+export function useVouchCounts(enabled: boolean): UseQueryResult<StationVouchCounts> {
+  const client = useStationClient();
+  const {wallet} = useWalletSession();
+  return useQuery({
+    queryKey: [...ledgerKeys.vouchCounts, wallet?.address],
+    enabled: enabled && client !== null && wallet !== null,
+    queryFn: (): Promise<StationVouchCounts> => client!.vouchCounts(),
+    staleTime: 0,
+    retry: false,
   });
 }
 
