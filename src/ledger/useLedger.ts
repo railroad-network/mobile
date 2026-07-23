@@ -115,11 +115,19 @@ export function useIdentity(): UseQueryResult<Identity> {
           community = (await client.whoami()).community;
         } catch {
           // Offline or unreachable — the identity is still valid without the
-          // community line; a later refetch fills it in.
+          // community line; the refetch below fills it in.
         }
       }
       return {address, nickname, community};
     },
+    // If we are paired but the community line is still blank — e.g. the station
+    // was momentarily unreachable when this first ran at launch, so `whoami`
+    // threw and cached an empty community on a screen that then stays mounted —
+    // keep retrying so it fills in on its own. A reachable station answers the
+    // next `whoami`, which sets the community and clears this condition, so the
+    // polling stops as soon as the line resolves.
+    refetchInterval: query =>
+      client !== null && query.state.data?.community === undefined ? 8000 : false,
   });
 }
 
