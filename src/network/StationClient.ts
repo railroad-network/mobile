@@ -274,6 +274,27 @@ export class StationClient {
   }
 
   /**
+   * `reputation` — this member's own standing (T1.5.9): the five ADR-0009
+   * dimensions, the composite and its band, and whether an anchoring vouch has
+   * lifted the newcomer cap. Like {@link vouchCounts} the member is the
+   * authenticated signer server-side, so there is no address param — the
+   * dimension breakdown is only ever your own.
+   */
+  async reputation(): Promise<StationReputation> {
+    return (await this.call('reputation', {})) as unknown as StationReputation;
+  }
+
+  /**
+   * `reputation_band` — the band for *another* address, which is all a listing
+   * card shows about its lister (M1.7). Never the dimension breakdown. An
+   * address with no history answers `New` rather than failing.
+   */
+  async reputationBand(address: string): Promise<StationReputationBand> {
+    const result = await this.call('reputation_band', {address});
+    return result as unknown as StationReputationBand;
+  }
+
+  /**
    * The full request→reply round-trip: reserve a nonce, build+sign+seal the
    * envelope, POST it, open and verify the reply, return the parsed result.
    * Throws a {@link StationClientError} for every failure mode.
@@ -536,6 +557,77 @@ export interface StationVouchLists {
   given: StationVouchListRow[];
   /** Vouches naming this member as the subject. */
   received: StationVouchListRow[];
+}
+
+/** The presentation band a composite falls in (ADR-0009). */
+export type StationReputationBandName = 'New' | 'Member' | 'Trusted' | 'Senior';
+
+/**
+ * One reputation dimension as the station reports it (T1.5.9).
+ *
+ * `live` is the field that matters for honest presentation: a dimension with no
+ * data source yet reads `0.0` because nothing feeds it, not because the member
+ * scored badly, and the UI has to draw that distinction.
+ */
+export interface StationReputationDimension {
+  /** Stable machine name (`trade_reliability`, …); the app owns the wording. */
+  name: string;
+  /** The scored value, 0.0–5.0. */
+  value: number;
+  /** This dimension's fixed ADR-0009 weight in the composite. */
+  weight: number;
+  /** Whether anything feeds this dimension yet. */
+  live: boolean;
+}
+
+/** One category of domain competence; empty until the marketplace (M1.7). */
+export interface StationDomainScore {
+  /** The category label, e.g. `carpentry`. */
+  tag: string;
+  /** The score in that category, 0.0–5.0. */
+  value: number;
+}
+
+/** This member's own standing (T1.5.9), as the Standing screen renders it. */
+export interface StationReputation {
+  /** The scored identity's bech32m `rrn1…` address. */
+  address: string;
+  /** The ADR-0009 weighted composite, 0.0–5.0. */
+  composite: number;
+  /** The band the composite falls in. */
+  band: StationReputationBandName;
+  /** All five dimensions, dormant ones included. */
+  dimensions: StationReputationDimension[];
+  /** Per-category domain competence; empty in Phase 1. */
+  domain_competence: StationDomainScore[];
+  /** The nominal top of the scale (5.0). */
+  scale_max: number;
+  /**
+   * The highest composite reachable *today* — below `scale_max` while any
+   * dimension is dormant. Sent by the station rather than hard-coded here so it
+   * cannot go stale when a later milestone lights a dimension up.
+   */
+  max_composite_now: number;
+  /** Whether an anchoring vouch has lifted the newcomer cap. */
+  anchored: boolean;
+  /** Who vouched, when anchored. */
+  anchoring_voucher_address: string | null;
+  /** The per-dimension ceiling an unanchored identity is held to (1.0). */
+  anchor_dimension_cap: number;
+  /** Unix seconds the profile was computed as of. */
+  computed_at: number;
+}
+
+/** Another address's band (T1.5.9) — what a listing card shows (M1.7). */
+export interface StationReputationBand {
+  /** The scored identity's bech32m `rrn1…` address. */
+  address: string;
+  /** The ADR-0009 weighted composite, 0.0–5.0. */
+  composite: number;
+  /** The band the composite falls in. */
+  band: StationReputationBandName;
+  /** Unix seconds the underlying profile was computed as of. */
+  computed_at: number;
 }
 
 /**

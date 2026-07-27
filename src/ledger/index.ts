@@ -35,6 +35,7 @@ export {
   useInbox,
   useRecordDecision,
   useRefreshLedger,
+  useReputation,
   useSendProposal,
   useSubmitVouch,
   useVouchCounts,

@@ -403,4 +403,63 @@ describe('StationClient', () => {
     expect(result.events).toEqual([]);
     expect(result.lastSeenEventId).toBe(7);
   });
+
+  test('reputation asks for no address — the station scopes it to the signer (T1.5.9)', async () => {
+    const store = await pairedStore();
+    let seen: {method: string; params: string} | null = null;
+    const fetchImpl = (async (_url: string, init: {body: Uint8Array}) => {
+      const {method, params} = readRequest(init.body);
+      seen = {method, params};
+      return okResponse(
+        stationReply(init.body, () => ({
+          result: JSON.stringify({
+            address: 'rrn1me',
+            composite: 2.1,
+            band: 'Member',
+            dimensions: [{name: 'trade_reliability', value: 4.5, weight: 0.3, live: true}],
+            domain_competence: [],
+            scale_max: 5.0,
+            max_composite_now: 2.75,
+            anchored: true,
+            anchoring_voucher_address: 'rrn1anchor',
+            anchor_dimension_cap: 1.0,
+            computed_at: 1_700_000_000,
+          }),
+        })),
+      );
+    }) as unknown as typeof fetch;
+
+    const standing = await clientWith(store, fetchImpl).reputation();
+    expect(seen).toEqual({method: 'reputation', params: '{}'});
+    expect(standing.band).toBe('Member');
+    expect(standing.anchored).toBe(true);
+    // The ceiling arrives from the station rather than being assumed here.
+    expect(standing.max_composite_now).toBe(2.75);
+  });
+
+  test('reputation_band carries the address it is asking about (T1.5.9)', async () => {
+    const store = await pairedStore();
+    let seen: {method: string; params: string} | null = null;
+    const fetchImpl = (async (_url: string, init: {body: Uint8Array}) => {
+      const {method, params} = readRequest(init.body);
+      seen = {method, params};
+      return okResponse(
+        stationReply(init.body, () => ({
+          result: JSON.stringify({
+            address: 'rrn1them',
+            composite: 0,
+            band: 'New',
+            computed_at: 1_700_000_000,
+          }),
+        })),
+      );
+    }) as unknown as typeof fetch;
+
+    const band = await clientWith(store, fetchImpl).reputationBand('rrn1them');
+    expect(seen).toEqual({
+      method: 'reputation_band',
+      params: JSON.stringify({address: 'rrn1them'}),
+    });
+    expect(band.band).toBe('New');
+  });
 });

@@ -77,6 +77,8 @@ export type MainStackParamList = {
   PairedStations: undefined;
   /** Local notification + background-sync preferences (T1.3.6). */
   NotificationSettings: undefined;
+  /** This member's own reputation: dimensions, composite, anchoring (T1.5.9). */
+  Standing: undefined;
   /** Vouch for someone: scan their address QR, review, sign & submit (T1.4.1). */
   Vouch: undefined;
   /** The vouching browser (T1.4.5): given/received vouch lists, opened on a tab. */

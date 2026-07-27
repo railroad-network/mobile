@@ -13,7 +13,8 @@ import {Pressable, ScrollView, StyleSheet, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 import {Card, Heading, Text} from '../../components';
-import {useIdentity, useVouchCounts} from '../../ledger';
+import {useIdentity, useReputation, useVouchCounts} from '../../ledger';
+import type {StationReputation} from '../../network/StationClient';
 import {useTheme, type Theme} from '../../theme';
 import type {MainTabScreenProps} from '../../navigation/types';
 
@@ -22,6 +23,7 @@ export function Community({navigation}: MainTabScreenProps<'Community'>) {
   const insets = useSafeAreaInsets();
   const {data: identity} = useIdentity();
   const {data: counts} = useVouchCounts(true);
+  const {data: standing} = useReputation();
 
   return (
     <ScrollView
@@ -40,6 +42,15 @@ export function Community({navigation}: MainTabScreenProps<'Community'>) {
             : 'Pair with a station to join a community.'}
         </Text>
       </View>
+
+      <Group theme={theme} label="Your standing">
+        <NavRow
+          theme={theme}
+          title={standingTitle(standing)}
+          subtitle={standingSubtitle(standing)}
+          onPress={() => navigation.navigate('Standing')}
+        />
+      </Group>
 
       <Group theme={theme} label="Web of trust">
         <NavRow
@@ -66,6 +77,27 @@ export function Community({navigation}: MainTabScreenProps<'Community'>) {
       </Group>
     </ScrollView>
   );
+}
+
+/** "Member · 2.10", or a neutral title until the standing is known (loading or
+ * offline — the score comes from the station, so it is never guessed here). */
+function standingTitle(standing: StationReputation | undefined): string {
+  if (standing === undefined) {
+    return 'Your reputation';
+  }
+  return `${standing.band} · ${standing.composite.toFixed(2)}`;
+}
+
+/** The one line that most needs saying on the way in: whether the newcomer cap
+ * is still holding the score down (T1.5.8), since that is what makes a member
+ * with real history read low. */
+function standingSubtitle(standing: StationReputation | undefined): string {
+  if (standing === undefined) {
+    return 'Tap to view';
+  }
+  return standing.anchored
+    ? 'Anchored by a vouch'
+    : 'Not anchored yet — a vouch will lift it';
 }
 
 /** "3 people you’ve vouched for" / "1 person has vouched for you" / "No one

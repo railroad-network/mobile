@@ -25,6 +25,7 @@ import {
 import {
   StationClientError,
   type StationErrorKind,
+  type StationReputation,
   type StationTransactionRow,
   type StationVouchCounts,
   type StationVouchLists,
@@ -88,6 +89,7 @@ export const ledgerKeys = {
   activity: ['ledger', 'activity'] as const,
   vouchCounts: ['ledger', 'vouchCounts'] as const,
   vouches: ['ledger', 'vouches'] as const,
+  reputation: ['ledger', 'reputation'] as const,
 };
 
 export function useIdentity(): UseQueryResult<Identity> {
@@ -215,6 +217,28 @@ export function useVouches(): UseQueryResult<StationVouchLists> {
     queryKey: [...ledgerKeys.vouches, wallet?.address, client !== null],
     enabled: client !== null && wallet !== null,
     queryFn: (): Promise<StationVouchLists> => client!.listVouches(),
+    staleTime: 0,
+  });
+}
+
+/**
+ * This member's own reputation standing (T1.5.9): the five ADR-0009 dimensions,
+ * the composite and band, and the anchoring state. Disabled when locked /
+ * unpaired; keyed by the client's presence so pairing refetches.
+ *
+ * The station serves this from its snapshot cache, so the answer is "as of"
+ * `computed_at` rather than live to the second — the Standing screen shows that
+ * timestamp instead of implying otherwise. There is no local stale window on top
+ * of it: a member who has just been vouched for reopens the screen expecting to
+ * see the cap lift, and the station's own cache is what bounds the work.
+ */
+export function useReputation(): UseQueryResult<StationReputation> {
+  const client = useStationClient();
+  const {wallet} = useWalletSession();
+  return useQuery({
+    queryKey: [...ledgerKeys.reputation, wallet?.address, client !== null],
+    enabled: client !== null && wallet !== null,
+    queryFn: (): Promise<StationReputation> => client!.reputation(),
     staleTime: 0,
   });
 }
