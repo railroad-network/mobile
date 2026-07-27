@@ -18,7 +18,7 @@ import {ScrollView, StyleSheet, Switch, View} from 'react-native';
 import {useFocusEffect} from '@react-navigation/native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
-import {Banner, Card, Heading, Text} from '../../components';
+import {Banner, Card, ScreenHeader, Text} from '../../components';
 import {useTheme, type Theme} from '../../theme';
 import type {MainStackScreenProps} from '../../navigation/types';
 import type {StationEventKind} from '../../network/StationClient';
@@ -125,21 +125,14 @@ export function NotificationSettings({navigation}: MainStackScreenProps<'Notific
 
   return (
     <ScrollView style={{backgroundColor: theme.colors.bg}} contentContainerStyle={contentPad}>
-      <View style={{gap: theme.spacing.xs}}>
-        <Text
-          variant="body"
-          color={theme.colors.primary}
-          onPress={() => navigation.goBack()}
-          accessibilityRole="button"
-          accessibilityLabel="Back">
-          ‹ Back
-        </Text>
-        <Heading level="headingLarge">Notifications</Heading>
-        <Text variant="body" color={theme.colors.textSecondary}>
-          Get a heads-up when something happens on your ledger — a payment coming
-          in, a settlement clearing.
-        </Text>
-      </View>
+      <ScreenHeader
+        title="Notifications"
+        subtitle={
+          'Get a heads-up when something happens on your ledger — a payment ' +
+          'coming in, a settlement clearing.'
+        }
+        onBack={() => navigation.goBack()}
+      />
 
       <Group theme={theme} label="Allow">
         <ToggleRow

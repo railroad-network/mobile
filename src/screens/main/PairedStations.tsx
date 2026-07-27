@@ -16,7 +16,14 @@ import {ScrollView, StyleSheet, View} from 'react-native';
 import {useFocusEffect} from '@react-navigation/native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
-import {Banner, Button, Card, Heading, StationAvatar, Text} from '../../components';
+import {
+  Banner,
+  Button,
+  Card,
+  ScreenHeader,
+  StationAvatar,
+  Text,
+} from '../../components';
 import {shortAddress} from '../../ledger';
 import {useTheme, type Theme} from '../../theme';
 import type {MainStackScreenProps} from '../../navigation/types';
@@ -78,21 +85,14 @@ export function PairedStations({navigation}: MainStackScreenProps<'PairedStation
 
   return (
     <ScrollView style={{backgroundColor: theme.colors.bg}} contentContainerStyle={contentPad}>
-      <View style={{gap: theme.spacing.xs}}>
-        <Text
-          variant="body"
-          color={theme.colors.primary}
-          onPress={() => navigation.goBack()}
-          accessibilityRole="button"
-          accessibilityLabel="Back">
-          ‹ Back
-        </Text>
-        <Heading level="headingLarge">Paired stations</Heading>
-        <Text variant="body" color={theme.colors.textSecondary}>
-          Stations that recognise this phone. Pairing is what lets you send and
-          receive through a station.
-        </Text>
-      </View>
+      <ScreenHeader
+        title="Paired stations"
+        subtitle={
+          'Stations that recognise this phone. Pairing is what lets you send and ' +
+          'receive through a station.'
+        }
+        onBack={() => navigation.goBack()}
+      />
 
       {stations !== null && stations.length === 0 ? (
         <Banner variant="info" title="Not paired yet">

@@ -5,10 +5,17 @@
  * `.rrnwallet` bytes in place, keeping the biometric gate.
  */
 import {useState} from 'react';
-import {ScrollView, View} from 'react-native';
+import {ScrollView} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
-import {Banner, Button, Field, Heading, Text} from '../../components';
+import {
+  Banner,
+  Button,
+  Field,
+  Heading,
+  ScreenHeader,
+  Text,
+} from '../../components';
 import {changePassphrase} from '../../wallet/Wallet';
 import {MIN_PASSPHRASE_LENGTH} from '../onboarding/passphraseStrength';
 import {useTheme} from '../../theme';
@@ -78,17 +85,10 @@ export function ChangePassphrase({navigation}: MainStackScreenProps<'ChangePassp
 
   return (
     <ScrollView style={{backgroundColor: theme.colors.bg}} contentContainerStyle={pad}>
-      <View style={{gap: theme.spacing.xs}}>
-        <Text
-          variant="body"
-          color={theme.colors.primary}
-          onPress={() => navigation.goBack()}
-          accessibilityRole="button"
-          accessibilityLabel="Back">
-          ‹ Back
-        </Text>
-        <Heading level="headingLarge">Change passphrase</Heading>
-      </View>
+      <ScreenHeader
+        title="Change passphrase"
+        onBack={() => navigation.goBack()}
+      />
 
       <Field
         label="Current passphrase"

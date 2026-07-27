@@ -17,7 +17,16 @@ import {useState} from 'react';
 import {Pressable, ScrollView, StyleSheet, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
-import {Badge, Button, Card, Field, Heading, StationAvatar, Text} from '../../components';
+import {
+  Badge,
+  Button,
+  Card,
+  Field,
+  Heading,
+  ScreenHeader,
+  StationAvatar,
+  Text,
+} from '../../components';
 import {useTheme} from '../../theme';
 import type {MainStackScreenProps} from '../../navigation/types';
 import {
@@ -70,23 +79,14 @@ export function Discovery({navigation}: MainStackScreenProps<'Discovery'>) {
         gap: theme.spacing.lg,
       }}
       keyboardShouldPersistTaps="handled">
-      <View style={{gap: theme.spacing.xs}}>
-        <Pressable
-          onPress={() => navigation.goBack()}
-          accessibilityRole="button"
-          accessibilityLabel="Back"
-          hitSlop={12}
-          style={{marginBottom: theme.spacing.xs}}>
-          <Text variant="body" color={theme.colors.primary}>
-            ‹ Back
-          </Text>
-        </Pressable>
-        <Heading level="headingLarge">Find a station</Heading>
-        <Text variant="body" color={theme.colors.textSecondary}>
-          Stations on your network announce themselves. Pick yours to pair with
-          it — you’ll confirm it’s the right one in the next step.
-        </Text>
-      </View>
+      <ScreenHeader
+        title="Find a station"
+        subtitle={
+          'Stations on your network announce themselves. Pick yours to pair with ' +
+          'it — you’ll confirm it’s the right one in the next step.'
+        }
+        onBack={() => navigation.goBack()}
+      />
 
       {state.status === 'error' ? (
         <View style={{gap: theme.spacing.sm}}>

@@ -9,10 +9,10 @@
  * top-level navigator back to onboarding.
  */
 import {useState} from 'react';
-import {ScrollView, View} from 'react-native';
+import {ScrollView} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
-import {Banner, Button, Field, Heading, Text} from '../../components';
+import {Banner, Button, Field, ScreenHeader, Text} from '../../components';
 import {clearDecisions} from '../../ledger';
 import {clearOutbox} from '../../ledger/outbox';
 import {factoryReset} from '../../wallet/Wallet';
@@ -53,17 +53,10 @@ export function FactoryReset({route, navigation}: MainStackScreenProps<'FactoryR
         paddingBottom: insets.bottom + theme.spacing.xl,
         gap: theme.spacing.lg,
       }}>
-      <View style={{gap: theme.spacing.xs}}>
-        <Text
-          variant="body"
-          color={theme.colors.primary}
-          onPress={() => navigation.goBack()}
-          accessibilityRole="button"
-          accessibilityLabel="Back">
-          ‹ Back
-        </Text>
-        <Heading level="headingLarge">Factory reset</Heading>
-      </View>
+      <ScreenHeader
+        title="Factory reset"
+        onBack={() => navigation.goBack()}
+      />
 
       <Banner variant="danger" title="This erases your wallet from this phone">
         Your identity, keys, and history are removed. Unless your social-recovery circle can restore

@@ -8,11 +8,18 @@
  * transfer is a later refinement.
  */
 import {useState} from 'react';
-import {ScrollView, View} from 'react-native';
+import {ScrollView} from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
-import {Banner, Button, Card, Field, Heading, Text} from '../../components';
+import {
+  Banner,
+  Button,
+  Card,
+  Field,
+  ScreenHeader,
+  Text,
+} from '../../components';
 import {exportWalletBytes} from '../../wallet/Wallet';
 import {useTheme} from '../../theme';
 import type {MainStackScreenProps} from '../../navigation/types';
@@ -49,17 +56,10 @@ export function ExportWallet({navigation}: MainStackScreenProps<'ExportWallet'>)
 
   return (
     <ScrollView style={{backgroundColor: theme.colors.bg}} contentContainerStyle={pad}>
-      <View style={{gap: theme.spacing.xs}}>
-        <Text
-          variant="body"
-          color={theme.colors.primary}
-          onPress={() => navigation.goBack()}
-          accessibilityRole="button"
-          accessibilityLabel="Back">
-          ‹ Back
-        </Text>
-        <Heading level="headingLarge">Export wallet</Heading>
-      </View>
+      <ScreenHeader
+        title="Export wallet"
+        onBack={() => navigation.goBack()}
+      />
 
       {exported === null ? (
         <>

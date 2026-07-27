@@ -15,7 +15,7 @@ import {useEffect, useState} from 'react';
 import {ScrollView, StyleSheet, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
-import {Card, Heading, Identicon, Text} from '../../components';
+import {Card, Identicon, ScreenHeader, Text} from '../../components';
 import {dayLabel, formatCommons, shortAddress} from '../../ledger';
 import {loadVouchNicknames} from '../../wallet/vouchNicknames';
 import {useTheme, type Theme} from '../../theme';
@@ -59,17 +59,10 @@ export function VouchDetail({route, navigation}: MainStackScreenProps<'VouchDeta
         paddingBottom: insets.bottom + theme.spacing.xl,
         gap: theme.spacing.lg,
       }}>
-      <View style={{gap: theme.spacing.xs}}>
-        <Text
-          variant="body"
-          color={theme.colors.primary}
-          onPress={() => navigation.goBack()}
-          accessibilityRole="button"
-          accessibilityLabel="Back">
-          ‹ Back
-        </Text>
-        <Heading level="headingLarge">Vouch</Heading>
-      </View>
+      <ScreenHeader
+        title="Vouch"
+        onBack={() => navigation.goBack()}
+      />
 
       <Card style={styles.hero}>
         <Identicon seed={counterpartyAddress} size={52} />

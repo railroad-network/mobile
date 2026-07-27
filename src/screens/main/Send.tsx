@@ -32,6 +32,7 @@ import {
   Heading,
   Identicon,
   QRScanner,
+  ScreenHeader,
   Text,
 } from '../../components';
 import {isValidAddress} from '../../crypto/address';
@@ -170,8 +171,7 @@ export function Send({navigation}: MainTabScreenProps<'Send'>) {
   if (step === 'recipient') {
     return (
       <ScrollView style={{backgroundColor: theme.colors.bg}} contentContainerStyle={contentPad}>
-        <Header
-          theme={theme}
+        <ScreenHeader
           title="Send Commons"
           subtitle="Pay a neighbour. They confirm, then it settles."
         />
@@ -226,7 +226,7 @@ export function Send({navigation}: MainTabScreenProps<'Send'>) {
   if (step === 'amount') {
     return (
       <ScrollView style={{backgroundColor: theme.colors.bg}} contentContainerStyle={contentPad}>
-        <Header theme={theme} title={`Pay ${recipientLabel}`} onBack={() => setStep('recipient')} />
+        <ScreenHeader title={`Pay ${recipientLabel}`} onBack={() => setStep('recipient')} />
         <Card style={styles.amountPreview}>
           <Amount centi={amountCenti} size="xl" signed={false} colored={false} />
           <Text variant="caption" color={theme.colors.textSecondary}>
@@ -270,7 +270,7 @@ export function Send({navigation}: MainTabScreenProps<'Send'>) {
   if (step === 'review') {
     return (
       <ScrollView style={{backgroundColor: theme.colors.bg}} contentContainerStyle={contentPad}>
-        <Header theme={theme} title="Review payment" onBack={() => setStep('amount')} />
+        <ScreenHeader title="Review payment" onBack={() => setStep('amount')} />
         <View style={styles.centerX}>
           <Amount centi={-amountCenti} size="xl" />
         </View>
@@ -355,39 +355,6 @@ export function Send({navigation}: MainTabScreenProps<'Send'>) {
   );
 }
 
-/** Shared step header: an optional back link, a title, and an optional subtitle. */
-function Header({
-  theme,
-  title,
-  subtitle,
-  onBack,
-}: {
-  theme: Theme;
-  title: string;
-  subtitle?: string;
-  onBack?: () => void;
-}) {
-  return (
-    <View style={{gap: theme.spacing.xs}}>
-      {onBack !== undefined && (
-        <Text
-          variant="body"
-          color={theme.colors.primary}
-          onPress={onBack}
-          accessibilityRole="button"
-          accessibilityLabel="Back">
-          ‹ Back
-        </Text>
-      )}
-      <Heading level="headingLarge">{title}</Heading>
-      {subtitle !== undefined && (
-        <Text variant="body" color={theme.colors.textSecondary}>
-          {subtitle}
-        </Text>
-      )}
-    </View>
-  );
-}
 
 /** A label / value row inside a review card. */
 function Row({theme, label, children}: {theme: Theme; label: string; children: React.ReactNode}) {

@@ -28,3 +28,5 @@ export {ConnectivityStatus} from './ConnectivityStatus';
 export type {ConnectivityStatusProps, ConnectivityLevel} from './ConnectivityStatus';
 export {Countdown} from './Countdown';
 export type {CountdownProps} from './Countdown';
+export {ScreenHeader, BackLink} from './ScreenHeader';
+export type {ScreenHeaderProps, BackLinkProps} from './ScreenHeader';

@@ -8,14 +8,13 @@ import {type ReactNode} from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
-import {Heading, Text} from '../../components';
+import {BackLink, Heading, Text} from '../../components';
 import {useTheme} from '../../theme';
 
 /** The four setup steps the progress dots track. */
@@ -60,16 +59,11 @@ export function RecoveryScaffold({
           paddingBottom: theme.spacing.sm,
         }}>
         {onBack !== undefined && (
-          <Pressable
-            onPress={onBack}
-            accessibilityRole="button"
-            accessibilityLabel="Back"
-            hitSlop={12}
-            style={{marginBottom: theme.spacing.sm}}>
-            <Text variant="body" color={theme.colors.primary}>
-              ‹ Back
-            </Text>
-          </Pressable>
+          // The recovery header sets its own spacing, but the control itself is
+          // the one shared BackLink — there is no second implementation.
+          <View style={{marginBottom: theme.spacing.sm}}>
+            <BackLink onPress={onBack} />
+          </View>
         )}
         <Heading level="headingMedium">{title}</Heading>
         {subtitle !== undefined && (

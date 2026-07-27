@@ -25,7 +25,7 @@
 import {ScrollView, StyleSheet, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
-import {Badge, Card, Heading, Text} from '../../components';
+import {Badge, Card, ScreenHeader, Text} from '../../components';
 import {relativeTime, shortAddress, useReputation} from '../../ledger';
 import {useTheme, type Theme} from '../../theme';
 import type {
@@ -64,17 +64,10 @@ export function Standing({navigation}: MainStackScreenProps<'Standing'>) {
         paddingBottom: insets.bottom + theme.spacing.xl,
         gap: theme.spacing.lg,
       }}>
-      <View style={{gap: theme.spacing.xs}}>
-        <Text
-          variant="body"
-          color={theme.colors.primary}
-          onPress={() => navigation.goBack()}
-          accessibilityRole="button"
-          accessibilityLabel="Back">
-          ‹ Back
-        </Text>
-        <Heading level="headingLarge">Your standing</Heading>
-      </View>
+      <ScreenHeader
+        title="Your standing"
+        onBack={() => navigation.goBack()}
+      />
 
       {isLoading && (
         <Card>

@@ -18,8 +18,17 @@ import {useState} from 'react';
 import {ScrollView, StyleSheet, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
-import {Banner, Button, Card, Field, Heading, StationAvatar, Text} from '../../components';
-import {useTheme, type Theme} from '../../theme';
+import {
+  Banner,
+  Button,
+  Card,
+  Field,
+  Heading,
+  ScreenHeader,
+  StationAvatar,
+  Text,
+} from '../../components';
+import {useTheme} from '../../theme';
 import type {MainStackScreenProps} from '../../navigation/types';
 import {requestPairing, type PairingFailure} from '../../network/Pairing';
 import {addPairedStation} from '../../network/pairedStation';
@@ -122,8 +131,7 @@ export function Pairing({navigation, route}: MainStackScreenProps<'Pairing'>) {
   if (step === 'unlock') {
     return (
       <ScrollView style={{backgroundColor: theme.colors.bg}} contentContainerStyle={contentPad}>
-        <Header
-          theme={theme}
+        <ScreenHeader
           title="Pair with station"
           subtitle={`Confirm it’s you to pair with ${station.name}.`}
           onBack={() => navigation.goBack()}
@@ -195,7 +203,7 @@ export function Pairing({navigation, route}: MainStackScreenProps<'Pairing'>) {
   if (step === 'confirm') {
     return (
       <ScrollView style={{backgroundColor: theme.colors.bg}} contentContainerStyle={contentPad}>
-        <Header theme={theme} title="Check the code" />
+        <ScreenHeader title="Check the code" />
         <Text variant="body" color={theme.colors.textSecondary}>
           On the station, the operator runs{' '}
           <Text variant="mono" color={theme.colors.text}>
@@ -262,39 +270,6 @@ export function Pairing({navigation, route}: MainStackScreenProps<'Pairing'>) {
   );
 }
 
-/** Shared step header: an optional back link, a title, and an optional subtitle. */
-function Header({
-  theme,
-  title,
-  subtitle,
-  onBack,
-}: {
-  theme: Theme;
-  title: string;
-  subtitle?: string;
-  onBack?: () => void;
-}) {
-  return (
-    <View style={{gap: theme.spacing.xs}}>
-      {onBack !== undefined && (
-        <Text
-          variant="body"
-          color={theme.colors.primary}
-          onPress={onBack}
-          accessibilityRole="button"
-          accessibilityLabel="Back">
-          ‹ Back
-        </Text>
-      )}
-      <Heading level="headingLarge">{title}</Heading>
-      {subtitle !== undefined && (
-        <Text variant="body" color={theme.colors.textSecondary}>
-          {subtitle}
-        </Text>
-      )}
-    </View>
-  );
-}
 
 const styles = StyleSheet.create({
   stationHeader: {flexDirection: 'row', alignItems: 'center', gap: 12},

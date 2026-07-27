@@ -19,7 +19,14 @@ import {Pressable, ScrollView, StyleSheet, View} from 'react-native';
 import {useFocusEffect} from '@react-navigation/native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
-import {Button, Card, Heading, QRScanner, Text} from '../../components';
+import {
+  Button,
+  Card,
+  Heading,
+  QRScanner,
+  ScreenHeader,
+  Text,
+} from '../../components';
 import {bytesToBase64} from '../../crypto/base64';
 import {useTheme} from '../../theme';
 import type {MainStackScreenProps} from '../../navigation/types';
@@ -123,23 +130,14 @@ export function HeldShards({navigation}: MainStackScreenProps<'HeldShards'>) {
         gap: theme.spacing.lg,
       }}
       keyboardShouldPersistTaps="handled">
-      <View style={{gap: theme.spacing.xs}}>
-        <Pressable
-          onPress={() => navigation.goBack()}
-          accessibilityRole="button"
-          accessibilityLabel="Back"
-          hitSlop={12}
-          style={{marginBottom: theme.spacing.xs}}>
-          <Text variant="body" color={theme.colors.primary}>
-            ‹ Back
-          </Text>
-        </Pressable>
-        <Heading level="headingLarge">Shards you hold</Heading>
-        <Text variant="body" color={theme.colors.textSecondary}>
-          Recovery pieces friends have entrusted to you. Each is sealed to you and
-          is only one piece — you can never see anyone’s key alone.
-        </Text>
-      </View>
+      <ScreenHeader
+        title="Shards you hold"
+        subtitle={
+          'Recovery pieces friends have entrusted to you. Each is sealed to you ' +
+          'and is only one piece — you can never see anyone’s key alone.'
+        }
+        onBack={() => navigation.goBack()}
+      />
 
       {notice !== null && (
         <InlineNotice variant={notice.variant} title={notice.title}>

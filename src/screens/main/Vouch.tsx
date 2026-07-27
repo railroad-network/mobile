@@ -30,6 +30,7 @@ import {
   Heading,
   Identicon,
   QRScanner,
+  ScreenHeader,
   StarMark,
   Text,
 } from '../../components';
@@ -160,10 +161,12 @@ export function Vouch({navigation}: MainStackScreenProps<'Vouch'>) {
   if (step === 'subject') {
     return (
       <ScrollView style={{backgroundColor: theme.colors.bg}} contentContainerStyle={contentPad}>
-        <Header
-          theme={theme}
+        <ScreenHeader
           title="Vouch for someone"
-          subtitle="In person: they show their address QR, you scan it and stake your word that they’re real."
+          subtitle={
+            'In person: they show their address QR, you scan it and stake your ' +
+            'word that they’re real.'
+          }
           onBack={() => navigation.goBack()}
         />
         {scanning ? (
@@ -217,7 +220,7 @@ export function Vouch({navigation}: MainStackScreenProps<'Vouch'>) {
   if (step === 'details') {
     return (
       <ScrollView style={{backgroundColor: theme.colors.bg}} contentContainerStyle={contentPad}>
-        <Header theme={theme} title="About them" onBack={() => setStep('subject')} />
+        <ScreenHeader title="About them" onBack={() => setStep('subject')} />
         <Card style={styles.subjectCard}>
           <Identicon seed={subject} size={40} />
           <View style={styles.subjectText}>
@@ -269,7 +272,7 @@ export function Vouch({navigation}: MainStackScreenProps<'Vouch'>) {
   if (step === 'review') {
     return (
       <ScrollView style={{backgroundColor: theme.colors.bg}} contentContainerStyle={contentPad}>
-        <Header theme={theme} title="Review vouch" onBack={() => setStep('details')} />
+        <ScreenHeader title="Review vouch" onBack={() => setStep('details')} />
         <Card style={{gap: theme.spacing.md}}>
           <Row theme={theme} label="For">
             <Identicon seed={subject} size={28} />
@@ -477,39 +480,6 @@ function peopleCount(n: number): string {
   return `${n} ${n === 1 ? 'person' : 'people'}`;
 }
 
-/** Shared step header: an optional back link, a title, and an optional subtitle. */
-function Header({
-  theme,
-  title,
-  subtitle,
-  onBack,
-}: {
-  theme: Theme;
-  title: string;
-  subtitle?: string;
-  onBack?: () => void;
-}) {
-  return (
-    <View style={{gap: theme.spacing.xs}}>
-      {onBack !== undefined && (
-        <Text
-          variant="body"
-          color={theme.colors.primary}
-          onPress={onBack}
-          accessibilityRole="button"
-          accessibilityLabel="Back">
-          ‹ Back
-        </Text>
-      )}
-      <Heading level="headingLarge">{title}</Heading>
-      {subtitle !== undefined && (
-        <Text variant="body" color={theme.colors.textSecondary}>
-          {subtitle}
-        </Text>
-      )}
-    </View>
-  );
-}
 
 /** A label / value row inside the review card. */
 function Row({theme, label, children}: {theme: Theme; label: string; children: React.ReactNode}) {

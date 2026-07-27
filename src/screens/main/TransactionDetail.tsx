@@ -22,8 +22,8 @@ import {
   Button,
   Card,
   Countdown,
-  Heading,
   Identicon,
+  ScreenHeader,
   Text,
 } from '../../components';
 import {relativeTime, settlementAt, stateBadge, useActivity} from '../../ledger';
@@ -68,17 +68,10 @@ export function TransactionDetail({route, navigation}: MainStackScreenProps<'Tra
         paddingBottom: insets.bottom + theme.spacing.xl,
         gap: theme.spacing.lg,
       }}>
-      <View style={{gap: theme.spacing.xs}}>
-        <Text
-          variant="body"
-          color={theme.colors.primary}
-          onPress={() => navigation.goBack()}
-          accessibilityRole="button"
-          accessibilityLabel="Back">
-          ‹ Back
-        </Text>
-        <Heading level="headingLarge">Transaction</Heading>
-      </View>
+      <ScreenHeader
+        title="Transaction"
+        onBack={() => navigation.goBack()}
+      />
 
       {tx === undefined ? (
         <Text variant="body" color={theme.colors.textSecondary}>

@@ -19,6 +19,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 import {
   Amount,
+  BackLink,
   Banner,
   Button,
   Card,
@@ -61,16 +62,7 @@ export function ConfirmReceived({route, navigation}: MainStackScreenProps<'Confi
   };
 
   function back(label = 'Back', onPress = () => navigation.goBack()) {
-    return (
-      <Text
-        variant="body"
-        color={theme.colors.primary}
-        onPress={onPress}
-        accessibilityRole="button"
-        accessibilityLabel={label}>
-        ‹ {label}
-      </Text>
-    );
+    return <BackLink label={label} onPress={onPress} />;
   }
 
   if (tx === undefined) {

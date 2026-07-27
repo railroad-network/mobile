@@ -158,6 +158,14 @@ test('the browser can be left again', async () => {
   // device where that is hidden. Every other pushed screen offers one.
   const navigation = nav();
   const r = await renderList('given', navigation);
-  await press(r.root.find(n => n.props.accessibilityLabel === 'Back'));
+  // Exactly one, counted by the chevron: taking the first match let a duplicate
+  // back link ship here once already. ScreenHeader's back is a Pressable, so
+  // the accessibility label appears on both the composite and its host view and
+  // cannot be counted directly.
+  const backs = r.root.findAll(
+    n => (n.type as unknown as string) === 'Text' && textOf(n).includes('‹'),
+  );
+  expect(backs).toHaveLength(1);
+  await press(r.root.findAll(n => n.props.accessibilityLabel === 'Back')[0]);
   expect(navigation.goBack).toHaveBeenCalled();
 });

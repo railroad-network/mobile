@@ -10,7 +10,7 @@ import Clipboard from '@react-native-clipboard/clipboard';
 import QRCode from 'react-native-qrcode-svg';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
-import {Button, Card, Heading, Identicon, Text} from '../../components';
+import {Button, Card, Identicon, ScreenHeader, Text} from '../../components';
 import {shortAddress, useIdentity} from '../../ledger';
 import {useTheme} from '../../theme';
 import type {MainStackScreenProps} from '../../navigation/types';
@@ -33,20 +33,11 @@ export function Receive({navigation}: MainStackScreenProps<'Receive'>) {
         paddingBottom: insets.bottom + theme.spacing.xl,
         gap: theme.spacing.lg,
       }}>
-      <View style={{gap: theme.spacing.xs}}>
-        <Text
-          variant="body"
-          color={theme.colors.primary}
-          onPress={() => navigation.goBack()}
-          accessibilityRole="button"
-          accessibilityLabel="Back">
-          ‹ Back
-        </Text>
-        <Heading level="headingLarge">Request payment</Heading>
-        <Text variant="body" color={theme.colors.textSecondary}>
-          Have someone scan this to pay you, or share your address.
-        </Text>
-      </View>
+      <ScreenHeader
+        title="Request payment"
+        subtitle="Have someone scan this to pay you, or share your address."
+        onBack={() => navigation.goBack()}
+      />
 
       <Card style={styles.qrCard}>
         <Identicon seed={address} size={40} />
