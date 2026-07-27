@@ -151,3 +151,13 @@ test('an empty tab shows its empty state', async () => {
   expect(hasText(r, 'You’ve vouched for')).toBe(false);
   expect(hasText(r, 'haven’t vouched for anyone yet')).toBe(true);
 });
+
+test('the browser can be left again', async () => {
+  // It is reached from Community and pushes over the tabs, so without an
+  // on-screen Back the only way out is the OS gesture/button — a dead end on a
+  // device where that is hidden. Every other pushed screen offers one.
+  const navigation = nav();
+  const r = await renderList('given', navigation);
+  await press(r.root.find(n => n.props.accessibilityLabel === 'Back'));
+  expect(navigation.goBack).toHaveBeenCalled();
+});

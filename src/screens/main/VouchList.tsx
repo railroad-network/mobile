@@ -96,7 +96,17 @@ export function VouchList({route, navigation}: MainStackScreenProps<'VouchList'>
   return (
     <View style={[styles.fill, {backgroundColor: theme.colors.bg}]}>
       <View style={{paddingTop: insets.top + theme.spacing.sm, paddingHorizontal: theme.spacing.lg, gap: theme.spacing.md}}>
-        <Heading level="headingLarge">Your vouches</Heading>
+        <View style={styles.titleBlock}>
+          <Text
+            variant="body"
+            color={theme.colors.primary}
+            onPress={() => navigation.goBack()}
+            accessibilityRole="button"
+            accessibilityLabel="Back">
+            ‹ Back
+          </Text>
+          <Heading level="headingLarge">Your vouches</Heading>
+        </View>
         <View style={styles.tabs}>
           <Tab theme={theme} label="I’ve made" active={tab === 'given'} onPress={() => setTab('given')} />
           <Tab theme={theme} label="I’ve received" active={tab === 'received'} onPress={() => setTab('received')} />
@@ -235,6 +245,8 @@ function EmptyVouches({theme, tab, filtered}: {theme: Theme; tab: VouchDirection
 
 const styles = StyleSheet.create({
   fill: {flex: 1},
+  // Back sits tight above the title, as on every other pushed screen.
+  titleBlock: {gap: 4},
   tabs: {flexDirection: 'row', gap: 8},
   tab: {
     flex: 1,
