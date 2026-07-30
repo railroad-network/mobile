@@ -203,8 +203,18 @@ export class StationClient {
    * `frame_signed_record`) and sends them hex-encoded.
    */
   async submitSignedRecord(
-    method: 'submit_proposal' | 'submit_confirmation' | 'submit_vouch',
-    field: 'signed_proposal' | 'signed_confirmation' | 'signed_vouch',
+    method:
+      | 'submit_proposal'
+      | 'submit_confirmation'
+      | 'submit_vouch'
+      | 'submit_listing'
+      | 'submit_listing_close',
+    field:
+      | 'signed_proposal'
+      | 'signed_confirmation'
+      | 'signed_vouch'
+      | 'signed_listing'
+      | 'signed_listing_close',
     canonicalPayload: Uint8Array,
     signature: Uint8Array,
   ): Promise<Record<string, unknown>> {
@@ -308,6 +318,61 @@ export class StationClient {
     const result = await this.call('marketplace_search', params);
     const listings = Array.isArray(result.listings)
       ? (result.listings as StationListingCard[])
+      : [];
+    return {listings};
+  }
+
+  /**
+   * `submit_listing` — publish a mobile-signed listing (T1.7.2). The wallet is
+   * the provider and signed the listing on-device; the station verifies and
+   * appends it. Returns the content-address `listingId` and the oracle tier it
+   * was recorded with.
+   */
+  async submitListing(
+    canonicalPayload: Uint8Array,
+    signature: Uint8Array,
+  ): Promise<{listingId: string; oracleTier: number}> {
+    const result = await this.submitSignedRecord(
+      'submit_listing',
+      'signed_listing',
+      canonicalPayload,
+      signature,
+    );
+    return {
+      listingId: typeof result.listing_id === 'string' ? result.listing_id : '',
+      oracleTier: typeof result.oracle_tier === 'number' ? result.oracle_tier : 0,
+    };
+  }
+
+  /**
+   * `submit_listing_close` — take one of the member's own listings off offer
+   * (T1.7.2), by a mobile-signed `ProviderClosed`. The station verifies the
+   * signer owns the listing and appends the close.
+   */
+  async submitListingClose(
+    canonicalPayload: Uint8Array,
+    signature: Uint8Array,
+  ): Promise<{listingId: string}> {
+    const result = await this.submitSignedRecord(
+      'submit_listing_close',
+      'signed_listing_close',
+      canonicalPayload,
+      signature,
+    );
+    return {
+      listingId: typeof result.listing_id === 'string' ? result.listing_id : '',
+    };
+  }
+
+  /**
+   * `marketplace_my_listings` — the authenticated member's own listings (T1.7.2),
+   * in whatever state, newest first. The member is the signer, so there is no
+   * address param — a mobile only ever reads its own.
+   */
+  async myListings(): Promise<{listings: StationMyListingRow[]}> {
+    const result = await this.call('marketplace_my_listings', {});
+    const listings = Array.isArray(result.listings)
+      ? (result.listings as StationMyListingRow[])
       : [];
     return {listings};
   }
@@ -754,6 +819,21 @@ export interface StationListingDetail extends StationListingCard {
   closed_at: number | null;
   /** How many members have vouched for the provider — vouching context a buyer weighs. */
   provider_vouches_received: number;
+}
+
+/**
+ * One of the member's own listings (T1.7.2's `MyListingRow`): a browse card plus
+ * its lifecycle. Unlike a browse card, this includes closed and expired
+ * listings — a provider's own list must show the ones no longer on offer, or a
+ * listing that went off offer looks deleted.
+ */
+export interface StationMyListingRow extends StationListingCard {
+  /** `active`, `closed`, or `expired`. */
+  state: StationListingState;
+  /** Why it closed, when `state` is `closed`. */
+  close_reason: StationCloseReason | null;
+  /** Unix seconds it closed, when `state` is `closed`. */
+  closed_at: number | null;
 }
 
 /**

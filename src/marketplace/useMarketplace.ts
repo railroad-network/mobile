@@ -24,10 +24,19 @@ import {
 import {useCallback} from 'react';
 
 import {useStationClient} from '../network/useStation';
-import type {
-  StationListingCard,
-  StationListingDetail,
-  StationSurface,
+import {useWalletSession} from '../wallet/WalletSession';
+import {
+  createSignedListing,
+  createSignedListingClose,
+  type ListingDraft,
+} from '../wallet/listing';
+import {
+  StationClientError,
+  type StationErrorKind,
+  type StationListingCard,
+  type StationListingDetail,
+  type StationMyListingRow,
+  type StationSurface,
 } from '../network/StationClient';
 
 /** How many cards a browse page fetches. The station clamps anything larger. */
@@ -57,8 +66,14 @@ interface SearchPage {
 export const marketplaceKeys = {
   root: ['marketplace'] as const,
   search: ['marketplace', 'search'] as const,
+  mine: ['marketplace', 'mine'] as const,
   listing: (id: string) => ['marketplace', 'listing', id] as const,
 };
+
+/** The outcome of a listing write. Never throws to the screen (mirrors the ledger's). */
+export type ListingWriteResult<T = unknown> =
+  | ({ok: true} & T)
+  | {ok: false; error: StationErrorKind | 'locked'; message: string};
 
 /**
  * A ranked, paged browse search (T1.7.1). Disabled when locked / unpaired; keyed
@@ -109,6 +124,102 @@ export function useListingDetail(
     queryFn: (): Promise<StationListingDetail> => client!.marketplaceListing(listingId),
     staleTime: 0,
   });
+}
+
+/**
+ * The member's own listings (T1.7.2), in whatever state, newest first. Disabled
+ * when locked / unpaired; keyed on the client's presence so pairing refetches.
+ * Fetched fresh so a just-created or just-closed listing shows on the next open.
+ */
+export function useMyListings(): UseQueryResult<StationMyListingRow[], Error> {
+  const client = useStationClient();
+  const {wallet} = useWalletSession();
+  return useQuery({
+    queryKey: [...marketplaceKeys.mine, wallet?.address, client !== null],
+    enabled: client !== null && wallet !== null,
+    queryFn: async (): Promise<StationMyListingRow[]> => (await client!.myListings()).listings,
+    staleTime: 0,
+  });
+}
+
+/**
+ * Returns a function that publishes a listing: it reads the station's community
+ * from `whoami` (the listing is stamped with it, as a vouch is), signs the
+ * listing on-device, transmits it, and refreshes the marketplace so it shows in
+ * browse and My Listings. Online-only like a send — the community is signed into
+ * the bytes, so it must be the station's authoritative value at publish time.
+ */
+export function useCreateListing(): (
+  draft: ListingDraft,
+) => Promise<ListingWriteResult<{listingId: string}>> {
+  const client = useStationClient();
+  const {wallet} = useWalletSession();
+  const queryClient = useQueryClient();
+  return useCallback(
+    async draft => {
+      if (client === null || wallet === null) {
+        return {ok: false, error: 'locked', message: 'Unlock your wallet and pair a station.'};
+      }
+      try {
+        const {community} = await client.whoami();
+        if (community === undefined) {
+          return {
+            ok: false,
+            error: 'rejected',
+            message: 'Your station is too old to accept listings — update it first.',
+          };
+        }
+        const createdAt = Math.floor(Date.now() / 1000);
+        const signed = await createSignedListing(wallet, community, draft, createdAt);
+        const {listingId} = await client.submitListing(signed.payloadBytes, signed.signature);
+        await queryClient.invalidateQueries({queryKey: marketplaceKeys.root});
+        return {ok: true, listingId: listingId.length > 0 ? listingId : signed.listingId};
+      } catch (e) {
+        return asListingWriteError(e);
+      }
+    },
+    [client, wallet, queryClient],
+  );
+}
+
+/**
+ * Returns a function that takes one of the member's own listings off offer: it
+ * signs a `ProviderClosed` on-device, transmits it, and refreshes so the listing
+ * drops out of browse and reads as closed in My Listings.
+ */
+export function useCloseListing(): (listingId: string) => Promise<ListingWriteResult> {
+  const client = useStationClient();
+  const {wallet} = useWalletSession();
+  const queryClient = useQueryClient();
+  return useCallback(
+    async listingId => {
+      if (client === null || wallet === null) {
+        return {ok: false, error: 'locked', message: 'Unlock your wallet and pair a station.'};
+      }
+      try {
+        const closedAt = Math.floor(Date.now() / 1000);
+        const signed = await createSignedListingClose(wallet, listingId, closedAt);
+        await client.submitListingClose(signed.payloadBytes, signed.signature);
+        await queryClient.invalidateQueries({queryKey: marketplaceKeys.root});
+        return {ok: true};
+      } catch (e) {
+        return asListingWriteError(e);
+      }
+    },
+    [client, wallet, queryClient],
+  );
+}
+
+/** Normalises a thrown error into a typed {@link ListingWriteResult} failure. */
+function asListingWriteError(e: unknown): {
+  ok: false;
+  error: StationErrorKind | 'locked';
+  message: string;
+} {
+  if (e instanceof StationClientError) {
+    return {ok: false, error: e.kind, message: e.message};
+  }
+  return {ok: false, error: 'malformed', message: e instanceof Error ? e.message : String(e)};
 }
 
 /** Refetches all marketplace reads — wired to browse's pull-to-refresh. */

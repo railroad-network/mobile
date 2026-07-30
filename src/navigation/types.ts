@@ -83,6 +83,10 @@ export type MainStackParamList = {
   Marketplace: undefined;
   /** One listing in full, with the Inquire CTA (T1.7.1), by content-address id. */
   ListingDetail: {listingId: string};
+  /** The multi-step create-a-listing flow (T1.7.2). */
+  CreateListing: undefined;
+  /** The member's own listings, with the close flow (T1.7.2). */
+  MyListings: undefined;
   /** Vouch for someone: scan their address QR, review, sign & submit (T1.4.1). */
   Vouch: undefined;
   /** The vouching browser (T1.4.5): given/received vouch lists, opened on a tab. */

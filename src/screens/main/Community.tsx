@@ -59,6 +59,18 @@ export function Community({navigation}: MainTabScreenProps<'Community'>) {
           subtitle="See what members are offering — goods, services, and commons"
           onPress={() => navigation.navigate('Marketplace')}
         />
+        <NavRow
+          theme={theme}
+          title="Sell something"
+          subtitle="Offer goods, a service, or a community resource"
+          onPress={() => navigation.navigate('CreateListing')}
+        />
+        <NavRow
+          theme={theme}
+          title="My listings"
+          subtitle="Your offers, and taking one off offer"
+          onPress={() => navigation.navigate('MyListings')}
+        />
       </Group>
 
       <Group theme={theme} label="Web of trust">

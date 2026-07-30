@@ -12,8 +12,18 @@ export {
   marketplaceKeys,
   useMarketplaceSearch,
   useListingDetail,
+  useMyListings,
+  useCreateListing,
+  useCloseListing,
   useRefreshMarketplace,
   useDebouncedValue,
   PAGE_SIZE,
   type MarketplaceFilters,
+  type ListingWriteResult,
 } from './useMarketplace';
+export {
+  type ListingDraft,
+  type ListingSurface,
+  type ListingPricingModel,
+  type ListingAvailabilityStatus,
+} from '../wallet/listing';
