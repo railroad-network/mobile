@@ -85,9 +85,15 @@ export function MyListings({navigation}: MainStackScreenProps<'MyListings'>) {
         </View>
       )}
 
-      {rows.map(row => (
-        <MyListingCard key={row.listing_id} theme={theme} navigation={navigation} row={row} />
-      ))}
+      {rows.length > 0 && (
+        // Cards sit closer to each other than to the header/button above (the
+        // ScrollView's own `lg` gap), so the list reads as one group.
+        <View style={{gap: theme.spacing.sm}}>
+          {rows.map(row => (
+            <MyListingCard key={row.listing_id} theme={theme} navigation={navigation} row={row} />
+          ))}
+        </View>
+      )}
     </ScrollView>
   );
 }

@@ -36,10 +36,13 @@ export function Card({children, style, padded = true}: CardProps) {
 const styles = StyleSheet.create({
   base: {
     borderWidth: 1,
+    // iOS gets the soft, ink-tinted shadow; the shadow* props are iOS-only in
+    // RN. Android's shadow is `elevation`, and at this height its spot shadow
+    // (dark, on the light surface) reads as a hard gray halo around the card —
+    // so Android leans on the hairline border alone, which already grounds it.
     shadowColor: '#211B14',
     shadowOpacity: 0.08,
     shadowRadius: 2,
     shadowOffset: {width: 0, height: 1},
-    elevation: 2,
   },
 });
