@@ -31,6 +31,7 @@ export function Field({
   suffix,
   containerStyle,
   editable = true,
+  multiline,
   ...rest
 }: FieldProps) {
   const theme = useTheme();
@@ -47,8 +48,13 @@ export function Field({
       <View
         style={[
           styles.controlBase,
+          // A single-line control is a fixed row with the text centred; a
+          // multiline one grows from a taller minimum, aligns its content to the
+          // top, and pads top and bottom so the text isn't pinned to the border.
+          multiline
+            ? {minHeight: controlHeight.md * 4, alignItems: 'flex-start', paddingVertical: theme.spacing.sm}
+            : {height: controlHeight.md, alignItems: 'center'},
           {
-            height: controlHeight.md,
             paddingHorizontal: theme.spacing.md,
             gap: theme.spacing.sm,
             borderRadius: theme.radius.sm,
@@ -63,6 +69,10 @@ export function Field({
           accessibilityHint={error ?? hint}
           placeholderTextColor={colors.textMuted}
           editable={editable}
+          multiline={multiline}
+          // Android centres multiline text vertically by default; top-align it so
+          // it fills from the top of the taller box.
+          textAlignVertical={multiline ? 'top' : undefined}
           style={[styles.input, {fontSize: theme.type.body.fontSize, color: colors.text}]}
           {...rest}
         />
@@ -84,7 +94,6 @@ export function Field({
 const styles = StyleSheet.create({
   controlBase: {
     flexDirection: 'row',
-    alignItems: 'center',
     borderWidth: 1,
   },
   input: {
