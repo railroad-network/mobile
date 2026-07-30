@@ -25,13 +25,13 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {
   Amount,
   Badge,
+  BackLink,
   Banner,
   Button,
   Card,
   CommonMark,
   Heading,
   Identicon,
-  ScreenHeader,
   Text,
 } from '../../components';
 import {dayLabel, shortAddress} from '../../ledger';
@@ -55,7 +55,13 @@ export function ListingDetail({navigation, route}: MainStackScreenProps<'Listing
         paddingBottom: insets.bottom + theme.spacing.xl,
         gap: theme.spacing.lg,
       }}>
-      <ScreenHeader title="Listing" onBack={() => navigation.goBack()} />
+      {/* Back sits tight above the listing's own title (there is no "Listing"
+          heading) — the same grouping ScreenHeader gives a back link and title,
+          rather than a full section gap between them. */}
+      <View style={styles.header}>
+        <BackLink onPress={() => navigation.goBack()} />
+        {data !== undefined && <ListingTitleHeader theme={theme} listing={data} />}
+      </View>
 
       {isLoading && (
         <Card>
@@ -72,6 +78,24 @@ export function ListingDetail({navigation, route}: MainStackScreenProps<'Listing
   );
 }
 
+/** Title, surface/category, and price — the listing's own header, under the back link. */
+function ListingTitleHeader({theme, listing}: {theme: Theme; listing: StationListingDetail}) {
+  return (
+    <View style={{gap: theme.spacing.sm}}>
+      <Heading level="headingLarge">{listing.title}</Heading>
+      <View style={styles.metaRow}>
+        <Badge variant="neutral" size="sm">
+          {capitalize(listing.surface)}
+        </Badge>
+        <Text variant="caption" color={theme.colors.textSecondary}>
+          {categoryLabel(listing.category)}
+        </Text>
+      </View>
+      <PriceLine theme={theme} listing={listing} />
+    </View>
+  );
+}
+
 /** The full listing. Non-active listings keep every detail but lose the CTA. */
 function DetailBody({theme, listing}: {theme: Theme; listing: StationListingDetail}) {
   const active = listing.state === 'active';
@@ -80,20 +104,6 @@ function DetailBody({theme, listing}: {theme: Theme; listing: StationListingDeta
   return (
     <>
       {!active && <StateBanner theme={theme} listing={listing} />}
-
-      {/* Header: title, category/surface, price */}
-      <View style={{gap: theme.spacing.sm}}>
-        <Heading level="headingLarge">{listing.title}</Heading>
-        <View style={styles.metaRow}>
-          <Badge variant="neutral" size="sm">
-            {capitalize(listing.surface)}
-          </Badge>
-          <Text variant="caption" color={theme.colors.textSecondary}>
-            {categoryLabel(listing.category)}
-          </Text>
-        </View>
-        <PriceLine theme={theme} listing={listing} />
-      </View>
 
       {listing.description.trim().length > 0 && (
         <View style={{gap: theme.spacing.xs}}>
@@ -335,6 +345,8 @@ function capitalize(s: string): string {
 }
 
 const styles = StyleSheet.create({
+  // Back link tight above the title, matching ScreenHeader's own block spacing.
+  header: {gap: 4},
   metaRow: {flexDirection: 'row', alignItems: 'center', gap: 10},
   priceLine: {flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap'},
   providerRow: {flexDirection: 'row', alignItems: 'center', gap: 12},
