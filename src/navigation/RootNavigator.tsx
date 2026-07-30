@@ -14,6 +14,8 @@ import {Home} from '../screens/main/Home';
 import {Send} from '../screens/main/Send';
 import {Community} from '../screens/main/Community';
 import {Standing} from '../screens/main/Standing';
+import {Marketplace} from '../screens/main/Marketplace';
+import {ListingDetail} from '../screens/main/ListingDetail';
 import {Vouch} from '../screens/main/Vouch';
 import {VouchList} from '../screens/main/VouchList';
 import {VouchDetail} from '../screens/main/VouchDetail';
@@ -151,6 +153,8 @@ function MainNavigator() {
       <MainStack.Screen name="PairedStations" component={PairedStations} />
       <MainStack.Screen name="NotificationSettings" component={NotificationSettings} />
       <MainStack.Screen name="Standing" component={Standing} />
+      <MainStack.Screen name="Marketplace" component={Marketplace} />
+      <MainStack.Screen name="ListingDetail" component={ListingDetail} />
       <MainStack.Screen name="Vouch" component={Vouch} />
       <MainStack.Screen name="VouchList" component={VouchList} />
       <MainStack.Screen name="VouchDetail" component={VouchDetail} />

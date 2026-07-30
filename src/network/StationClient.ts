@@ -295,6 +295,37 @@ export class StationClient {
   }
 
   /**
+   * `marketplace_search` — the browse read (T1.7.1). Runs the station's ranked
+   * search over the tantivy index and returns a page of cards, each carrying its
+   * provider's band inline so a browse row draws without a round trip per lister.
+   * Only ever *active* listings: the index holds nothing else. `params` omits its
+   * absent filters (the station defaults them); the station clamps `limit` to its
+   * own maximum, so an over-large page is answered, not refused.
+   */
+  async marketplaceSearch(
+    params: MarketplaceSearchParams,
+  ): Promise<{listings: StationListingCard[]}> {
+    const result = await this.call('marketplace_search', params);
+    const listings = Array.isArray(result.listings)
+      ? (result.listings as StationListingCard[])
+      : [];
+    return {listings};
+  }
+
+  /**
+   * `marketplace_listing` — one listing in full (T1.7.1), for the detail screen.
+   * Reads state from the log rather than the index, so it can return a listing
+   * that is `closed` or `expired` — a card the member tapped may have gone off
+   * offer since the browse read, and the detail screen has to say so rather than
+   * present it as buyable. Throws `method-error` when the station has never seen
+   * the id.
+   */
+  async marketplaceListing(listingId: string): Promise<StationListingDetail> {
+    const result = await this.call('marketplace_listing', {listing_id: listingId});
+    return result as unknown as StationListingDetail;
+  }
+
+  /**
    * The full request→reply round-trip: reserve a nonce, build+sign+seal the
    * envelope, POST it, open and verify the reply, return the parsed result.
    * Throws a {@link StationClientError} for every failure mode.
@@ -628,6 +659,124 @@ export interface StationReputationBand {
   band: StationReputationBandName;
   /** Unix seconds the underlying profile was computed as of. */
   computed_at: number;
+}
+
+/** A marketplace surface tag (T1.7.0): which of the three catalogues a listing sits in. */
+export type StationSurface = 'goods' | 'services' | 'commons';
+
+/** What `amount_centi` *is* — a firm price or an opening one. */
+export type StationPricingModel = 'fixed' | 'negotiable';
+
+/** A listing's availability tag; the three mean different things per surface. */
+export type StationAvailabilityStatus = 'available' | 'limited_stock' | 'unavailable';
+
+/** A listing's lifecycle state (T1.7.0). Anything but `active` is not for sale. */
+export type StationListingState = 'draft' | 'active' | 'closed' | 'expired';
+
+/** Why a listing closed, when its state is `closed`. */
+export type StationCloseReason = 'provider_closed' | 'sold_out' | 'expiration_reached';
+
+/**
+ * A listing's availability, flattened (T1.7.0). The three fields mean different
+ * things per surface — `capacity` for Goods, `next_slot` for Services, neither
+ * for Commons — so the station sends all three and the card draws the
+ * fulfillment indicator its surface calls for.
+ */
+export interface StationAvailability {
+  /** `available`, `limited_stock`, or `unavailable`. */
+  status: StationAvailabilityStatus;
+  /** Units left, for Goods. */
+  capacity: number | null;
+  /** Unix seconds of the next open slot, for Services. */
+  next_slot: number | null;
+}
+
+/**
+ * One browse row (T1.7.0's `ListingCard`). Everything a card draws and nothing
+ * more — the description, requirements, and provider context arrive with
+ * {@link StationListingDetail} on a tap the member chose to make.
+ */
+export interface StationListingCard {
+  /** Content address, hex — the id the detail read and an inquiry both take. */
+  listing_id: string;
+  /** The provider's bech32m `rrn1…` address. */
+  provider: string;
+  /** Which catalogue the listing sits in. */
+  surface: StationSurface;
+  /** The controlled-vocabulary category (also an ADR-0009 domain tag). */
+  category: string;
+  /** The listing's title. */
+  title: string;
+  /** The price in centi-Commons. Negative is legal on `commons` (a subsidy). */
+  amount_centi: number;
+  /** `fixed` or `negotiable` — what `amount_centi` *is*. */
+  pricing_model: StationPricingModel;
+  /** Whether offers are invited (independent of `pricing_model`). */
+  negotiable: boolean;
+  /** Availability, per surface. */
+  availability: StationAvailability;
+  /** The provider's current composite, as ranking saw it. */
+  provider_composite: number;
+  /** The band that composite falls in — the chip the card shows. */
+  provider_band: StationReputationBandName;
+  /** Unix seconds the listing was published. */
+  created_at: number;
+  /** Unix seconds it stops being on offer, if it does. */
+  expires_at: number | null;
+}
+
+/**
+ * A listing in full (T1.7.0's `ListingDetailView`), for the detail screen. The
+ * card fields are flattened in — one renderer draws the header — with the
+ * description, the provider's stated requirements, and their vouching context
+ * layered on top.
+ */
+export interface StationListingDetail extends StationListingCard {
+  /** The community the listing was published in. */
+  community: string;
+  /** The full description (markdown, per T1.7.2). */
+  description: string;
+  /**
+   * The minimum capped composite an inquirer must have. Recorded provider
+   * intent; T1.7.4 is where it becomes a check against a specific buyer, so a
+   * browse-time CTA can only treat it as a courtesy hint.
+   */
+  min_reputation: number;
+  /** Whether the provider will deal only with members of `community`. */
+  community_member_only: boolean;
+  /** The dispute tier a sale would run under (1 or 2 in Phase 1). */
+  oracle_tier: number;
+  /** `active`, `closed`, or `expired`. Treat anything but `active` as off offer. */
+  state: StationListingState;
+  /** Why it closed, when `state` is `closed`. */
+  close_reason: StationCloseReason | null;
+  /** Unix seconds it closed, when `state` is `closed`. */
+  closed_at: number | null;
+  /** How many members have vouched for the provider — vouching context a buyer weighs. */
+  provider_vouches_received: number;
+}
+
+/**
+ * The `marketplace_search` params (T1.7.1). Every filter is optional; an absent
+ * one is not sent, so the station applies its default. Field names are the
+ * station's snake_case wire names, since this object is serialised straight into
+ * the request params.
+ */
+export interface MarketplaceSearchParams {
+  /** Free-text query over title and description. */
+  text?: string;
+  /** Restrict to one surface. An unknown tag is a station-side error, not ignored. */
+  surface?: StationSurface;
+  /** Restrict to one controlled-vocabulary category. */
+  category?: string;
+  /** Price ceiling in centi-Commons. */
+  max_price_centi?: number;
+  /** Only listings whose provider's capped composite is at least this. */
+  min_provider_reputation?: number;
+  /** Page size; the station clamps it to its own maximum. */
+  limit?: number;
+  /** How many ranked hits to skip (the paging cursor). */
+  offset?: number;
 }
 
 /**
