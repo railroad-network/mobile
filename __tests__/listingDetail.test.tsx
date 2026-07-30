@@ -6,7 +6,8 @@
  * availability, provider band + vouching context, stated requirements, and the
  * Inquire CTA; a closed/expired listing keeps its detail but loses the CTA and
  * says why; and a load failure distinguishes a missing listing from an
- * unreachable station.
+ * unreachable station. When the viewer is the provider (T1.7.2), the CTA is
+ * Close listing rather than Inquire.
  */
 import React from 'react';
 import ReactTestRenderer, {act} from 'react-test-renderer';
@@ -22,15 +23,25 @@ const detail: {data?: StationListingDetail; isLoading: boolean; isError: boolean
   error: null,
 };
 
+const mockClose = jest.fn(async (_id: string) => ({ok: true}) as const);
 jest.mock('../src/marketplace', () => ({
   ...jest.requireActual('../src/marketplace'),
   useListingDetail: () => detail,
+  useCloseListing: () => mockClose,
 }));
+
+// The screen reads the session to tell whether the viewer is the provider.
+const session: {wallet: {address: string} | null} = {wallet: null};
+jest.mock('../src/wallet/WalletSession', () => ({
+  useWalletSession: () => session,
+}));
+
+const PROVIDER = 'rrn1qprovideraaaaaaaaaaaaaaaaaaaa';
 
 function listing(overrides: Partial<StationListingDetail> = {}): StationListingDetail {
   return {
     listing_id: 'abc123',
-    provider: 'rrn1qprovideraaaaaaaaaaaaaaaaaaaa',
+    provider: PROVIDER,
     surface: 'services',
     category: 'construction',
     title: 'Barn raising',
@@ -118,6 +129,7 @@ beforeEach(() => {
   detail.isLoading = false;
   detail.isError = false;
   detail.error = null;
+  session.wallet = null; // a non-provider viewer unless a test says otherwise
 });
 
 test('renders the full listing', async () => {
@@ -147,6 +159,25 @@ test('an active listing offers the Inquire CTA, which points at the coming flow'
   const inquire = button(r, 'Inquire');
   await press(inquire);
   expect(hasText(r, 'Inquiries are coming next')).toBe(true);
+});
+
+test('the provider’s own listing offers Close listing instead of Inquire', async () => {
+  session.wallet = {address: PROVIDER};
+  const r = await renderDetail();
+  expect(findButton(r, 'Inquire')).toBeUndefined();
+
+  await press(button(r, 'Close listing')); // reveal the inline confirm
+  expect(findButton(r, 'Keep it')).toBeDefined(); // the stacked way-out appears
+  expect(findButton(r, 'Close listing')).toBeUndefined(); // trigger label gives way to the confirm label
+  await press(button(r, 'Confirm close')); // commit
+  expect(mockClose).toHaveBeenCalledWith('abc123');
+});
+
+test('another member’s active listing still offers Inquire, not Close', async () => {
+  session.wallet = {address: 'rrn1qsomeoneelsebbbbbbbbbbbbbbbbbb'};
+  const r = await renderDetail();
+  expect(findButton(r, 'Close listing')).toBeUndefined();
+  expect(findButton(r, 'Inquire')).toBeDefined();
 });
 
 test('a closed listing keeps its detail but withholds the CTA', async () => {

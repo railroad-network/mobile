@@ -17,6 +17,11 @@
  *    specific buyer lands in T1.7.4. So they are shown as what the provider is
  *    looking for, and the Inquire CTA is a forward reference to that flow — the
  *    inquiry record type does not exist to sign against yet.
+ *
+ * When the viewer is the listing's own provider, the CTA is not Inquire (you do
+ * not inquire on your own offer) but Close listing — the same signed
+ * `ProviderClosed` as My Listings, so a member can take an offer down from the
+ * screen where they were looking at it.
  */
 import {useState} from 'react';
 import {ScrollView, StyleSheet, View} from 'react-native';
@@ -35,9 +40,10 @@ import {
   Text,
 } from '../../components';
 import {dayLabel, shortAddress} from '../../ledger';
-import {bandVariant, categoryLabel, useListingDetail} from '../../marketplace';
+import {bandVariant, categoryLabel, useCloseListing, useListingDetail} from '../../marketplace';
 import {StationClientError, type StationListingDetail} from '../../network/StationClient';
 import {useTheme, type Theme} from '../../theme';
+import {useWalletSession} from '../../wallet/WalletSession';
 import type {MainStackScreenProps} from '../../navigation/types';
 
 export function ListingDetail({navigation, route}: MainStackScreenProps<'ListingDetail'>) {
@@ -99,7 +105,10 @@ function ListingTitleHeader({theme, listing}: {theme: Theme; listing: StationLis
 /** The full listing. Non-active listings keep every detail but lose the CTA. */
 function DetailBody({theme, listing}: {theme: Theme; listing: StationListingDetail}) {
   const active = listing.state === 'active';
-  const [inquireNoticeShown, setInquireNoticeShown] = useState(false);
+  const {wallet} = useWalletSession();
+  // A listing's signer *is* its provider, and a wallet's address is that same
+  // bech32m form — so this is the viewer's own offer when they match.
+  const isOwn = wallet !== null && wallet.address === listing.provider;
 
   return (
     <>
@@ -122,27 +131,97 @@ function DetailBody({theme, listing}: {theme: Theme; listing: StationListingDeta
       <ProviderCard theme={theme} listing={listing} />
       <RequirementsCard theme={theme} listing={listing} />
 
-      {/* Inquire — the CTA that opens a buyer↔seller thread (T1.7.4). The inquiry
-          record does not exist to sign against yet, so for now the button
-          explains where the flow lands rather than starting it. */}
       {active ? (
-        <View style={{gap: theme.spacing.sm}}>
-          <Button fullWidth onPress={() => setInquireNoticeShown(true)}>
-            Inquire
-          </Button>
-          {inquireNoticeShown && (
-            <Banner variant="info" title="Inquiries are coming next">
-              Reaching out to a provider — messaging them and agreeing a price —
-              arrives in the next update. This listing will be here when it does.
-            </Banner>
-          )}
-        </View>
+        isOwn ? (
+          <OwnerCloseAction theme={theme} listing={listing} />
+        ) : (
+          <InquireAction theme={theme} />
+        )
       ) : (
-        <Text variant="caption" color={theme.colors.textMuted} style={styles.footer}>
-          This listing is no longer on offer, so it can’t be inquired about.
-        </Text>
+        // The buyer-worded "can't be inquired about" line makes no sense for the
+        // provider's own listing — the state banner already explains it there.
+        !isOwn && (
+          <Text variant="caption" color={theme.colors.textMuted} style={styles.footer}>
+            This listing is no longer on offer, so it can’t be inquired about.
+          </Text>
+        )
       )}
     </>
+  );
+}
+
+/**
+ * Inquire — the CTA that opens a buyer↔seller thread (T1.7.4). The inquiry record
+ * does not exist to sign against yet, so for now the button explains where the
+ * flow lands rather than starting it.
+ */
+function InquireAction({theme}: {theme: Theme}) {
+  const [noticeShown, setNoticeShown] = useState(false);
+  return (
+    <View style={{gap: theme.spacing.sm}}>
+      <Button fullWidth onPress={() => setNoticeShown(true)}>
+        Inquire
+      </Button>
+      {noticeShown && (
+        <Banner variant="info" title="Inquiries are coming next">
+          Reaching out to a provider — messaging them and agreeing a price —
+          arrives in the next update. This listing will be here when it does.
+        </Banner>
+      )}
+    </View>
+  );
+}
+
+/**
+ * Close listing — the CTA when the viewer is the provider. Signs a
+ * `ProviderClosed` behind an inline confirm, exactly as My Listings does; on
+ * success the detail query invalidates and refetches as closed, so the CTA falls
+ * away for the state banner on its own.
+ */
+function OwnerCloseAction({theme, listing}: {theme: Theme; listing: StationListingDetail}) {
+  const closeListing = useCloseListing();
+  const [confirming, setConfirming] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const [error, setError] = useState<string | undefined>();
+
+  const onClose = async () => {
+    setClosing(true);
+    setError(undefined);
+    const result = await closeListing(listing.listing_id);
+    setClosing(false);
+    if (result.ok) {
+      setConfirming(false);
+    } else {
+      setError(result.message);
+    }
+  };
+
+  return (
+    <View style={{gap: theme.spacing.sm}}>
+      {confirming ? (
+        // Full-width and stacked — the destructive action keeps the prominent
+        // spot the trigger held, with the way out directly under it. Its label
+        // differs from the trigger ("Confirm close" vs "Close listing") so the
+        // second, committing tap reads as a distinct step, not a repeat.
+        <>
+          <Button fullWidth variant="danger" onPress={onClose} loading={closing}>
+            Confirm close
+          </Button>
+          <Button fullWidth variant="secondary" onPress={() => setConfirming(false)} disabled={closing}>
+            Keep it
+          </Button>
+        </>
+      ) : (
+        <Button fullWidth variant="danger" onPress={() => setConfirming(true)}>
+          Close listing
+        </Button>
+      )}
+      {error !== undefined && (
+        <Text variant="caption" color={theme.colors.danger}>
+          {error}
+        </Text>
+      )}
+    </View>
   );
 }
 

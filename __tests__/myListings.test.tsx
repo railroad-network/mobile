@@ -1,9 +1,9 @@
 /**
  * @format
  *
- * My Listings (T1.7.2). Drives the real screen over a mocked `useMyListings` and
- * `useCloseListing`: it renders the member's own listings with their state, and
- * closing one goes through the inline confirm before the signed close fires.
+ * My Listings (T1.7.2). Drives the real screen over a mocked `useMyListings`: it
+ * renders the member's own listings with their state, and tapping one opens its
+ * detail (closing an offer lives on that detail screen, not on the card here).
  */
 import React from 'react';
 import ReactTestRenderer, {act} from 'react-test-renderer';
@@ -17,11 +17,9 @@ const mockRows: {data?: StationMyListingRow[]; isLoading: boolean; isError: bool
   isLoading: false,
   isError: false,
 };
-const mockClose = jest.fn(async () => ({ok: true}) as const);
 jest.mock('../src/marketplace', () => ({
   ...jest.requireActual('../src/marketplace'),
   useMyListings: () => mockRows,
-  useCloseListing: () => mockClose,
   useRefreshMarketplace: () => async () => {},
 }));
 
@@ -76,10 +74,9 @@ function textOf(node: Instance): string {
 }
 const hasText = (r: Renderer, text: string): boolean =>
   r.root.findAll(n => (n.type as unknown as string) === 'Text' && textOf(n).includes(text)).length > 0;
-const buttons = (r: Renderer, label: string): Instance[] =>
-  r.root.findAll(
-    n => n.props.accessibilityRole === 'button' && (n.props.accessibilityLabel === label || textOf(n).includes(label)),
-  );
+// A card is a `button` whose accessibilityLabel is its title + state.
+const cardFor = (r: Renderer, label: string): Instance =>
+  r.root.find(n => n.props.accessibilityRole === 'button' && n.props.accessibilityLabel === label);
 async function press(node: Instance): Promise<void> {
   await act(async () => {
     node.props.onPress?.();
@@ -107,15 +104,19 @@ test('renders own listings with their state', async () => {
   expect(hasText(r, 'Closed')).toBe(true);
 });
 
-test('closing a listing confirms before signing', async () => {
+test('tapping a listing opens its detail', async () => {
+  const navigation = nav();
+  const r = await render(navigation);
+  await press(cardFor(r, 'Sourdough loaves, active'));
+  expect(navigation.navigate).toHaveBeenCalledWith('ListingDetail', {listingId: 'id-active'});
+});
+
+test('the card offers no close action — closing lives on the detail screen', async () => {
   const r = await render();
-  // First tap reveals the confirm; the close does not fire yet.
-  await press(buttons(r, 'Close listing')[0]);
-  expect(mockClose).not.toHaveBeenCalled();
-  expect(hasText(r, 'Take this listing off offer?')).toBe(true);
-  // Confirm.
-  await press(buttons(r, 'Close listing')[0]);
-  expect(mockClose).toHaveBeenCalledWith('id-active');
+  const closeButtons = r.root.findAll(
+    n => n.props.accessibilityRole === 'button' && textOf(n).trim() === 'Close listing',
+  );
+  expect(closeButtons).toHaveLength(0);
 });
 
 test('an empty list invites the first listing', async () => {
