@@ -2,10 +2,12 @@
  * @format
  *
  * The inquiry thread screen (T1.7.4): rendering the conversation and offers, and
- * the two moves with real logic behind them — *accept*, which settles at the
- * offer on the table (or the listed price on a fixed listing), and *decline*,
- * which is scoped to the viewer's side. The hooks are mocked so the test drives
- * the screen's own reasoning, not the network.
+ * the moves with real logic behind them. The model is "the provider grants the
+ * inquiry": only the provider accepts, and only the buyer's standing offer — so
+ * the buyer never sees Accept, and a provider who has countered waits for the
+ * buyer to re-offer. Declining is scoped to the viewer's side (the buyer
+ * withdraws, the provider declines). The hooks are mocked so the test drives the
+ * screen's own reasoning, not the network.
  */
 import React from 'react';
 import ReactTestRenderer, {act} from 'react-test-renderer';
@@ -144,17 +146,20 @@ test('renders the conversation and the offers on the table', async () => {
   expect(hasText(r, '43.00')).toBe(true);
 });
 
-test('accepting a negotiable inquiry settles at the latest offer', async () => {
+test('the provider accepts the buyer’s standing offer', async () => {
+  mockSession.wallet = {address: PROVIDER};
+  // The buyer's opening 40.00 is on the table (no provider counter).
+  mockThread.data = thread({messages: []});
   const r = await render();
-  // The current offer is the provider's 43.00 counter, not the listed 45.00.
-  await press(button(r, 'Accept 43.00'));
+  await press(button(r, 'Accept 40.00'));
   expect(mockClose).toHaveBeenCalledWith({
     inquiryId: 'iq1',
-    outcome: {kind: 'agreed', finalPriceCenti: 4300},
+    outcome: {kind: 'agreed', finalPriceCenti: 4000},
   });
 });
 
-test('accepting a fixed-price inquiry settles at the listed price', async () => {
+test('the provider accepts a fixed-price inquiry at the listed price', async () => {
+  mockSession.wallet = {address: PROVIDER};
   mockThread.data = thread({negotiable: false, initial_offer_centi: undefined, messages: []});
   const r = await render();
   await press(button(r, 'Accept 45.00'));
@@ -164,10 +169,27 @@ test('accepting a fixed-price inquiry settles at the listed price', async () => 
   });
 });
 
-test('declining is scoped to the viewer’s side', async () => {
+test('the buyer never sees Accept — the provider grants the inquiry', async () => {
+  mockSession.wallet = {address: BUYER};
+  // The buyer's own offer is on the table; still no Accept for them.
+  mockThread.data = thread({messages: []});
+  const r = await render();
+  expect(findButton(r, 'Accept')).toBeUndefined();
+  expect(hasText(r, 'The provider will accept or decline your inquiry')).toBe(true);
+});
+
+test('the provider cannot accept their own counter — they wait for the buyer', async () => {
+  mockSession.wallet = {address: PROVIDER};
+  // Default thread: the last offer on the table is the provider's 43.00 counter.
+  const r = await render();
+  expect(findButton(r, 'Accept')).toBeUndefined();
+  expect(hasText(r, 'Waiting for the buyer')).toBe(true);
+});
+
+test('declining is scoped to the viewer’s side — the buyer withdraws, the provider declines', async () => {
   mockSession.wallet = {address: BUYER};
   const r = await render();
-  await press(button(r, 'Decline'));
+  await press(button(r, 'Withdraw'));
   expect(mockClose).toHaveBeenCalledWith({
     inquiryId: 'iq1',
     outcome: {kind: 'declined_by_buyer'},

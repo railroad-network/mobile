@@ -288,10 +288,16 @@ function Composer({
   // The station refuses a message with neither words nor an offer.
   const canSend = !busy && !offerInvalid && (body.trim().length > 0 || offerCenti !== null);
 
-  // The price acceptance settles at: the offer on the table for a negotiable
-  // listing, or the listed price for a fixed one (which is all the station will
-  // accept there).
-  const acceptCenti = thread.negotiable ? currentOfferCenti(thread) : thread.listed_amount_centi;
+  // Only the provider grants an inquiry, and only the buyer's standing offer:
+  // accepting is offered to the provider exactly when the buyer's offer is the
+  // one on the table. If the provider has countered, they wait for the buyer to
+  // take it (re-offer) — matching the station, which refuses anything else.
+  const offerBy = currentOfferBy(thread);
+  const buyersOfferOnTable = offerBy === 'buyer';
+  const canAccept = mineRole === 'provider' && buyersOfferOnTable;
+  // The buyer's standing offer, which is what the provider grants.
+  const acceptCenti = currentOfferCenti(thread);
+  const waitingHint = composerHint(mineRole, buyersOfferOnTable);
 
   const run = async (
     label: string,
@@ -359,24 +365,41 @@ function Composer({
         Send
       </Button>
 
-      {/* Accept and decline sit under a divider — they end the conversation,
-          distinct from sending another message. */}
-      <View style={styles.actionsRow}>
+      {/* Ending the conversation. Only the provider accepts, and only the
+          buyer's standing offer; either party can step away — the provider
+          declines, the buyer withdraws their own inquiry. */}
+      {canAccept ? (
+        <View style={styles.actionsRow}>
+          <Button
+            variant="secondary"
+            onPress={onAccept}
+            disabled={busy}
+            style={styles.actionButton}>
+            {`Accept ${formatCommons(acceptCenti)}`}
+          </Button>
+          <Button
+            variant="danger"
+            onPress={onDecline}
+            disabled={busy}
+            style={styles.actionButton}>
+            Decline
+          </Button>
+        </View>
+      ) : (
         <Button
-          variant="secondary"
-          onPress={onAccept}
-          disabled={busy}
-          style={styles.actionButton}>
-          {`Accept ${formatCommons(acceptCenti)}`}
-        </Button>
-        <Button
-          variant="danger"
+          fullWidth
+          variant={mineRole === 'provider' ? 'danger' : 'secondary'}
           onPress={onDecline}
-          disabled={busy}
-          style={styles.actionButton}>
-          Decline
+          disabled={busy}>
+          {mineRole === 'provider' ? 'Decline' : 'Withdraw'}
         </Button>
-      </View>
+      )}
+
+      {waitingHint !== undefined && (
+        <Text variant="caption" color={theme.colors.textMuted}>
+          {waitingHint}
+        </Text>
+      )}
 
       {error !== undefined && (
         <Text variant="caption" color={theme.colors.danger}>
@@ -397,6 +420,30 @@ function currentOfferCenti(thread: StationInquiryThread): number {
     }
   }
   return thread.initial_offer_centi ?? thread.listed_amount_centi;
+}
+
+/** Who made the offer on the table: the last counter's sender, else the buyer —
+ * who, by inquiring, is asking at their opening offer or the listed price. The
+ * provider may grant only a buyer's offer, so this decides whose turn it is. */
+function currentOfferBy(thread: StationInquiryThread): Party {
+  for (let i = thread.messages.length - 1; i >= 0; i--) {
+    if (thread.messages[i].counter_offer_centi !== undefined) {
+      return thread.messages[i].sender === thread.buyer ? 'buyer' : 'provider';
+    }
+  }
+  return 'buyer';
+}
+
+/** The line under the composer naming whose move it is — shown only in the
+ * waiting states, where the member has no accept to reach for. The provider,
+ * when the buyer's offer stands, has the Accept button instead of a hint. */
+function composerHint(mineRole: Party, buyersOfferOnTable: boolean): string | undefined {
+  if (mineRole === 'provider') {
+    return buyersOfferOnTable ? undefined : 'Waiting for the buyer to take your counter or reply.';
+  }
+  return buyersOfferOnTable
+    ? 'The provider will accept or decline your inquiry.'
+    : 'The provider countered. Send a matching offer to agree, or withdraw.';
 }
 
 /** Parses an optional Commons amount to centi. `null` = blank, `'invalid'` = not
