@@ -12,11 +12,11 @@
  *    the member tapped may come back `closed` or `expired`. The screen says so
  *    plainly and withholds the Inquire action — presenting an off-offer listing
  *    as buyable would be the one place browse's active-only view could mislead.
- * 2. **Requirements are provider intent, not yet enforcement.** M1.6 records
- *    `min_reputation` / `community_member_only` on the log; the check against a
- *    specific buyer lands in T1.7.4. So they are shown as what the provider is
- *    looking for, and the Inquire CTA is a forward reference to that flow — the
- *    inquiry record type does not exist to sign against yet.
+ * 2. **Requirements are enforced at inquiry time (T1.7.4).** The station reports
+ *    `viewer_eligible` for the authenticated member, so when they don't meet the
+ *    provider's `min_reputation` / `community_member_only`, the Inquire CTA is
+ *    disabled with the reason. That is a courtesy — the station enforces the same
+ *    check on submit — not the enforcement point.
  *
  * When the viewer is the listing's own provider, the CTA is not Inquire (you do
  * not inquire on your own offer) but Close listing — the same signed
@@ -35,12 +35,19 @@ import {
   Button,
   Card,
   CommonMark,
+  Field,
   Heading,
   Identicon,
   Text,
 } from '../../components';
-import {dayLabel, shortAddress} from '../../ledger';
-import {bandVariant, categoryLabel, useCloseListing, useListingDetail} from '../../marketplace';
+import {dayLabel, formatCommons, shortAddress} from '../../ledger';
+import {
+  bandVariant,
+  categoryLabel,
+  useCloseListing,
+  useListingDetail,
+  useOpenInquiry,
+} from '../../marketplace';
 import {StationClientError, type StationListingDetail} from '../../network/StationClient';
 import {useTheme, type Theme} from '../../theme';
 import {useWalletSession} from '../../wallet/WalletSession';
@@ -79,7 +86,9 @@ export function ListingDetail({navigation, route}: MainStackScreenProps<'Listing
 
       {isError && <DetailError theme={theme} error={error} />}
 
-      {data !== undefined && <DetailBody theme={theme} listing={data} />}
+      {data !== undefined && (
+        <DetailBody theme={theme} listing={data} navigation={navigation} />
+      )}
     </ScrollView>
   );
 }
@@ -103,7 +112,15 @@ function ListingTitleHeader({theme, listing}: {theme: Theme; listing: StationLis
 }
 
 /** The full listing. Non-active listings keep every detail but lose the CTA. */
-function DetailBody({theme, listing}: {theme: Theme; listing: StationListingDetail}) {
+function DetailBody({
+  theme,
+  listing,
+  navigation,
+}: {
+  theme: Theme;
+  listing: StationListingDetail;
+  navigation: MainStackScreenProps<'ListingDetail'>['navigation'];
+}) {
   const active = listing.state === 'active';
   const {wallet} = useWalletSession();
   // A listing's signer *is* its provider, and a wallet's address is that same
@@ -135,7 +152,7 @@ function DetailBody({theme, listing}: {theme: Theme; listing: StationListingDeta
         isOwn ? (
           <OwnerCloseAction theme={theme} listing={listing} />
         ) : (
-          <InquireAction theme={theme} />
+          <InquireAction theme={theme} listing={listing} navigation={navigation} />
         )
       ) : (
         // The buyer-worded "can't be inquired about" line makes no sense for the
@@ -151,25 +168,131 @@ function DetailBody({theme, listing}: {theme: Theme; listing: StationListingDeta
 }
 
 /**
- * Inquire — the CTA that opens a buyer↔seller thread (T1.7.4). The inquiry record
- * does not exist to sign against yet, so for now the button explains where the
- * flow lands rather than starting it.
+ * Inquire — opens the buyer↔provider thread (T1.7.4). The member writes an
+ * opening message and, on a negotiable listing, an opening offer; sending signs
+ * an `InquiryOpened` and drops them into the conversation ({@link Inquiry}).
+ *
+ * When the station says the member doesn't meet the listing's requirements
+ * (`viewer_eligible`), the CTA is disabled with the reason. That is a courtesy —
+ * the station enforces the same check on submit — so a client that missed the
+ * hint still can't open an inquiry it shouldn't.
  */
-function InquireAction({theme}: {theme: Theme}) {
-  const [noticeShown, setNoticeShown] = useState(false);
-  return (
-    <View style={{gap: theme.spacing.sm}}>
-      <Button fullWidth onPress={() => setNoticeShown(true)}>
+function InquireAction({
+  theme,
+  listing,
+  navigation,
+}: {
+  theme: Theme;
+  listing: StationListingDetail;
+  navigation: MainStackScreenProps<'ListingDetail'>['navigation'];
+}) {
+  const openInquiry = useOpenInquiry();
+  const [composing, setComposing] = useState(false);
+  const [message, setMessage] = useState('');
+  const [offerText, setOfferText] = useState('');
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | undefined>();
+
+  const ineligible = listing.viewer_eligible !== undefined && !listing.viewer_eligible.eligible;
+  const offerParsed = parseOffer(offerText);
+  const offerInvalid = offerParsed === 'invalid';
+  const offerCenti = offerParsed === 'invalid' || offerParsed === null ? null : offerParsed;
+
+  const onSend = async () => {
+    setSending(true);
+    setError(undefined);
+    const result = await openInquiry({
+      listingId: listing.listing_id,
+      message: message.trim(),
+      offerCenti,
+    });
+    setSending(false);
+    if (result.ok) {
+      // Replace, not push: backing out of the thread returns to the listing, not
+      // to a spent compose form.
+      navigation.replace('Inquiry', {inquiryId: result.inquiryId});
+    } else {
+      setError(result.message);
+    }
+  };
+
+  if (ineligible) {
+    return (
+      <View style={{gap: theme.spacing.sm}}>
+        <Button fullWidth disabled onPress={() => {}}>
+          Inquire
+        </Button>
+        <Banner variant="info" title="You don’t meet what the provider asks">
+          {listing.viewer_eligible?.unmet ??
+            'This provider has set requirements you don’t currently meet.'}
+        </Banner>
+      </View>
+    );
+  }
+
+  if (!composing) {
+    return (
+      <Button fullWidth onPress={() => setComposing(true)}>
         Inquire
       </Button>
-      {noticeShown && (
-        <Banner variant="info" title="Inquiries are coming next">
-          Reaching out to a provider — messaging them and agreeing a price —
-          arrives in the next update. This listing will be here when it does.
-        </Banner>
+    );
+  }
+
+  return (
+    <View style={{gap: theme.spacing.sm}}>
+      <Field
+        label="Your message"
+        placeholder="Introduce yourself, ask a question…"
+        value={message}
+        onChangeText={setMessage}
+        multiline
+        editable={!sending}
+      />
+      <Field
+        label="Your offer (optional)"
+        placeholder={`e.g. ${formatCommons(listing.amount_centi)}`}
+        value={offerText}
+        onChangeText={setOfferText}
+        keyboardType="numbers-and-punctuation"
+        editable={!sending && (listing.pricing_model === 'negotiable' || listing.negotiable)}
+        hint={
+          listing.pricing_model === 'negotiable' || listing.negotiable
+            ? 'In Commons — leave blank to accept the listed price'
+            : 'This listing’s price is fixed, so offers aren’t invited'
+        }
+        error={offerInvalid ? 'Enter an amount in Commons, like 4 or 4.50' : undefined}
+      />
+      <Button fullWidth onPress={onSend} disabled={sending || offerInvalid} loading={sending}>
+        Send inquiry
+      </Button>
+      <Button
+        fullWidth
+        variant="secondary"
+        onPress={() => setComposing(false)}
+        disabled={sending}>
+        Cancel
+      </Button>
+      {error !== undefined && (
+        <Text variant="caption" color={theme.colors.danger}>
+          {error}
+        </Text>
       )}
     </View>
   );
+}
+
+/** Parses an optional Commons amount to centi. `null` = blank, `'invalid'` = not
+ * a number. Negatives are allowed (a Commons subsidy). */
+function parseOffer(input: string): number | null | 'invalid' {
+  const t = input.trim();
+  if (t === '') {
+    return null;
+  }
+  const n = Number(t);
+  if (!Number.isFinite(n)) {
+    return 'invalid';
+  }
+  return Math.round(n * 100);
 }
 
 /**

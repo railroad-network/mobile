@@ -17,6 +17,11 @@ export {
   useCloseListing,
   useRefreshMarketplace,
   useDebouncedValue,
+  useInquiryThread,
+  useMyInquiries,
+  useOpenInquiry,
+  useSendInquiryMessage,
+  useCloseInquiry,
   PAGE_SIZE,
   type MarketplaceFilters,
   type ListingWriteResult,
@@ -27,3 +32,4 @@ export {
   type ListingPricingModel,
   type ListingAvailabilityStatus,
 } from '../wallet/listing';
+export {type InquiryCloseOutcome} from '../wallet/inquiry';

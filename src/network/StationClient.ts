@@ -208,13 +208,19 @@ export class StationClient {
       | 'submit_confirmation'
       | 'submit_vouch'
       | 'submit_listing'
-      | 'submit_listing_close',
+      | 'submit_listing_close'
+      | 'submit_inquiry'
+      | 'submit_inquiry_message'
+      | 'submit_inquiry_close',
     field:
       | 'signed_proposal'
       | 'signed_confirmation'
       | 'signed_vouch'
       | 'signed_listing'
-      | 'signed_listing_close',
+      | 'signed_listing_close'
+      | 'signed_inquiry'
+      | 'signed_message'
+      | 'signed_close',
     canonicalPayload: Uint8Array,
     signature: Uint8Array,
   ): Promise<Record<string, unknown>> {
@@ -388,6 +394,85 @@ export class StationClient {
   async marketplaceListing(listingId: string): Promise<StationListingDetail> {
     const result = await this.call('marketplace_listing', {listing_id: listingId});
     return result as unknown as StationListingDetail;
+  }
+
+  /**
+   * `submit_inquiry` — open a mobile-signed inquiry against a listing (T1.7.4).
+   * The wallet is the buyer and signed the opening on-device; the station
+   * verifies it, checks the listing's requirements against the buyer, and appends
+   * it. A buyer who does not qualify comes back as a `method-error` naming the
+   * unmet requirement. Returns the content-address `inquiryId`.
+   */
+  async submitInquiry(
+    canonicalPayload: Uint8Array,
+    signature: Uint8Array,
+  ): Promise<{inquiryId: string}> {
+    const result = await this.submitSignedRecord(
+      'submit_inquiry',
+      'signed_inquiry',
+      canonicalPayload,
+      signature,
+    );
+    return {inquiryId: typeof result.inquiry_id === 'string' ? result.inquiry_id : ''};
+  }
+
+  /**
+   * `submit_inquiry_message` — send a mobile-signed message (optionally a
+   * counter-offer) in an open inquiry the member is a party to (T1.7.4).
+   */
+  async submitInquiryMessage(
+    canonicalPayload: Uint8Array,
+    signature: Uint8Array,
+  ): Promise<{inquiryId: string}> {
+    const result = await this.submitSignedRecord(
+      'submit_inquiry_message',
+      'signed_message',
+      canonicalPayload,
+      signature,
+    );
+    return {inquiryId: typeof result.inquiry_id === 'string' ? result.inquiry_id : ''};
+  }
+
+  /**
+   * `submit_inquiry_close` — close an inquiry the member is a party to (T1.7.4):
+   * agreeing a price, or declining their side. A non-negotiable listing accepts
+   * only its listed price; the station refuses anything else.
+   */
+  async submitInquiryClose(
+    canonicalPayload: Uint8Array,
+    signature: Uint8Array,
+  ): Promise<{inquiryId: string}> {
+    const result = await this.submitSignedRecord(
+      'submit_inquiry_close',
+      'signed_close',
+      canonicalPayload,
+      signature,
+    );
+    return {inquiryId: typeof result.inquiry_id === 'string' ? result.inquiry_id : ''};
+  }
+
+  /**
+   * `inquiry_thread` — one inquiry's full thread (T1.7.4), for the chat screen.
+   * Only a party to the inquiry may read it; the station answers a non-party (or
+   * an unknown id) with a `method-error`, so the screen cannot confirm an inquiry
+   * the member is not part of.
+   */
+  async inquiryThread(inquiryId: string): Promise<StationInquiryThread> {
+    const result = await this.call('inquiry_thread', {inquiry_id: inquiryId});
+    return result as unknown as StationInquiryThread;
+  }
+
+  /**
+   * `my_inquiries` — the member's own inquiries (T1.7.4), as buyer or provider,
+   * newest activity first. The member is the authenticated signer, so there is no
+   * address param — a mobile only ever lists its own.
+   */
+  async myInquiries(): Promise<{inquiries: StationMyInquiryRow[]}> {
+    const result = await this.call('my_inquiries', {});
+    const inquiries = Array.isArray(result.inquiries)
+      ? (result.inquiries as StationMyInquiryRow[])
+      : [];
+    return {inquiries};
   }
 
   /**
@@ -819,6 +904,21 @@ export interface StationListingDetail extends StationListingCard {
   closed_at: number | null;
   /** How many members have vouched for the provider — vouching context a buyer weighs. */
   provider_vouches_received: number;
+  /**
+   * Whether *this* authenticated member may open an inquiry (T1.7.4), computed
+   * against the listing's requirements. Absent on an anonymous read. A courtesy
+   * that lets the detail disable "Inquire" with the reason — enforcement is the
+   * station's at submit time, not this.
+   */
+  viewer_eligible?: ViewerEligibility;
+}
+
+/** Whether the viewer meets a listing's requirements, and if not, why (T1.7.4). */
+export interface ViewerEligibility {
+  /** Whether the member may open an inquiry. */
+  eligible: boolean;
+  /** The unmet requirement in words, when `eligible` is false. */
+  unmet?: string;
 }
 
 /**
@@ -834,6 +934,88 @@ export interface StationMyListingRow extends StationListingCard {
   close_reason: StationCloseReason | null;
   /** Unix seconds it closed, when `state` is `closed`. */
   closed_at: number | null;
+}
+
+/** An inquiry's lifecycle state (T1.7.4). Anything but `open` accepts no writes. */
+export type StationInquiryState = 'open' | 'expired_pending' | 'closed';
+
+/** How an inquiry ended, when its state is `closed`. */
+export type StationInquiryOutcome =
+  | 'agreed'
+  | 'declined_by_buyer'
+  | 'declined_by_seller'
+  | 'expired';
+
+/** One message in a thread (T1.7.4), flattened for the wire. */
+export interface StationInquiryMessageRow {
+  /** The sender's bech32m `rrn1…` address — align the bubble by comparing it to
+   * your own address and to the thread's `buyer`/`provider`. */
+  sender: string;
+  /** The message body (may be empty when the move is a bare counter-offer). */
+  body: string;
+  /** A revised price in centi-Commons, if this message carried one. */
+  counter_offer_centi?: number;
+  /** Unix seconds the message was sent. */
+  sent_at: number;
+}
+
+/** One inquiry in full (T1.7.4), for the chat-thread screen. */
+export interface StationInquiryThread {
+  /** The inquiry's content address, hex. */
+  inquiry_id: string;
+  /** The listing being negotiated, hex — the id an eventual transaction links. */
+  listing_id: string;
+  /** The listing's title, for the header. */
+  listing_title: string;
+  /** The listing's listed price in centi-Commons — the reference the offers move
+   * around, and the only acceptable price when `negotiable` is false. */
+  listed_amount_centi: number;
+  /** Whether the listing invites offers. When false, only `listed_amount_centi`
+   * may be agreed. */
+  negotiable: boolean;
+  /** The buyer's `rrn1…` address. */
+  buyer: string;
+  /** The provider's `rrn1…` address. */
+  provider: string;
+  /** The buyer's opening message (may be empty). */
+  initial_message: string;
+  /** The buyer's opening offer, if they made one. */
+  initial_offer_centi?: number;
+  /** Unix seconds the inquiry was opened. */
+  opened_at: number;
+  /** The messages, in log order. */
+  messages: StationInquiryMessageRow[];
+  /** `open`, `expired_pending`, or `closed`. */
+  state: StationInquiryState;
+  /** How it ended, when `state` is `closed`. */
+  outcome?: StationInquiryOutcome;
+  /** The agreed price, when the outcome is `agreed`. */
+  final_price_centi?: number;
+  /** Unix seconds it closed, when `state` is `closed`. */
+  closed_at?: number;
+  /** Unix seconds of the latest activity. */
+  last_activity_at: number;
+}
+
+/** One inbox row (T1.7.4): enough to list and route, not the whole thread. */
+export interface StationMyInquiryRow {
+  /** The inquiry's content address, hex. */
+  inquiry_id: string;
+  /** The listing, hex. */
+  listing_id: string;
+  /** The listing's title. */
+  listing_title: string;
+  /** The viewer's role: `buyer` or `provider`. */
+  role: 'buyer' | 'provider';
+  /** The other party's `rrn1…` address. */
+  counterparty: string;
+  /** `open`, `expired_pending`, or `closed`. */
+  state: StationInquiryState;
+  /** The most recent offer on the table (opening, last counter, or agreed price),
+   * in centi-Commons. */
+  latest_offer_centi?: number;
+  /** Unix seconds of the latest activity — rows sort by this, newest first. */
+  last_activity_at: number;
 }
 
 /**

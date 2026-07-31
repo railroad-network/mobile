@@ -71,6 +71,12 @@ export function Community({navigation}: MainTabScreenProps<'Community'>) {
           subtitle="Your offers, and taking one off offer"
           onPress={() => navigation.navigate('MyListings')}
         />
+        <NavRow
+          theme={theme}
+          title="Inquiries"
+          subtitle="Conversations about a listing — yours or someone else’s"
+          onPress={() => navigation.navigate('Inquiries')}
+        />
       </Group>
 
       <Group theme={theme} label="Web of trust">

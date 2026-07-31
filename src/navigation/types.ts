@@ -87,6 +87,10 @@ export type MainStackParamList = {
   CreateListing: undefined;
   /** The member's own listings, with the close flow (T1.7.2). */
   MyListings: undefined;
+  /** The member's own inquiries, as buyer or provider (T1.7.4). */
+  Inquiries: undefined;
+  /** One inquiry's chat thread — messages, offers, accept/decline (T1.7.4). */
+  Inquiry: {inquiryId: string};
   /** Vouch for someone: scan their address QR, review, sign & submit (T1.4.1). */
   Vouch: undefined;
   /** The vouching browser (T1.4.5): given/received vouch lists, opened on a tab. */

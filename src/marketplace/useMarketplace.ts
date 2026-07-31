@@ -31,10 +31,18 @@ import {
   type ListingDraft,
 } from '../wallet/listing';
 import {
+  createSignedInquiryClose,
+  createSignedInquiryMessage,
+  createSignedInquiryOpened,
+  type InquiryCloseOutcome,
+} from '../wallet/inquiry';
+import {
   StationClientError,
   type StationErrorKind,
+  type StationInquiryThread,
   type StationListingCard,
   type StationListingDetail,
+  type StationMyInquiryRow,
   type StationMyListingRow,
   type StationSurface,
 } from '../network/StationClient';
@@ -68,6 +76,8 @@ export const marketplaceKeys = {
   search: ['marketplace', 'search'] as const,
   mine: ['marketplace', 'mine'] as const,
   listing: (id: string) => ['marketplace', 'listing', id] as const,
+  inquiries: ['marketplace', 'inquiries'] as const,
+  inquiry: (id: string) => ['marketplace', 'inquiry', id] as const,
 };
 
 /** The outcome of a listing write. Never throws to the screen (mirrors the ledger's). */
@@ -208,6 +218,156 @@ export function useCloseListing(): (listingId: string) => Promise<ListingWriteRe
     },
     [client, wallet, queryClient],
   );
+}
+
+/**
+ * One inquiry's full thread (T1.7.4). Disabled when locked / unpaired. Fetched
+ * fresh and polled while the screen is open, so a reply from the other party
+ * lands without the member pulling to refresh — an inquiry is a live conversation.
+ */
+export function useInquiryThread(
+  inquiryId: string,
+): UseQueryResult<StationInquiryThread, Error> {
+  const client = useStationClient();
+  return useQuery({
+    queryKey: [...marketplaceKeys.inquiry(inquiryId), client !== null],
+    enabled: client !== null,
+    queryFn: (): Promise<StationInquiryThread> => client!.inquiryThread(inquiryId),
+    staleTime: 0,
+    refetchInterval: 5000,
+  });
+}
+
+/**
+ * The member's own inquiries (T1.7.4), as buyer or provider, newest activity
+ * first. Disabled when locked / unpaired; keyed on the client's presence so
+ * pairing refetches.
+ */
+export function useMyInquiries(): UseQueryResult<StationMyInquiryRow[], Error> {
+  const client = useStationClient();
+  return useQuery({
+    queryKey: [...marketplaceKeys.inquiries, client !== null],
+    enabled: client !== null,
+    queryFn: async (): Promise<StationMyInquiryRow[]> => (await client!.myInquiries()).inquiries,
+    staleTime: 0,
+  });
+}
+
+/**
+ * Returns a function that opens an inquiry against a listing: signs the opening
+ * on-device, transmits it, and refreshes the inquiry lists. A requirements
+ * refusal surfaces as a typed failure carrying the station's reason, so the
+ * screen can say *why* rather than a generic error.
+ */
+export function useOpenInquiry(): (args: {
+  listingId: string;
+  message: string;
+  offerCenti: number | null;
+}) => Promise<ListingWriteResult<{inquiryId: string}>> {
+  const client = useStationClient();
+  const {wallet} = useWalletSession();
+  const queryClient = useQueryClient();
+  return useCallback(
+    async ({listingId, message, offerCenti}) => {
+      if (client === null || wallet === null) {
+        return {ok: false, error: 'locked', message: 'Unlock your wallet and pair a station.'};
+      }
+      try {
+        const openedAt = Math.floor(Date.now() / 1000);
+        const signed = await createSignedInquiryOpened(
+          wallet,
+          listingId,
+          message,
+          offerCenti,
+          openedAt,
+        );
+        const {inquiryId} = await client.submitInquiry(signed.payloadBytes, signed.signature);
+        await queryClient.invalidateQueries({queryKey: marketplaceKeys.inquiries});
+        return {ok: true, inquiryId: inquiryId.length > 0 ? inquiryId : signed.inquiryId};
+      } catch (e) {
+        return asListingWriteError(e);
+      }
+    },
+    [client, wallet, queryClient],
+  );
+}
+
+/**
+ * Returns a function that sends a message (optionally a counter-offer) in an
+ * inquiry, then refreshes that thread and the inbox.
+ */
+export function useSendInquiryMessage(): (args: {
+  inquiryId: string;
+  body: string;
+  counterOfferCenti: number | null;
+}) => Promise<ListingWriteResult> {
+  const client = useStationClient();
+  const {wallet} = useWalletSession();
+  const queryClient = useQueryClient();
+  return useCallback(
+    async ({inquiryId, body, counterOfferCenti}) => {
+      if (client === null || wallet === null) {
+        return {ok: false, error: 'locked', message: 'Unlock your wallet and pair a station.'};
+      }
+      try {
+        const sentAt = Math.floor(Date.now() / 1000);
+        const signed = await createSignedInquiryMessage(
+          wallet,
+          inquiryId,
+          body,
+          counterOfferCenti,
+          sentAt,
+        );
+        await client.submitInquiryMessage(signed.payloadBytes, signed.signature);
+        await refreshInquiry(queryClient, inquiryId);
+        return {ok: true};
+      } catch (e) {
+        return asListingWriteError(e);
+      }
+    },
+    [client, wallet, queryClient],
+  );
+}
+
+/**
+ * Returns a function that closes an inquiry with `outcome` — accepting a price or
+ * declining a side — then refreshes the thread and the inbox.
+ */
+export function useCloseInquiry(): (args: {
+  inquiryId: string;
+  outcome: InquiryCloseOutcome;
+}) => Promise<ListingWriteResult> {
+  const client = useStationClient();
+  const {wallet} = useWalletSession();
+  const queryClient = useQueryClient();
+  return useCallback(
+    async ({inquiryId, outcome}) => {
+      if (client === null || wallet === null) {
+        return {ok: false, error: 'locked', message: 'Unlock your wallet and pair a station.'};
+      }
+      try {
+        const closedAt = Math.floor(Date.now() / 1000);
+        const signed = await createSignedInquiryClose(wallet, inquiryId, outcome, closedAt);
+        await client.submitInquiryClose(signed.payloadBytes, signed.signature);
+        await refreshInquiry(queryClient, inquiryId);
+        return {ok: true};
+      } catch (e) {
+        return asListingWriteError(e);
+      }
+    },
+    [client, wallet, queryClient],
+  );
+}
+
+/** Invalidates one inquiry's thread and the inbox together, after a write. */
+async function refreshInquiry(
+  queryClient: ReturnType<typeof useQueryClient>,
+  inquiryId: string,
+): Promise<void> {
+  await Promise.all([
+    queryClient.invalidateQueries({queryKey: marketplaceKeys.inquiry(inquiryId)}),
+    queryClient.invalidateQueries({queryKey: marketplaceKeys.inquiries}),
+  ]);
 }
 
 /** Normalises a thrown error into a typed {@link ListingWriteResult} failure. */

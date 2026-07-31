@@ -18,6 +18,8 @@ import {Marketplace} from '../screens/main/Marketplace';
 import {ListingDetail} from '../screens/main/ListingDetail';
 import {CreateListing} from '../screens/main/CreateListing';
 import {MyListings} from '../screens/main/MyListings';
+import {Inquiries} from '../screens/main/Inquiries';
+import {Inquiry} from '../screens/main/Inquiry';
 import {Vouch} from '../screens/main/Vouch';
 import {VouchList} from '../screens/main/VouchList';
 import {VouchDetail} from '../screens/main/VouchDetail';
@@ -159,6 +161,8 @@ function MainNavigator() {
       <MainStack.Screen name="ListingDetail" component={ListingDetail} />
       <MainStack.Screen name="CreateListing" component={CreateListing} />
       <MainStack.Screen name="MyListings" component={MyListings} />
+      <MainStack.Screen name="Inquiries" component={Inquiries} />
+      <MainStack.Screen name="Inquiry" component={Inquiry} />
       <MainStack.Screen name="Vouch" component={Vouch} />
       <MainStack.Screen name="VouchList" component={VouchList} />
       <MainStack.Screen name="VouchDetail" component={VouchDetail} />

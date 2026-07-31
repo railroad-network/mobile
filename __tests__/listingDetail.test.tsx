@@ -24,10 +24,15 @@ const detail: {data?: StationListingDetail; isLoading: boolean; isError: boolean
 };
 
 const mockClose = jest.fn(async (_id: string) => ({ok: true}) as const);
+const mockOpenInquiry = jest.fn(
+  async (_args: {listingId: string; message: string; offerCenti: number | null}) =>
+    ({ok: true, inquiryId: 'iq-1'}) as const,
+);
 jest.mock('../src/marketplace', () => ({
   ...jest.requireActual('../src/marketplace'),
   useListingDetail: () => detail,
   useCloseListing: () => mockClose,
+  useOpenInquiry: () => mockOpenInquiry,
 }));
 
 // The screen reads the session to tell whether the viewer is the provider.
@@ -72,7 +77,7 @@ const metrics = {
 };
 
 function nav() {
-  return {navigate: jest.fn(), goBack: jest.fn()} as any;
+  return {navigate: jest.fn(), goBack: jest.fn(), replace: jest.fn()} as any;
 }
 
 type Renderer = ReactTestRenderer.ReactTestRenderer;
@@ -154,11 +159,30 @@ test('shows the provider’s stated requirements', async () => {
   expect(hasText(r, 'A member of Cedar Valley')).toBe(true);
 });
 
-test('an active listing offers the Inquire CTA, which points at the coming flow', async () => {
+test('the Inquire CTA opens a composer and sends an inquiry into its thread', async () => {
+  const navigation = nav();
+  const r = await renderDetail(navigation);
+  await press(button(r, 'Inquire')); // reveal the composer
+  expect(findButton(r, 'Send inquiry')).toBeDefined();
+
+  await press(button(r, 'Send inquiry'));
+  expect(mockOpenInquiry).toHaveBeenCalledWith({
+    listingId: 'abc123',
+    message: '',
+    offerCenti: null,
+  });
+  // On success it drops the member into the thread (replace, so Back returns to
+  // the listing, not the spent compose form).
+  expect(navigation.replace).toHaveBeenCalledWith('Inquiry', {inquiryId: 'iq-1'});
+});
+
+test('the Inquire CTA is disabled with the reason when the member is ineligible', async () => {
+  detail.data = listing({
+    viewer_eligible: {eligible: false, unmet: 'listing requires reputation 2, but yours is 0'},
+  });
   const r = await renderDetail();
-  const inquire = button(r, 'Inquire');
-  await press(inquire);
-  expect(hasText(r, 'Inquiries are coming next')).toBe(true);
+  expect(hasText(r, 'listing requires reputation 2, but yours is 0')).toBe(true);
+  expect(button(r, 'Inquire').props.disabled).toBe(true);
 });
 
 test('the provider’s own listing offers Close listing instead of Inquire', async () => {
