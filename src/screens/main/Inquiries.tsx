@@ -13,7 +13,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Amount, Badge, Card, Heading, ScreenHeader, Text} from '../../components';
 import {relativeTime, shortAddress} from '../../ledger';
 import {useMyInquiries, useRefreshMarketplace} from '../../marketplace';
-import type {StationInquiryState, StationMyInquiryRow} from '../../network/StationClient';
+import type {StationMyInquiryRow} from '../../network/StationClient';
 import {useTheme, type Theme} from '../../theme';
 import type {MainStackScreenProps} from '../../navigation/types';
 
@@ -132,7 +132,7 @@ function InquiryRow({
                 size="sm"
               />
             )}
-            <StateBadge state={row.state} />
+            <StateBadge row={row} />
           </View>
         </View>
       </Card>
@@ -140,35 +140,65 @@ function InquiryRow({
   );
 }
 
-function StateBadge({state}: {state: StationInquiryState}) {
-  switch (state) {
-    case 'open':
-      return (
-        <Badge variant="success" size="sm" dot>
-          Open
-        </Badge>
-      );
-    case 'expired_pending':
-      return (
-        <Badge variant="warning" size="sm">
-          Expired
-        </Badge>
-      );
-    case 'closed':
-      return (
-        <Badge variant="neutral" size="sm">
-          Closed
-        </Badge>
-      );
+/**
+ * The row's status pill. A closed inquiry is not just "Closed": an agreed deal
+ * reads as "Agreed" (success), a declined one as "Declined" (danger, echoing the
+ * decline action's colour), an expired one as "Expired" — so the list tells the
+ * outcomes apart at a glance, not only by whether an amount is shown.
+ */
+function StateBadge({row}: {row: StationMyInquiryRow}) {
+  const {variant, label, dot} = badgeStyle(row);
+  return (
+    <Badge variant={variant} size="sm" dot={dot}>
+      {label}
+    </Badge>
+  );
+}
+
+function badgeStyle(row: StationMyInquiryRow): {
+  variant: 'success' | 'warning' | 'danger' | 'neutral';
+  label: string;
+  dot: boolean;
+} {
+  if (row.state === 'open') {
+    return {variant: 'success', label: 'Open', dot: true};
+  }
+  if (row.state === 'expired_pending') {
+    return {variant: 'warning', label: 'Expired', dot: false};
+  }
+  // closed — distinguish by how it ended.
+  switch (row.outcome) {
+    case 'agreed':
+      return {variant: 'success', label: 'Agreed', dot: false};
+    case 'declined_by_buyer':
+    case 'declined_by_seller':
+      return {variant: 'danger', label: 'Declined', dot: false};
+    case 'expired':
+      return {variant: 'warning', label: 'Expired', dot: false};
+    default:
+      return {variant: 'neutral', label: 'Closed', dot: false};
   }
 }
 
-/** "open" / "closed 2h ago" / "expired". */
+/** "open · 2h ago" / "agreed" / "declined" / "expired" — the a11y outcome word. */
 function stateLabel(row: StationMyInquiryRow): string {
   if (row.state === 'open') {
     return `open · ${relativeTime(row.last_activity_at)}`;
   }
-  return row.state === 'expired_pending' ? 'expired' : 'closed';
+  if (row.state === 'expired_pending') {
+    return 'expired';
+  }
+  switch (row.outcome) {
+    case 'agreed':
+      return 'agreed';
+    case 'declined_by_buyer':
+    case 'declined_by_seller':
+      return 'declined';
+    case 'expired':
+      return 'expired';
+    default:
+      return 'closed';
+  }
 }
 
 const styles = StyleSheet.create({

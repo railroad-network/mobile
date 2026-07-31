@@ -1011,6 +1011,9 @@ export interface StationMyInquiryRow {
   counterparty: string;
   /** `open`, `expired_pending`, or `closed`. */
   state: StationInquiryState;
+  /** How it ended, when `state` is `closed` — lets the inbox show "Agreed" vs
+   * "Declined" rather than a flat "Closed". Absent while the inquiry is live. */
+  outcome?: StationInquiryOutcome;
   /** The most recent offer on the table (opening, last counter, or agreed price),
    * in centi-Commons. */
   latest_offer_centi?: number;
