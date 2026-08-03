@@ -190,6 +190,12 @@ test('the provider’s own listing offers Close listing instead of Inquire', asy
   const r = await renderDetail();
   expect(findButton(r, 'Inquire')).toBeUndefined();
 
+  // It reads plainly as yours: the owner marker leads, the "Offered by [your own
+  // address]" panel is dropped, and Close sits under a Manage heading.
+  expect(hasText(r, 'Your listing')).toBe(true);
+  expect(hasText(r, 'Manage this listing')).toBe(true);
+  expect(hasText(r, 'Offered by')).toBe(false);
+
   await press(button(r, 'Close listing')); // reveal the inline confirm
   expect(findButton(r, 'Keep it')).toBeDefined(); // the stacked way-out appears
   expect(findButton(r, 'Close listing')).toBeUndefined(); // trigger label gives way to the confirm label

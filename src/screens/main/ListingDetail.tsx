@@ -129,6 +129,9 @@ function DetailBody({
 
   return (
     <>
+      {/* "This is yours" leads, in the amber ownership language the browse card's
+          rail also speaks — so the screen reads as your own before anything else. */}
+      {isOwn && <OwnerMarker theme={theme} listing={listing} />}
       {!active && <StateBanner theme={theme} listing={listing} />}
 
       {listing.description.trim().length > 0 && (
@@ -145,12 +148,14 @@ function DetailBody({
       )}
 
       <AvailabilityCard theme={theme} listing={listing} />
-      <ProviderCard theme={theme} listing={listing} />
+      {/* "Offered by [your own address]" is noise on your own listing — the owner
+          marker above already says it's yours. */}
+      {!isOwn && <ProviderCard theme={theme} listing={listing} />}
       <RequirementsCard theme={theme} listing={listing} />
 
       {active ? (
         isOwn ? (
-          <OwnerCloseAction theme={theme} listing={listing} />
+          <OwnerManageSection theme={theme} listing={listing} />
         ) : (
           <InquireAction theme={theme} listing={listing} navigation={navigation} />
         )
@@ -293,6 +298,38 @@ function parseOffer(input: string): number | null | 'invalid' {
     return 'invalid';
   }
   return Math.round(n * 100);
+}
+
+/** The amber "this is yours" marker at the top of your own listing — the same
+ * ownership language the browse card's left rail speaks, so the two screens
+ * agree on how "mine" looks. */
+function OwnerMarker({theme, listing}: {theme: Theme; listing: StationListingDetail}) {
+  return (
+    <View style={[styles.ownerMarker, {backgroundColor: theme.colors.accentTint, borderColor: theme.colors.accent}]}>
+      <Identicon seed={listing.provider} size={32} radius={9} />
+      <View style={styles.ownerMarkerText}>
+        <Text variant="label" color={theme.colors.accentStrong}>
+          Your listing
+        </Text>
+        <Text variant="caption" color={theme.colors.textSecondary}>
+          This listing is visible to everyone in your community.
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+/** The owner's actions, set apart under a heading so closing reads as a
+ * deliberate "manage" step, not a stray red button on someone's offer. */
+function OwnerManageSection({theme, listing}: {theme: Theme; listing: StationListingDetail}) {
+  return (
+    <View style={{gap: theme.spacing.xs}}>
+      <Text variant="label" color={theme.colors.textSecondary}>
+        Manage this listing
+      </Text>
+      <OwnerCloseAction theme={theme} listing={listing} />
+    </View>
+  );
 }
 
 /**
@@ -553,6 +590,8 @@ const styles = StyleSheet.create({
   priceLine: {flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap'},
   providerRow: {flexDirection: 'row', alignItems: 'center', gap: 12},
   providerText: {flex: 1, minWidth: 0, gap: 2},
+  ownerMarker: {flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 12, borderWidth: 1},
+  ownerMarkerText: {flex: 1, minWidth: 0, gap: 2},
   errorHead: {flexDirection: 'row', alignItems: 'center', gap: 8},
   footer: {textAlign: 'center'},
 });

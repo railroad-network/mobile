@@ -44,6 +44,7 @@ import {
 } from '../../marketplace';
 import type {StationListingCard, StationSurface} from '../../network/StationClient';
 import {useTheme, type Theme} from '../../theme';
+import {useWalletSession} from '../../wallet/WalletSession';
 import type {MainStackScreenProps} from '../../navigation/types';
 
 /** How long typing must settle before a search fires (see {@link useDebouncedValue}). */
@@ -77,6 +78,10 @@ export function Marketplace({navigation}: MainStackScreenProps<'Marketplace'>) {
   const query = useMarketplaceSearch(filters);
   const refresh = useRefreshMarketplace();
   const [refreshing, setRefreshing] = useState(false);
+  // A listing's signer is its provider, in the same bech32m form as the wallet's
+  // address — so a card is the viewer's own when they match.
+  const {wallet} = useWalletSession();
+  const myAddress = wallet?.address ?? null;
 
   const listings = useMemo(
     () => query.data?.pages.flatMap(page => page.listings) ?? [],
@@ -180,6 +185,7 @@ export function Marketplace({navigation}: MainStackScreenProps<'Marketplace'>) {
             <ListingCardRow
               theme={theme}
               card={item}
+              mine={myAddress !== null && item.provider === myAddress}
               onPress={() => navigation.navigate('ListingDetail', {listingId: item.listing_id})}
             />
           )}
@@ -250,8 +256,20 @@ function Chip({theme, label, active, onPress}: {theme: Theme; label: string; act
   );
 }
 
-/** One browse row. Everything the card draws; the rest is behind the tap. */
-function ListingCardRow({theme, card, onPress}: {theme: Theme; card: StationListingCard; onPress: () => void}) {
+/** One browse row. Everything the card draws; the rest is behind the tap.
+ * The viewer's own listing shows a "Your listing" line in place of the lister's
+ * address — your own address is noise to you. */
+function ListingCardRow({
+  theme,
+  card,
+  mine,
+  onPress,
+}: {
+  theme: Theme;
+  card: StationListingCard;
+  mine: boolean;
+  onPress: () => void;
+}) {
   const [pressed, setPressed] = useState(false);
   return (
     <Pressable
@@ -259,10 +277,11 @@ function ListingCardRow({theme, card, onPress}: {theme: Theme; card: StationList
       onPressIn={() => setPressed(true)}
       onPressOut={() => setPressed(false)}
       accessibilityRole="button"
-      accessibilityLabel={`${card.title}, ${priceLabel(card)}`}>
+      accessibilityLabel={`${mine ? 'Your listing, ' : ''}${card.title}, ${priceLabel(card)}`}>
       {/* A later `backgroundColor` overrides Card's default; `undefined` is
           skipped in flattening, so the card keeps its raised fill when idle. */}
       <Card style={{backgroundColor: pressed ? theme.colors.surfaceSunken : undefined, gap: theme.spacing.sm}}>
+
         <View style={styles.cardTop}>
           <View style={styles.cardHead}>
             <Text variant="label" color={theme.colors.text} numberOfLines={2} style={styles.cardTitle}>
@@ -278,12 +297,20 @@ function ListingCardRow({theme, card, onPress}: {theme: Theme; card: StationList
         <View style={[styles.cardFoot, {borderTopColor: theme.colors.border}]}>
           <View style={styles.provider}>
             <Identicon seed={card.provider} size={24} radius={7} />
-            <Text variant="caption" color={theme.colors.textSecondary} numberOfLines={1} style={styles.providerName}>
-              {shortAddress(card.provider)}
-            </Text>
-            <Badge variant={bandVariant(card.provider_band)} size="sm">
-              {card.provider_band}
-            </Badge>
+            {mine ? (
+              <Text variant="caption" color={theme.colors.accentStrong} numberOfLines={1} style={[styles.providerName, styles.mineLabel]}>
+                Your listing
+              </Text>
+            ) : (
+              <>
+                <Text variant="caption" color={theme.colors.textSecondary} numberOfLines={1} style={styles.providerName}>
+                  {shortAddress(card.provider)}
+                </Text>
+                <Badge variant={bandVariant(card.provider_band)} size="sm">
+                  {card.provider_band}
+                </Badge>
+              </>
+            )}
           </View>
           <Fulfillment theme={theme} card={card} />
         </View>
@@ -457,6 +484,7 @@ const styles = StyleSheet.create({
   cardFoot: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, borderTopWidth: 1, paddingTop: 10},
   provider: {flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, minWidth: 0},
   providerName: {flexShrink: 1, minWidth: 0},
+  mineLabel: {fontWeight: '700'},
   fulfillment: {flexShrink: 0},
   footer: {textAlign: 'center', paddingVertical: 16},
   empty: {alignItems: 'center', paddingVertical: 60, paddingHorizontal: 32},

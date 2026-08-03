@@ -47,6 +47,13 @@ jest.mock('../src/marketplace', () => ({
   useDebouncedValue: <T,>(v: T) => v,
 }));
 
+// The card marks a listing as the viewer's own by matching the wallet address to
+// the listing's provider. Default to a stranger so cards read as others'.
+const session: {wallet: {address: string} | null} = {wallet: {address: 'rrn1qviewerxxxxxxxxxxxxxxxxxxxxxxx'}};
+jest.mock('../src/wallet/WalletSession', () => ({
+  useWalletSession: () => session,
+}));
+
 function card(overrides: Partial<StationListingCard> = {}): StationListingCard {
   return {
     listing_id: 'abc123',
@@ -128,6 +135,7 @@ beforeEach(() => {
   mockSearchResult.isError = false;
   mockSearchResult.hasNextPage = false;
   mockSearchResult.isFetchingNextPage = false;
+  session.wallet = {address: 'rrn1qviewerxxxxxxxxxxxxxxxxxxxxxxx'}; // a stranger, unless a test says otherwise
 });
 
 test('renders a listing card with its price and provider band', async () => {
@@ -137,6 +145,12 @@ test('renders a listing card with its price and provider band', async () => {
   expect(hasText(r, '3.50')).toBe(true); // price, formatted Commons
   expect(hasText(r, 'Member')).toBe(true); // provider band chip
   expect(hasText(r, '6 left')).toBe(true); // goods fulfillment indicator
+});
+
+test('the viewer’s own card reads "Your listing" instead of their address', async () => {
+  session.wallet = {address: 'rrn1qprovideraaaaaaaaaaaaaaaaaaaa'}; // matches the card's provider
+  const r = await renderMarketplace();
+  expect(hasText(r, 'Your listing')).toBe(true);
 });
 
 test('the browse defaults to the goods surface', async () => {
