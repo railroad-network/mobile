@@ -49,8 +49,13 @@ jest.mock('../src/wallet/WalletSession', () => ({
 // check (by the inquiry's memo) whether one already exists. Real `inquiryMemo`
 // and formatters come through; the two hooks are stubbed.
 const mockSettle = jest.fn(
-  async (_args: {inquiryId: string; providerAddress: string; amountCenti: number; listingIdHex: string}) =>
-    ({ok: true, id: 'tx1'}) as const,
+  async (_args: {
+    inquiryId: string;
+    listingTitle: string;
+    providerAddress: string;
+    amountCenti: number;
+    listingIdHex: string;
+  }) => ({ok: true, id: 'tx1'}) as const,
 );
 const mockActivity: {data: {memo?: string; state: string}[]} = {data: []};
 jest.mock('../src/ledger', () => ({
@@ -239,6 +244,7 @@ test('the buyer settles an agreed inquiry with a one-tap payment', async () => {
   await press(button(r, 'Send 43.00 payment'));
   expect(mockSettle).toHaveBeenCalledWith({
     inquiryId: 'iq1',
+    listingTitle: 'Barn raising',
     providerAddress: PROVIDER,
     amountCenti: 4300,
     listingIdHex: 'l1',
@@ -247,7 +253,7 @@ test('the buyer settles an agreed inquiry with a one-tap payment', async () => {
 
 test('the settle button is withheld once a payment for the inquiry exists', async () => {
   mockSession.wallet = {address: BUYER};
-  mockActivity.data = [{memo: 'Inquiry iq1', state: 'pending'}]; // matches inquiryMemo('iq1')
+  mockActivity.data = [{memo: 'Barn raising · #iq1', state: 'pending'}]; // matches inquiryMemo('iq1','Barn raising')
   mockThread.data = thread({state: 'closed', outcome: 'agreed', final_price_centi: 4300});
   const r = await render();
   expect(findButton(r, 'Send 43.00 payment')).toBeUndefined();

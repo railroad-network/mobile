@@ -151,7 +151,7 @@ function SettleAction({theme, thread}: {theme: Theme; thread: StationInquiryThre
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | undefined>();
 
-  const memo = inquiryMemo(thread.inquiry_id);
+  const memo = inquiryMemo(thread.inquiry_id, thread.listing_title);
   const paid = (activity ?? []).find(tx => tx.memo === memo && tx.state !== 'cancelled');
   const priceCenti = thread.final_price_centi ?? thread.listed_amount_centi;
 
@@ -160,6 +160,7 @@ function SettleAction({theme, thread}: {theme: Theme; thread: StationInquiryThre
     setError(undefined);
     const result = await settle({
       inquiryId: thread.inquiry_id,
+      listingTitle: thread.listing_title,
       providerAddress: thread.provider,
       amountCenti: priceCenti,
       listingIdHex: thread.listing_id,
@@ -550,8 +551,7 @@ function OutcomeBanner({thread}: {thread: StationInquiryThread}) {
       return (
         <Banner variant="success" title="You agreed on a price">
           Both sides agreed at{' '}
-          {thread.final_price_centi !== undefined ? formatCommons(thread.final_price_centi) : 'the offer'}
-          . Settling it as a payment arrives in the next update.
+          {thread.final_price_centi !== undefined ? formatCommons(thread.final_price_centi) : 'the offer'}.
         </Banner>
       );
     case 'declined_by_buyer':

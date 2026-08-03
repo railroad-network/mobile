@@ -384,11 +384,13 @@ export function useSendProposal(): (
   );
 }
 
-/** The memo a marketplace payment carries, tying it to the inquiry it settles —
- * and the idempotency key the thread screen checks so a second tap (or the 5s
- * poll) can't pay for the same agreement twice. */
-export function inquiryMemo(inquiryId: string): string {
-  return `Inquiry ${inquiryId}`;
+/** The memo a marketplace payment carries. It leads with the listing's title so
+ * it reads in history as what it is ("Seed potatoes · #71b326ed"), and carries a
+ * short slice of the inquiry id so it stays unique — it doubles as the idempotency
+ * key the thread screen checks, so a second tap (or the 5s poll) can't pay for the
+ * same agreement twice, and two inquiries on the same listing don't collide. */
+export function inquiryMemo(inquiryId: string, listingTitle: string): string {
+  return `${listingTitle} · #${inquiryId.slice(0, 8)}`;
 }
 
 /**
@@ -399,12 +401,13 @@ export function inquiryMemo(inquiryId: string): string {
  *
  * Shares the exact path {@link useSendProposal} uses — station nonce, on-device
  * signing, authenticated transmit, local pending overlay — differing only in the
- * `Inquiry <id>` memo and the `listing_id` link the proposal carries. The screen
+ * {@link inquiryMemo} and the `listing_id` link the proposal carries. The screen
  * guards against a double payment by checking {@link useActivity} for that memo
  * before offering the action.
  */
 export function useSettleAgreement(): (args: {
   inquiryId: string;
+  listingTitle: string;
   providerAddress: string;
   amountCenti: number;
   listingIdHex: string;
@@ -413,7 +416,7 @@ export function useSettleAgreement(): (args: {
   const {wallet} = useWalletSession();
   const enqueue = useEnqueueTransaction();
   return useCallback(
-    async ({inquiryId, providerAddress, amountCenti, listingIdHex}) => {
+    async ({inquiryId, listingTitle, providerAddress, amountCenti, listingIdHex}) => {
       if (client === null || wallet === null) {
         return {ok: false, error: 'locked', message: 'Unlock your wallet and pair a station.'};
       }
@@ -424,7 +427,7 @@ export function useSettleAgreement(): (args: {
           wallet,
           providerAddress,
           amountCenti,
-          inquiryMemo(inquiryId),
+          inquiryMemo(inquiryId, listingTitle),
           {nonce, proposedAt: now, expiresAt: now + PROPOSAL_EXPIRY_SECS},
           listingIdHex,
         );
