@@ -46,6 +46,27 @@ function shortHash(id: string): string {
   return `b3:${id.slice(0, 8)}…`;
 }
 
+/**
+ * The "For" line's value. A marketplace payment's memo is
+ * `"<listing title> · #<inquiry id>"` (see `inquiryMemo`); show just the listing,
+ * since the id tail is only there to keep the memo unique. Payments made before
+ * that format carried a bare `Inquiry <hex>` — read those as a plain "Marketplace
+ * payment" rather than a wall of hash. Any other memo (a normal send) shows as-is.
+ */
+export function forLabel(memo: string | undefined): string {
+  if (memo === undefined || memo.length === 0) {
+    return '—';
+  }
+  const listing = memo.match(/^(.+) · #[0-9a-f]+$/);
+  if (listing) {
+    return listing[1];
+  }
+  if (/^Inquiry [0-9a-f]{16,}$/.test(memo)) {
+    return 'Marketplace payment';
+  }
+  return memo;
+}
+
 export function TransactionDetail({route, navigation}: MainStackScreenProps<'TransactionDetail'>) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
@@ -85,9 +106,13 @@ export function TransactionDetail({route, navigation}: MainStackScreenProps<'Tra
               {tx.direction === 'in' ? 'Received from' : 'Sent to'} {tx.counterparty}
             </Text>
             <Amount centi={tx.amountCenti} size="xl" />
-            <Badge variant={stateBadge(tx.state).variant} dot>
-              {stateBadge(tx.state).label}
-            </Badge>
+            {/* Badge sets its own `alignSelf: flex-start`; wrap it so it centers
+                with the rest of the hero instead of hugging the left edge. */}
+            <View style={styles.heroBadge}>
+              <Badge variant={stateBadge(tx.state).variant} dot>
+                {stateBadge(tx.state).label}
+              </Badge>
+            </View>
           </Card>
 
           {settleAt !== undefined && (tx.state === 'confirmed' || tx.state === 'window') && (
@@ -100,7 +125,7 @@ export function TransactionDetail({route, navigation}: MainStackScreenProps<'Tra
           )}
 
           <Card style={styles.fields}>
-            <DetailRow theme={theme} label="For" value={tx.memo && tx.memo.length > 0 ? tx.memo : '—'} />
+            <DetailRow theme={theme} label="For" value={forLabel(tx.memo)} />
             <DetailRow
               theme={theme}
               label="Direction"
@@ -241,6 +266,7 @@ function SignatureRow({
 
 const styles = StyleSheet.create({
   hero: {alignItems: 'center', gap: 10, paddingVertical: 24},
+  heroBadge: {alignSelf: 'center'},
   settleRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16},
   settleClock: {fontSize: 22, lineHeight: 28, fontWeight: '700'},
   fields: {gap: 14},

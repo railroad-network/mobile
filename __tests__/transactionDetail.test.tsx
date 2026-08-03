@@ -14,7 +14,7 @@ import {SafeAreaProvider} from 'react-native-safe-area-context';
 import Clipboard from '@react-native-clipboard/clipboard';
 
 import {ThemeProvider} from '../src/theme';
-import {TransactionDetail} from '../src/screens/main/TransactionDetail';
+import {TransactionDetail, forLabel} from '../src/screens/main/TransactionDetail';
 import type {Transaction} from '../src/ledger';
 
 const ADDR = 'rrn1qvalleyfarm000000000000000000000000000';
@@ -128,4 +128,20 @@ test('shows a not-available message for an unknown id', async () => {
   mockActivity.data = [];
   const r = await renderDetail();
   expect(hasText(r, 'isn’t available')).toBe(true);
+});
+
+describe('the "For" line', () => {
+  test('shows just the listing for a marketplace payment', () => {
+    expect(forLabel('Seed potatoes · #71b326ed')).toBe('Seed potatoes');
+  });
+  test('reads a legacy Inquiry <hex> memo as a plain marketplace payment', () => {
+    expect(
+      forLabel('Inquiry 71b326edb139d01244afa4b218d8530eca1ea91b9e4430cbb3dd2dc27e004316'),
+    ).toBe('Marketplace payment');
+  });
+  test('passes a normal memo through, and shows a dash for none', () => {
+    expect(forLabel('Seed order')).toBe('Seed order');
+    expect(forLabel(undefined)).toBe('—');
+    expect(forLabel('')).toBe('—');
+  });
 });
