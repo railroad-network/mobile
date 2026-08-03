@@ -264,8 +264,16 @@ export function useConnectivity(): Connectivity {
     queryKey: ['reachability', station?.address],
     enabled: client !== null,
     queryFn: () => client!.whoami(),
-    refetchInterval: 15_000,
-    retry: false,
+    // A couple of retries ride out the moment right after unlock when the client
+    // exists but its connection is still warming up: the first `whoami` can lose
+    // that race, and with no retry it wrongly flips the header to "offline" —
+    // even as other screens load fine — until the next interval. Retrying holds
+    // the connected state through the warm-up instead of flashing disconnected.
+    retry: 2,
+    // Poll gently while connected, but re-probe every few seconds while we
+    // believe we're offline, so the indicator recovers in ~3s — not up to 15 —
+    // once the station answers again.
+    refetchInterval: query => (query.state.status === 'error' ? 3_000 : 15_000),
     staleTime: 10_000,
   });
   const isOffline = client !== null && probe.isError;
