@@ -40,6 +40,7 @@ interface ProposalVector {
   receiver_pubkey: string;
   amount_centi: string;
   memo: string | null;
+  listing_id?: string;
   nonce: string;
   proposed_at: string;
   expires_at: string;
@@ -65,17 +66,24 @@ const bytesToHex = (b: Uint8Array): string =>
 // The tagged payload the mobile app builds for a proposal — mirrors the station's
 // `From<TransactionProposal> for CBOR` (byte-string sender/receiver, i64/u64
 // integers, text-or-null memo).
-const proposalPayload = (v: ProposalVector): CborValue =>
-  map([
+const proposalPayload = (v: ProposalVector): CborValue => {
+  const entries: [string, CborValue][] = [
     ['kind', text('rrn.tx.proposal')],
     ['sender', bytes(hexToBytes(v.sender_pubkey))],
     ['receiver', bytes(hexToBytes(v.receiver_pubkey))],
     ['amount_centi', int(BigInt(v.amount_centi))],
     ['memo', v.memo === null ? nul() : text(v.memo)],
-    ['nonce', int(BigInt(v.nonce))],
-    ['proposed_at', int(BigInt(v.proposed_at))],
-    ['expires_at', int(BigInt(v.expires_at))],
-  ]);
+  ];
+  // A marketplace payment links its listing; a direct pay omits the key entirely
+  // (never null) — the omit-when-absent rule that keeps direct sends unchanged.
+  if (v.listing_id !== undefined) {
+    entries.push(['listing_id', bytes(hexToBytes(v.listing_id))]);
+  }
+  entries.push(['nonce', int(BigInt(v.nonce))]);
+  entries.push(['proposed_at', int(BigInt(v.proposed_at))]);
+  entries.push(['expires_at', int(BigInt(v.expires_at))]);
+  return map(entries);
+};
 
 // ---- In-memory FFI backed by the fixture. ----
 // canonicalBytes: recorded payload (as JSON) -> canonical bytes.

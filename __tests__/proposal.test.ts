@@ -145,6 +145,36 @@ test('a blank memo encodes as null and is dropped from the result', async () => 
   expect(capturedEntries().memo).toEqual({null: null});
 });
 
+test('links a marketplace listing when given one, and omits the key otherwise', async () => {
+  const listingIdHex = 'aa'.repeat(32); // 32-byte listing id
+  const linked = await createSendProposal(
+    fakeWallet('rrn1sender'),
+    'rrn1receiver',
+    300,
+    'seed potatoes',
+    {nonce: 1, proposedAt: 100, expiresAt: 200},
+    listingIdHex,
+  );
+  expect(linked.listingId).toBe(listingIdHex);
+  // A 32-byte CBOR byte string, matching the station's ListingRef encoding.
+  expect(capturedEntries().listing_id).toEqual({bytes: listingIdHex});
+
+  // A direct send passes no listing id: the key is OMITTED entirely (never null),
+  // so the proposal is byte-identical to one built before the field existed —
+  // hence a different content id from the linked one.
+  const direct = await createSendProposal(fakeWallet('rrn1sender'), 'rrn1receiver', 300, 'seed potatoes', {
+    nonce: 1,
+    proposedAt: 100,
+    expiresAt: 200,
+  });
+  expect(direct.listingId).toBeUndefined();
+  expect('listing_id' in capturedEntries()).toBe(false);
+  // (Cross-platform byte-exactness of both shapes — and that the linked and
+  // unlinked ids genuinely differ under the real Blake3 — is proven against the
+  // Rust-generated fixture in SignedPayload.test.ts; the fake Hash here only
+  // slices the first bytes, so it can't stand in for that.)
+});
+
 test('rejects an invalid receiver address', async () => {
   await expect(
     createSendProposal(fakeWallet('rrn1sender'), 'not-an-address', 300, undefined, {

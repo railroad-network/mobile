@@ -45,6 +45,20 @@ jest.mock('../src/wallet/WalletSession', () => ({
   useWalletSession: () => mockSession,
 }));
 
+// The Agreed settle action reaches into the ledger to send the payment and to
+// check (by the inquiry's memo) whether one already exists. Real `inquiryMemo`
+// and formatters come through; the two hooks are stubbed.
+const mockSettle = jest.fn(
+  async (_args: {inquiryId: string; providerAddress: string; amountCenti: number; listingIdHex: string}) =>
+    ({ok: true, id: 'tx1'}) as const,
+);
+const mockActivity: {data: {memo?: string; state: string}[]} = {data: []};
+jest.mock('../src/ledger', () => ({
+  ...jest.requireActual('../src/ledger'),
+  useSettleAgreement: () => mockSettle,
+  useActivity: () => mockActivity,
+}));
+
 const NOW = 1_800_000_000;
 
 function thread(overrides: Partial<StationInquiryThread> = {}): StationInquiryThread {
@@ -134,6 +148,7 @@ beforeEach(() => {
   mockThread.isError = false;
   mockThread.error = null;
   mockSession.wallet = {address: BUYER};
+  mockActivity.data = [];
 });
 
 test('renders the conversation and the offers on the table', async () => {
@@ -217,6 +232,35 @@ test('sending a message forwards the body and parsed counter-offer', async () =>
   });
 });
 
+test('the buyer settles an agreed inquiry with a one-tap payment', async () => {
+  mockSession.wallet = {address: BUYER};
+  mockThread.data = thread({state: 'closed', outcome: 'agreed', final_price_centi: 4300, closed_at: NOW + 100});
+  const r = await render();
+  await press(button(r, 'Send 43.00 payment'));
+  expect(mockSettle).toHaveBeenCalledWith({
+    inquiryId: 'iq1',
+    providerAddress: PROVIDER,
+    amountCenti: 4300,
+    listingIdHex: 'l1',
+  });
+});
+
+test('the settle button is withheld once a payment for the inquiry exists', async () => {
+  mockSession.wallet = {address: BUYER};
+  mockActivity.data = [{memo: 'Inquiry iq1', state: 'pending'}]; // matches inquiryMemo('iq1')
+  mockThread.data = thread({state: 'closed', outcome: 'agreed', final_price_centi: 4300});
+  const r = await render();
+  expect(findButton(r, 'Send 43.00 payment')).toBeUndefined();
+  expect(hasText(r, 'Payment sent')).toBe(true);
+});
+
+test('the provider is not asked to pay on an agreed inquiry', async () => {
+  mockSession.wallet = {address: PROVIDER};
+  mockThread.data = thread({state: 'closed', outcome: 'agreed', final_price_centi: 4300});
+  const r = await render();
+  expect(findButton(r, 'Send 43.00 payment')).toBeUndefined();
+});
+
 test('a closed inquiry shows the outcome and no composer', async () => {
   mockThread.data = thread({
     state: 'closed',
@@ -226,6 +270,12 @@ test('a closed inquiry shows the outcome and no composer', async () => {
   });
   const r = await render();
   expect(hasText(r, 'You agreed on a price')).toBe(true);
-  expect(findButton(r, 'Send')).toBeUndefined();
+  // No composer on a closed thread: no reply field and no decline/withdraw. (The
+  // buyer's "Send … payment" settle action is a separate, expected control.)
+  const replyFields = r.root.findAll(
+    n => n.props.accessibilityLabel === 'Message' && n.props.onChangeText !== undefined,
+  );
+  expect(replyFields).toHaveLength(0);
   expect(findButton(r, 'Decline')).toBeUndefined();
+  expect(findButton(r, 'Withdraw')).toBeUndefined();
 });

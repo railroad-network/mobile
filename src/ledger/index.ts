@@ -25,6 +25,7 @@ export {encodeAddressQr, parseAddressQr, type ScannedAddress} from './addressQr'
 export {outboxCount} from './outbox';
 export {clearDecisions, getDecision, type CancelReason, type Decision} from './decisions';
 export {
+  inquiryMemo,
   ledgerKeys,
   useActivity,
   useBalance,
@@ -37,6 +38,7 @@ export {
   useRefreshLedger,
   useReputation,
   useSendProposal,
+  useSettleAgreement,
   useSubmitVouch,
   useVouchCounts,
   useVouches,

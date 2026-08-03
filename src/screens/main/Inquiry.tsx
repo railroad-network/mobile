@@ -30,7 +30,7 @@ import {
   Heading,
   Text,
 } from '../../components';
-import {formatCommons, relativeTime} from '../../ledger';
+import {formatCommons, inquiryMemo, relativeTime, useActivity, useSettleAgreement} from '../../ledger';
 import {
   useCloseInquiry,
   useInquiryThread,
@@ -108,6 +108,12 @@ function ThreadBody({theme, thread}: {theme: Theme; thread: StationInquiryThread
     <>
       {thread.state !== 'open' && <OutcomeBanner thread={thread} />}
 
+      {/* An agreed inquiry is the buyer's to settle: the provider granted the
+          price, now the buyer sends the payment (T1.7.6). */}
+      {thread.state === 'closed' && thread.outcome === 'agreed' && mineRole === 'buyer' && (
+        <SettleAction theme={theme} thread={thread} />
+      )}
+
       {offers.length > 0 && <OfferBar theme={theme} steps={offers} />}
 
       <View style={{gap: theme.spacing.sm}}>
@@ -125,6 +131,73 @@ function ThreadBody({theme, thread}: {theme: Theme; thread: StationInquiryThread
         <Composer theme={theme} thread={thread} mineRole={mineRole} />
       )}
     </>
+  );
+}
+
+/**
+ * The buyer's one-tap payment for an agreed inquiry (T1.7.6). The provider
+ * granted the price by agreeing; this commits the payment — a proposal linked to
+ * the listing, which the provider then confirms through the standard M0.5 flow.
+ *
+ * Offered exactly once. It guards against a double payment by looking for the
+ * inquiry's own memo (`Inquiry <id>`) in the ledger before showing the button —
+ * so a second tap, or a re-render from the thread's 5s poll, can't send a second
+ * proposal, and the guard survives an app restart (it reads real ledger state,
+ * not a local flag). A cancelled/expired payment lets the button return to retry.
+ */
+function SettleAction({theme, thread}: {theme: Theme; thread: StationInquiryThread}) {
+  const settle = useSettleAgreement();
+  const {data: activity} = useActivity();
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | undefined>();
+
+  const memo = inquiryMemo(thread.inquiry_id);
+  const paid = (activity ?? []).find(tx => tx.memo === memo && tx.state !== 'cancelled');
+  const priceCenti = thread.final_price_centi ?? thread.listed_amount_centi;
+
+  const onSend = async () => {
+    setSending(true);
+    setError(undefined);
+    const result = await settle({
+      inquiryId: thread.inquiry_id,
+      providerAddress: thread.provider,
+      amountCenti: priceCenti,
+      listingIdHex: thread.listing_id,
+    });
+    setSending(false);
+    if (!result.ok) {
+      setError(result.message ?? 'Could not send the payment.');
+    }
+    // On success the enqueued pending transaction makes `paid` truthy on the next
+    // render, replacing the button with the sent state on its own.
+  };
+
+  if (paid !== undefined) {
+    return (
+      <Card style={{gap: theme.spacing.xs}}>
+        <Text variant="label" color={theme.colors.text}>
+          Payment sent
+        </Text>
+        <Text variant="caption" color={theme.colors.textSecondary}>
+          {paid.state === 'settled'
+            ? `You paid ${formatCommons(priceCenti)} — it’s in your history.`
+            : `${formatCommons(priceCenti)} is on its way, pending the provider’s confirmation.`}
+        </Text>
+      </Card>
+    );
+  }
+
+  return (
+    <View style={{gap: theme.spacing.sm}}>
+      <Button fullWidth onPress={onSend} loading={sending} disabled={sending}>
+        {`Send ${formatCommons(priceCenti)} payment`}
+      </Button>
+      {error !== undefined && (
+        <Text variant="caption" color={theme.colors.danger}>
+          {error}
+        </Text>
+      )}
+    </View>
   );
 }
 

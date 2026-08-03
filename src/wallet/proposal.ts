@@ -32,6 +32,7 @@
 import {bytes, canonicalBytes, int, map, nul, text, type CborValue} from '../crypto/cbor';
 import {parseAddress} from '../crypto/address';
 import {getRrnCryptoFfi} from '../crypto/ffi';
+import {hexToBytes} from '../crypto/hex';
 import type {Wallet} from './Wallet';
 
 /** The `kind` discriminant the station stamps on a proposal's canonical CBOR. */
@@ -49,6 +50,9 @@ export interface SignedSendProposal {
   amountCenti: number;
   /** Optional memo, trimmed; absent when blank. */
   memo?: string;
+  /** The marketplace listing this pays for (T1.7.6), hex — set when the proposal
+   * settles an agreed inquiry, absent for a direct send. */
+  listingId?: string;
   /** Per-sender monotonic nonce. */
   nonce: number;
   /** Unix seconds when the proposal was made. */
@@ -84,6 +88,7 @@ export async function createSendProposal(
   amountCenti: number,
   memo: string | undefined,
   envelope: ProposalEnvelope,
+  listingIdHex?: string,
 ): Promise<SignedSendProposal> {
   const receiver = parseAddress(receiverAddress);
   if ('error' in receiver) {
@@ -97,16 +102,24 @@ export async function createSendProposal(
   // but the set, types, and address-as-byte-string encoding must match the
   // station's `From<TransactionProposal> for CBOR` exactly, or the signature
   // will not verify there. `id` is deliberately omitted: it *is* the hash.
-  const payload: CborValue = map([
+  const entries: [string, CborValue][] = [
     ['kind', text(PROPOSAL_KIND)],
     ['sender', bytes(wallet.publicKey().toBytes())],
     ['receiver', bytes(receiver.toBytes())],
     ['amount_centi', int(amountCenti)],
     ['memo', hasMemo ? text(trimmedMemo) : nul()],
-    ['nonce', int(envelope.nonce)],
-    ['proposed_at', int(envelope.proposedAt)],
-    ['expires_at', int(envelope.expiresAt)],
-  ]);
+  ];
+  // A linked listing is a 32-byte byte string, and — unlike `memo` — the key is
+  // OMITTED when absent, never null: `listing_id` was added to a content-
+  // addressed record, so a direct send must encode exactly as it did before the
+  // field existed (ADR-0010). Matches the station's omit-when-`None` encoder.
+  if (listingIdHex !== undefined) {
+    entries.push(['listing_id', bytes(hexToBytes(listingIdHex))]);
+  }
+  entries.push(['nonce', int(envelope.nonce)]);
+  entries.push(['proposed_at', int(envelope.proposedAt)]);
+  entries.push(['expires_at', int(envelope.expiresAt)]);
+  const payload: CborValue = map(entries);
 
   const canonical = canonicalBytes(payload);
   const id = getRrnCryptoFfi().Hash.of(canonical).toHex();
@@ -118,6 +131,7 @@ export async function createSendProposal(
     receiverAddress,
     amountCenti,
     memo: hasMemo ? trimmedMemo : undefined,
+    listingId: listingIdHex,
     nonce: envelope.nonce,
     proposedAt: envelope.proposedAt,
     expiresAt: envelope.expiresAt,

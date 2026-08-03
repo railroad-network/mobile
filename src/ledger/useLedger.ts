@@ -384,6 +384,77 @@ export function useSendProposal(): (
   );
 }
 
+/** The memo a marketplace payment carries, tying it to the inquiry it settles —
+ * and the idempotency key the thread screen checks so a second tap (or the 5s
+ * poll) can't pay for the same agreement twice. */
+export function inquiryMemo(inquiryId: string): string {
+  return `Inquiry ${inquiryId}`;
+}
+
+/**
+ * Settles an agreed inquiry (T1.7.6): the buyer's payment for the price the
+ * provider granted, linked to the listing. The provider agreed by *granting* the
+ * inquiry; this is the buyer committing the payment, which the provider then
+ * confirms via the standard M0.5 flow (confirm → settlement window → settle).
+ *
+ * Shares the exact path {@link useSendProposal} uses — station nonce, on-device
+ * signing, authenticated transmit, local pending overlay — differing only in the
+ * `Inquiry <id>` memo and the `listing_id` link the proposal carries. The screen
+ * guards against a double payment by checking {@link useActivity} for that memo
+ * before offering the action.
+ */
+export function useSettleAgreement(): (args: {
+  inquiryId: string;
+  providerAddress: string;
+  amountCenti: number;
+  listingIdHex: string;
+}) => Promise<WriteResult<{id: string}>> {
+  const client = useStationClient();
+  const {wallet} = useWalletSession();
+  const enqueue = useEnqueueTransaction();
+  return useCallback(
+    async ({inquiryId, providerAddress, amountCenti, listingIdHex}) => {
+      if (client === null || wallet === null) {
+        return {ok: false, error: 'locked', message: 'Unlock your wallet and pair a station.'};
+      }
+      try {
+        const {nonce} = await client.nextNonce(wallet.address);
+        const now = Math.floor(Date.now() / 1000);
+        const proposal = await createSendProposal(
+          wallet,
+          providerAddress,
+          amountCenti,
+          inquiryMemo(inquiryId),
+          {nonce, proposedAt: now, expiresAt: now + PROPOSAL_EXPIRY_SECS},
+          listingIdHex,
+        );
+        await client.submitSignedRecord(
+          'submit_proposal',
+          'signed_proposal',
+          proposal.payloadBytes,
+          proposal.signature,
+        );
+        await enqueue({
+          id: proposal.id,
+          counterparty: shortAddress(providerAddress),
+          counterpartyAddress: providerAddress,
+          direction: 'out',
+          amountCenti: -amountCenti, // display: an outgoing payment is a debit
+          memo: proposal.memo,
+          state: 'pending',
+          timestamp: proposal.proposedAt,
+          expiresAt: proposal.expiresAt,
+          nonce: proposal.nonce,
+        });
+        return {ok: true, id: proposal.id};
+      } catch (e) {
+        return asWriteError(e);
+      }
+    },
+    [client, wallet, enqueue],
+  );
+}
+
 /**
  * Returns a function that confirms an incoming proposal: it signs the
  * confirmation with the session wallet, transmits it, and overlays the local
