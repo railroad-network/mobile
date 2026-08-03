@@ -663,6 +663,12 @@ export interface StationTransactionRow {
   direction: 'in' | 'out';
   amount_centi: number;
   memo?: string;
+  /** The marketplace listing this paid for, hex (T1.7.6) — present on a
+   * marketplace payment, absent on a direct pay. */
+  listing_id?: string;
+  /** That listing's title, resolved by the station so history reads as what it
+   * bought. Present when the station knows the listing. */
+  listing_title?: string;
   state: 'pending' | 'confirmed' | 'settled' | 'cancelled';
   timestamp: number;
   expires_at?: number;

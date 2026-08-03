@@ -47,13 +47,19 @@ function shortHash(id: string): string {
 }
 
 /**
- * The "For" line's value. A marketplace payment's memo is
- * `"<listing title> · #<inquiry id>"` (see `inquiryMemo`); show just the listing,
- * since the id tail is only there to keep the memo unique. Payments made before
- * that format carried a bare `Inquiry <hex>` — read those as a plain "Marketplace
- * payment" rather than a wall of hash. Any other memo (a normal send) shows as-is.
+ * The "For" line's value. When the station resolved the listing this paid for
+ * (T1.7.6 Stage B), show that title — it names what was bought for *any*
+ * marketplace payment, including ones whose memo predates the current format.
+ *
+ * Falling back to the memo when there's no resolved title: a marketplace memo is
+ * `"<listing title> · #<inquiry id>"` (see `inquiryMemo`), so show just the
+ * listing; a bare legacy `Inquiry <hex>` reads as a plain "Marketplace payment"
+ * rather than a wall of hash; any other memo (a normal send) shows as-is.
  */
-export function forLabel(memo: string | undefined): string {
+export function forLabel(listingTitle: string | undefined, memo: string | undefined): string {
+  if (listingTitle !== undefined && listingTitle.length > 0) {
+    return listingTitle;
+  }
   if (memo === undefined || memo.length === 0) {
     return '—';
   }
@@ -125,7 +131,7 @@ export function TransactionDetail({route, navigation}: MainStackScreenProps<'Tra
           )}
 
           <Card style={styles.fields}>
-            <DetailRow theme={theme} label="For" value={forLabel(tx.memo)} />
+            <DetailRow theme={theme} label="For" value={forLabel(tx.listingTitle, tx.memo)} />
             <DetailRow
               theme={theme}
               label="Direction"

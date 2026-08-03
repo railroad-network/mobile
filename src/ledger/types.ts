@@ -39,6 +39,10 @@ export interface Transaction {
   amountCenti: number;
   /** Optional free-text memo. */
   memo?: string;
+  /** For a marketplace payment (T1.7.6), the listing's title, resolved by the
+   * station — so the detail screen can name what was bought regardless of the
+   * memo. Absent on a direct pay. */
+  listingTitle?: string;
   state: TransactionState;
   /** When the transaction was proposed, in unix seconds. */
   timestamp: number;

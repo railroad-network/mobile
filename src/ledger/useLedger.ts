@@ -53,6 +53,7 @@ export function stationRowToTransaction(row: StationTransactionRow): Transaction
     direction: row.direction,
     amountCenti: row.amount_centi,
     memo: row.memo,
+    listingTitle: row.listing_title,
     state: row.state,
     timestamp: row.timestamp,
     expiresAt: row.expires_at,

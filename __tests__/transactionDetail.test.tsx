@@ -131,17 +131,20 @@ test('shows a not-available message for an unknown id', async () => {
 });
 
 describe('the "For" line', () => {
-  test('shows just the listing for a marketplace payment', () => {
-    expect(forLabel('Seed potatoes · #71b326ed')).toBe('Seed potatoes');
+  test('prefers the station-resolved listing title over the memo', () => {
+    expect(forLabel('Seed potatoes', 'Inquiry 71b326edb139d01244af…')).toBe('Seed potatoes');
+  });
+  test('falls back to the listing in a marketplace memo when no title is resolved', () => {
+    expect(forLabel(undefined, 'Seed potatoes · #71b326ed')).toBe('Seed potatoes');
   });
   test('reads a legacy Inquiry <hex> memo as a plain marketplace payment', () => {
     expect(
-      forLabel('Inquiry 71b326edb139d01244afa4b218d8530eca1ea91b9e4430cbb3dd2dc27e004316'),
+      forLabel(undefined, 'Inquiry 71b326edb139d01244afa4b218d8530eca1ea91b9e4430cbb3dd2dc27e004316'),
     ).toBe('Marketplace payment');
   });
   test('passes a normal memo through, and shows a dash for none', () => {
-    expect(forLabel('Seed order')).toBe('Seed order');
-    expect(forLabel(undefined)).toBe('—');
-    expect(forLabel('')).toBe('—');
+    expect(forLabel(undefined, 'Seed order')).toBe('Seed order');
+    expect(forLabel(undefined, undefined)).toBe('—');
+    expect(forLabel(undefined, '')).toBe('—');
   });
 });
