@@ -2,8 +2,8 @@
 
 [![CI](https://github.com/railroad-network/mobile/actions/workflows/ci.yml/badge.svg)](https://github.com/railroad-network/mobile/actions/workflows/ci.yml)
 
-> **Status:** Phase 1 — in progress. Skeleton only; no product screens yet.
-> **Do not use with real value.**
+> **Status:** Phase 1 — in progress (M1.1–M1.6 complete, M1.7 underway).
+> Pre-audit. **Do not use with real value.**
 
 **Railroad Network** is a federated platform for self-organizing communities: a
 mutual-credit economy denominated in a single unit (the "Common"),
@@ -30,23 +30,52 @@ replication, peer gossip, and remote-of-record state. Rust crypto
 
 ## Phase 1 status
 
-This repo currently holds a bare React Native + TypeScript skeleton (New
-Architecture: Fabric + TurboModules) with CI wired up. No custom screens,
-authentication, network code, or crypto integration yet — those land in
-later Phase 1 milestones (M1.1 – M1.4).
+Built on React Native's New Architecture (Fabric + TurboModules), with CI
+wired up. What's implemented so far:
+
+- **On-device crypto (M1.1).** `rrn-crypto` / `rrn-identity` run natively via
+  [uniffi-rs bindings](https://github.com/railroad-network/station/blob/main/docs/adr/0007-rust-mobile-ffi-uniffi.md)
+  — the app holds its own keypair and signs every request.
+- **Wallet (M1.2).** Onboarding, passphrase- and biometric-gated unlock,
+  Shamir-based social recovery (split, distribute, held shards, reconstruct),
+  home balance, send / receive, and transaction history.
+- **Station transport (M1.3).** QR pairing to a local `station`, sealed-envelope
+  RPC, long-poll push updates, and background sync with local notifications.
+- **Vouching (M1.4).** Browse the community, vouch for identities, and manage
+  device-local nicknames.
+- **Reputation (M1.5).** A Standing screen backed by the station's reputation
+  read path.
+- **Marketplace (M1.6 → M1.7, in progress).** Browse and create listings,
+  make and respond to inquiries, and pay for an agreed inquiry, with the
+  transaction linked to the listing it settles.
+
+The app pairs with a local [`station`](https://github.com/railroad-network/station)
+daemon as its backend, and has been exercised end-to-end on a physical Android
+device. The cryptography is still **pre-audit** — do not use with real value.
 
 ## Building
 
 Requires [Xcode](https://developer.apple.com/xcode/) (iOS) and
 [Android Studio](https://developer.android.com/studio) (Android). Follow the
 React Native [environment setup guide](https://reactnative.dev/docs/set-up-your-environment)
-for platform prerequisites, then:
+for platform prerequisites.
+
+The native crypto is compiled from the `rrn-mobile-ffi` crate in the
+[`station`](https://github.com/railroad-network/station) repo, which
+`ubrn.config.yaml` expects checked out as a sibling directory (`../station`).
+[`uniffi-bindgen-react-native`](https://github.com/railroad-network/station/blob/main/docs/adr/0007-rust-mobile-ffi-uniffi.md)
+builds the Rust library and emits the JSI/TypeScript glue (this also needs a
+Rust toolchain and, for Android, the NDK + `cargo-ndk`).
 
 ```sh
 # use the pinned Node version (see .nvmrc)
 nvm use
 
 yarn install
+
+# generate + build the Rust FFI (from ../station); re-run after FFI changes
+yarn ubrn:ios       # iOS (simulator)
+yarn ubrn:android   # Android
 
 # iOS: install CocoaPods deps (first run, and after any native dep change)
 bundle install
