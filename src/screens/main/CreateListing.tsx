@@ -19,19 +19,20 @@
  * # Edit (Phase B)
  *
  * The same form, re-entered with an `editListingId`, edits a listing rather than
- * creating one. Only what a `ListingPatch` may change is editable — price,
- * description, availability; a listing's identity (surface, category, title) and
- * its requirements are fixed at publication (ADR-0010), so those steps show
- * read-only. On review the form diffs against the original and signs a
- * `ListingUpdated` carrying just the changed fields (see `wallet/listing.ts` and
- * the station's `submit_listing_update`). Expiry is not edited here, matching how
- * create can't set one — the CLI owns expiries.
+ * creating one. Only what a `ListingPatch` may change is walked — description,
+ * price, availability. A listing's identity (surface, category, title) and its
+ * requirements are fixed at publication (ADR-0010), so rather than show those
+ * steps read-only, the edit flow **skips them** (`EDIT_STEPS`) and names them in a
+ * banner on the first screen. On review the form diffs against the original and
+ * signs a `ListingUpdated` carrying just the changed fields (see `wallet/listing.ts`
+ * and the station's `submit_listing_update`). Expiry is not edited here, matching
+ * how create can't set one — the CLI owns expiries.
  */
 import {useEffect, useMemo, useState} from 'react';
 import {Pressable, ScrollView, StyleSheet, Switch, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
-import {Amount, Badge, Button, Card, Field, ScreenHeader, Text} from '../../components';
+import {Amount, Badge, Banner, Button, Card, Field, ScreenHeader, Text} from '../../components';
 import {formatCommons, parseCommons} from '../../ledger';
 import {
   CATEGORIES,
@@ -50,7 +51,7 @@ import {isEmptyPatch} from '../../wallet/listing';
 import {useTheme, type Theme} from '../../theme';
 import type {MainStackScreenProps} from '../../navigation/types';
 
-/** The ordered steps of the flow. */
+/** The ordered steps of the create flow — the whole listing. */
 const STEPS = [
   'surface',
   'basics',
@@ -61,6 +62,14 @@ const STEPS = [
   'review',
 ] as const;
 type Step = (typeof STEPS)[number];
+
+/**
+ * The steps shown when editing. A published listing's identity (surface,
+ * category, title) and its requirements are fixed (ADR-0010), so those steps are
+ * skipped rather than shown read-only — they're named in a banner on the first
+ * edit screen instead. Only what a `ListingPatch` can change is walked.
+ */
+const EDIT_STEPS = ['basics', 'pricing', 'availability', 'review'] as const;
 
 /** The reputation floors a provider may ask for — whole numbers only (the signed
  * encoder is float-free). Bounded by the ~2.75 reachable ceiling, so the useful
@@ -176,7 +185,9 @@ export function CreateListing({navigation, route}: MainStackScreenProps<'CreateL
     }
   }, [editing, seeded, original]);
 
-  const step = STEPS[stepIndex];
+  // Editing walks only the patchable steps; creating walks the whole listing.
+  const steps: readonly Step[] = editing ? EDIT_STEPS : STEPS;
+  const step = steps[stepIndex];
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm(f => ({...f, [key]: value}));
 
@@ -191,7 +202,7 @@ export function CreateListing({navigation, route}: MainStackScreenProps<'CreateL
       return;
     }
     setError(undefined);
-    setStepIndex(i => Math.min(i + 1, STEPS.length - 1));
+    setStepIndex(i => Math.min(i + 1, steps.length - 1));
   };
   const goBack = () => {
     setError(undefined);
@@ -267,11 +278,11 @@ export function CreateListing({navigation, route}: MainStackScreenProps<'CreateL
         keyboardShouldPersistTaps="handled">
         <ScreenHeader
           title={editing ? 'Edit listing' : 'New listing'}
-          subtitle={`Step ${stepIndex + 1} of ${STEPS.length}`}
+          subtitle={`Step ${stepIndex + 1} of ${steps.length}`}
           onBack={goBack}
           backLabel={stepIndex === 0 ? 'Cancel' : 'Back'}
         />
-        <ProgressDots theme={theme} count={STEPS.length} active={stepIndex} />
+        <ProgressDots theme={theme} count={steps.length} active={stepIndex} />
 
         <StepBody theme={theme} step={step} form={form} set={set} editing={editing} />
 
@@ -453,18 +464,6 @@ function StepBody({
 }) {
   switch (step) {
     case 'surface':
-      // A listing's surface is part of its identity (it fixes the content id and
-      // the reputation domain), so it can't change on an edit — show it read-only.
-      if (editing) {
-        return (
-          <LockedStep
-            theme={theme}
-            title="What you're offering"
-            value={SURFACES.find(s => s.tag === form.surface)?.label ?? form.surface}
-            note="The surface is fixed once a listing is published."
-          />
-        );
-      }
       return (
         <StepFrame theme={theme} title="What are you offering?" hint="Pick the marketplace it belongs in.">
           {SURFACES.map(s => (
@@ -480,8 +479,27 @@ function StepBody({
         </StepFrame>
       );
     case 'basics':
-      // The title is identity (fixed); the description is patchable, so it stays
-      // editable even in edit mode.
+      // The first edit screen. The title is fixed once published, so it isn't
+      // shown as a field — the banner names it (with the other fixed fields) and
+      // the step collects only the patchable description.
+      if (editing) {
+        return (
+          <StepFrame theme={theme} title="Description" hint="Update the detail a taker needs.">
+            <Banner variant="info" title="Some details are fixed after publishing">
+              A listing keeps its surface, category, title, and requirements. You can
+              still change its description, price, and availability.
+            </Banner>
+            <Field
+              label="Description"
+              value={form.description}
+              onChangeText={t => set('description', t)}
+              placeholder="Optional — terms, condition, how to arrange it"
+              multiline
+              containerStyle={{marginTop: theme.spacing.md}}
+            />
+          </StepFrame>
+        );
+      }
       return (
         <StepFrame theme={theme} title="Describe it" hint="A clear title, and any detail a taker needs.">
           <Field
@@ -489,13 +507,7 @@ function StepBody({
             value={form.title}
             onChangeText={t => set('title', t)}
             placeholder="e.g. Sourdough loaves"
-            editable={!editing}
           />
-          {editing && (
-            <Text variant="caption" color={theme.colors.textMuted}>
-              The title is fixed once a listing is published.
-            </Text>
-          )}
           <Field
             label="Description"
             value={form.description}
@@ -507,16 +519,6 @@ function StepBody({
         </StepFrame>
       );
     case 'category':
-      if (editing) {
-        return (
-          <LockedStep
-            theme={theme}
-            title="Category"
-            value={form.category !== null ? categoryLabel(form.category) : '—'}
-            note="The category is fixed once a listing is published — it sets the reputation domain."
-          />
-        );
-      }
       return (
         <StepFrame theme={theme} title="Category" hint="Used to find your listing and to build your domain reputation.">
           <View style={styles.chips}>
@@ -537,57 +539,10 @@ function StepBody({
     case 'availability':
       return <AvailabilityStep theme={theme} form={form} set={set} />;
     case 'requirements':
-      // What a taker must meet is fixed at publication (it can't move under a
-      // buyer mid-offer), so requirements are read-only on an edit.
-      if (editing) {
-        return (
-          <LockedStep
-            theme={theme}
-            title="Who can take it"
-            value={requirementsSummary(form)}
-            note="Requirements are fixed once a listing is published."
-          />
-        );
-      }
       return <RequirementsStep theme={theme} form={form} set={set} />;
     case 'review':
       return <ReviewStep theme={theme} form={form} />;
   }
-}
-
-/** A read-only step for a field an edit may not change — the create flow's
- * interactive step, shown as a fixed value with a note explaining why. */
-function LockedStep({
-  theme,
-  title,
-  value,
-  note,
-}: {
-  theme: Theme;
-  title: string;
-  value: string;
-  note: string;
-}) {
-  return (
-    <StepFrame theme={theme} title={title} hint={note}>
-      <Card>
-        <Text variant="label" color={theme.colors.text}>
-          {value}
-        </Text>
-      </Card>
-    </StepFrame>
-  );
-}
-
-/** A one-line summary of the (read-only) requirements, for the locked edit step. */
-function requirementsSummary(form: FormState): string {
-  const parts: string[] = [];
-  parts.push(form.minReputation > 0 ? `Minimum standing ${form.minReputation}` : 'Open to anyone');
-  if (form.communityMemberOnly) {
-    parts.push('community members only');
-  }
-  parts.push(`Tier ${form.oracleTier ?? 1}`);
-  return parts.join(' · ');
 }
 
 function PricingStep({
@@ -735,6 +690,27 @@ function RequirementsStep({
   );
 }
 
+/** A one-line availability summary for the review card, mirroring the phrasing
+ * the listing detail's Availability card uses ("300 in stock", "Next slot …"). */
+function availabilityLine(form: FormState): string {
+  const statusWord =
+    form.availabilityStatus === 'available'
+      ? 'Available'
+      : form.availabilityStatus === 'limited_stock'
+        ? 'Limited availability'
+        : 'Currently unavailable';
+  if (form.surface === 'goods') {
+    const c = form.capacityText.trim();
+    if (c.length === 0) return statusWord;
+    return c === '0' ? 'Out of stock' : `${c} in stock`;
+  }
+  if (form.surface === 'services') {
+    const slot = form.nextSlotText.trim();
+    return slot.length === 0 ? statusWord : `Next slot ${slot}`;
+  }
+  return statusWord;
+}
+
 function ReviewStep({theme, form}: {theme: Theme; form: FormState}) {
   const amount = amountCentiOf(form);
   const centi = 'centi' in amount ? amount.centi : 0;
@@ -775,6 +751,9 @@ function ReviewStep({theme, form}: {theme: Theme; form: FormState}) {
             </Text>
           )}
         </View>
+        <Text variant="caption" color={theme.colors.textSecondary}>
+          {availabilityLine(form)}
+        </Text>
         {form.description.trim().length > 0 && (
           <Text variant="body" color={theme.colors.textSecondary}>
             {form.description.trim()}

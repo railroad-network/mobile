@@ -113,37 +113,36 @@ afterEach(() => {
   jest.clearAllMocks();
 });
 
-test('pre-fills and locks the fields a patch cannot change', async () => {
+test('skips the fixed-field steps and names them in a banner', async () => {
   const r = await render();
-  // Header reads Edit, and the surface step is read-only (no "Pick the
-  // marketplace" chooser, just the fixed value and the reason).
+  // Editing walks only the patchable steps (4, not 7), and the first screen is
+  // the description with a banner naming what's fixed — no surface/category steps.
   expect(hasText(r, 'Edit listing')).toBe(true);
-  expect(hasText(r, 'The surface is fixed once a listing is published.')).toBe(true);
-  expect(hasText(r, 'Goods')).toBe(true);
+  expect(hasText(r, 'Step 1 of 4')).toBe(true);
+  expect(hasText(r, 'Some details are fixed after publishing')).toBe(true);
 
-  await advance(r); // to basics
-  // The title field is present but not editable; the description stays editable.
-  const title = r.root.find(n => n.props.accessibilityLabel === 'Title');
-  expect(title.props.editable).toBe(false);
-  expect(title.props.value).toBe('Squash');
+  // The title is fixed, so it isn't surfaced as a field; the description is
+  // editable and pre-filled.
+  expect(r.root.findAll(n => n.props.accessibilityLabel === 'Title')).toHaveLength(0);
   const description = r.root.find(n => n.props.accessibilityLabel === 'Description');
+  expect(description.props.value).toBe('Picked this week.');
   expect(description.props.editable).not.toBe(false);
 
-  await advance(r); // to category — locked
-  expect(hasText(r, 'the reputation domain')).toBe(true);
+  // Next is pricing directly — the fixed category/surface steps are gone.
+  await advance(r);
+  expect(hasText(r, 'Price')).toBe(true);
 });
 
 test('changing the price saves a patch of just that field', async () => {
   const navigation = nav();
   const r = await render(navigation);
-  await advance(r); // surface → basics
-  await advance(r); // basics → category
-  await advance(r); // category → pricing
+  await advance(r); // description → pricing
   await type(r, 'Amount', '10.00'); // change the amount
   await advance(r); // pricing → availability
-  await advance(r); // availability → requirements
-  await advance(r); // requirements → review
+  await advance(r); // availability → review
   expect(hasText(r, 'Review')).toBe(true);
+  // The review card names the amount available (capacity 12 from the listing).
+  expect(hasText(r, '12 in stock')).toBe(true);
   await press(pressable(r, 'Save changes'));
 
   expect(mockEdit).toHaveBeenCalledTimes(1);
@@ -158,12 +157,9 @@ test('changing the price saves a patch of just that field', async () => {
 
 test('saving with nothing changed is refused without a round trip', async () => {
   const r = await render();
-  await advance(r); // surface → basics
-  await advance(r); // basics → category
-  await advance(r); // category → pricing
+  await advance(r); // description → pricing
   await advance(r); // pricing → availability
-  await advance(r); // availability → requirements
-  await advance(r); // requirements → review
+  await advance(r); // availability → review
   await press(pressable(r, 'Save changes'));
 
   expect(hasText(r, 'You haven’t changed anything yet.')).toBe(true);
