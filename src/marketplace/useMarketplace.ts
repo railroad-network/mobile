@@ -28,6 +28,8 @@ import {useWalletSession} from '../wallet/WalletSession';
 import {
   createSignedListing,
   createSignedListingClose,
+  createSignedListingUpdate,
+  type ListingPatch,
   type ListingDraft,
 } from '../wallet/listing';
 import {
@@ -194,6 +196,37 @@ export function useCreateListing(): (
         const {listingId} = await client.submitListing(signed.payloadBytes, signed.signature);
         await queryClient.invalidateQueries({queryKey: marketplaceKeys.root});
         return {ok: true, listingId: listingId.length > 0 ? listingId : signed.listingId};
+      } catch (e) {
+        return asListingWriteError(e);
+      }
+    },
+    [client, wallet, queryClient],
+  );
+}
+
+/**
+ * Returns a function that edits one of the member's own listings: it signs a
+ * `ListingUpdated` patch on-device, transmits it, and refreshes so the change
+ * shows in browse, the listing detail, and My Listings. The listing's content id
+ * is fixed, so the edit updates it in place rather than creating a new one.
+ */
+export function useEditListing(): (
+  listingId: string,
+  patch: ListingPatch,
+) => Promise<ListingWriteResult<{listingId: string}>> {
+  const client = useStationClient();
+  const {wallet} = useWalletSession();
+  const queryClient = useQueryClient();
+  return useCallback(
+    async (listingId, patch) => {
+      if (client === null || wallet === null) {
+        return {ok: false, error: 'locked', message: 'Unlock your wallet and pair a station.'};
+      }
+      try {
+        const signed = await createSignedListingUpdate(wallet, listingId, patch);
+        const result = await client.submitListingUpdate(signed.payloadBytes, signed.signature);
+        await queryClient.invalidateQueries({queryKey: marketplaceKeys.root});
+        return {ok: true, listingId: result.listingId.length > 0 ? result.listingId : listingId};
       } catch (e) {
         return asListingWriteError(e);
       }

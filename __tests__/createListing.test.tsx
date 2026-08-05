@@ -20,6 +20,10 @@ const mockCreate = jest.fn(async (_draft: ListingDraft) => ({ok: true, listingId
 jest.mock('../src/marketplace', () => ({
   ...jest.requireActual('../src/marketplace'),
   useCreateListing: () => mockCreate,
+  // The form now also calls these unconditionally (edit mode); create mode never
+  // reads their results, so no-op stubs keep the test off react-query/station.
+  useEditListing: () => jest.fn(),
+  useListingDetail: () => ({data: undefined, isError: false}),
 }));
 
 const metrics = {

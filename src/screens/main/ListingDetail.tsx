@@ -158,7 +158,7 @@ function DetailBody({
 
       {active ? (
         isOwn ? (
-          <OwnerManageSection theme={theme} listing={listing} />
+          <OwnerManageSection theme={theme} listing={listing} navigation={navigation} />
         ) : (
           <InquireAction theme={theme} listing={listing} navigation={navigation} />
         )
@@ -323,13 +323,30 @@ function OwnerMarker({theme, listing}: {theme: Theme; listing: StationListingDet
 }
 
 /** The owner's actions, set apart under a heading so closing reads as a
- * deliberate "manage" step, not a stray red button on someone's offer. */
-function OwnerManageSection({theme, listing}: {theme: Theme; listing: StationListingDetail}) {
+ * deliberate "manage" step, not a stray red button on someone's offer. Edit
+ * leads (the everyday action); Close is the destructive one below it. */
+function OwnerManageSection({
+  theme,
+  listing,
+  navigation,
+}: {
+  theme: Theme;
+  listing: StationListingDetail;
+  navigation: MainStackScreenProps<'ListingDetail'>['navigation'];
+}) {
   return (
-    <View style={{gap: theme.spacing.xs}}>
+    <View style={{gap: theme.spacing.sm}}>
       <Text variant="label" color={theme.colors.textSecondary}>
         Manage this listing
       </Text>
+      <Button
+        fullWidth
+        variant="secondary"
+        onPress={() =>
+          navigation.navigate('CreateListing', {editListingId: listing.listing_id})
+        }>
+        Edit listing
+      </Button>
       <OwnerCloseAction theme={theme} listing={listing} />
     </View>
   );

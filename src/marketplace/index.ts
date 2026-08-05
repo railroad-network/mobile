@@ -16,6 +16,7 @@ export {
   useListingDetail,
   useMyListings,
   useCreateListing,
+  useEditListing,
   useCloseListing,
   useRefreshMarketplace,
   useDebouncedValue,
@@ -34,6 +35,7 @@ export {
 } from './useMarketplace';
 export {
   type ListingDraft,
+  type ListingPatch,
   type ListingSurface,
   type ListingPricingModel,
   type ListingAvailabilityStatus,

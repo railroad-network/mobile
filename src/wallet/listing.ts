@@ -36,6 +36,8 @@ import type {Wallet} from './Wallet';
 const LISTING_KIND = 'rrn.marketplace.listing.v1';
 /** The log kind of a close (mirrors `rrn_marketplace::lifecycle::CLOSED_KIND`). */
 const CLOSED_KIND = 'rrn.marketplace.listing_closed.v1';
+/** The log kind of an edit (mirrors `rrn_marketplace::lifecycle::UPDATED_KIND`). */
+const UPDATED_KIND = 'rrn.marketplace.listing_updated.v1';
 
 /** Which catalogue a listing sits in. */
 export type ListingSurface = 'goods' | 'services' | 'commons';
@@ -202,6 +204,130 @@ export async function createSignedListingClose(
   return {
     listingId,
     closedAt,
+    payloadBytes: canonical,
+    signature: signature.toBytes(),
+  };
+}
+
+/**
+ * A change to a listing already published — the four fields an edit may touch.
+ * Anything left `undefined` is **not changed**; `expires` is its own tri-state
+ * because clearing an expiry (`'clear'`) is distinct from leaving it
+ * (`'unchanged'`). A listing's identity — surface, category, title, requirements
+ * — is fixed at publication and has no field here (ADR-0010).
+ */
+export interface ListingPatch {
+  /** New pricing, or omit to leave it. */
+  pricing?: {
+    amountCenti: number;
+    model: ListingPricingModel;
+    negotiable: boolean;
+  };
+  /** New description, or omit to leave it. */
+  description?: string;
+  /** New availability, or omit to leave it. */
+  availability?: {
+    status: ListingAvailabilityStatus;
+    capacity: number | null;
+    nextSlot: number | null;
+  };
+  /** `'unchanged'` leaves the expiry, `'clear'` removes it, a number sets it. */
+  expires: 'unchanged' | 'clear' | number;
+}
+
+/** Whether a patch would change nothing (the station refuses an empty edit). */
+export function isEmptyPatch(patch: ListingPatch): boolean {
+  return (
+    patch.pricing === undefined &&
+    patch.description === undefined &&
+    patch.availability === undefined &&
+    patch.expires === 'unchanged'
+  );
+}
+
+/** A signed edit, ready to transmit. */
+export interface SignedListingUpdate {
+  /** The listing being edited (hex content address; unchanged by the edit). */
+  listingId: string;
+  /** The canonical dCBOR bytes that were signed. */
+  payloadBytes: Uint8Array;
+  /** The provider's Ed25519 signature over {@link payloadBytes}. */
+  signature: Uint8Array;
+}
+
+/**
+ * Builds and signs a {@link SignedListingUpdate} applying `patch` to `listingId`.
+ * Mirrors the station's `From<ListingUpdated> for CBOR` (and `From<ListingPatch>`):
+ * an unchanged field is **omitted** from the patch map, not encoded as `null`, and
+ * `expires_at` is absent / `null` / an integer for `'unchanged'` / `'clear'` /
+ * set — the trichotomy the station reads back exactly. `signed_by` is this
+ * wallet's address (the provider), carried inside the signed content as the record
+ * requires. Unlike a listing, an update is not content-addressed and carries no
+ * timestamp. Throws if `listingId` is not 32 bytes or the patch changes nothing.
+ */
+export async function createSignedListingUpdate(
+  wallet: Wallet,
+  listingId: string,
+  patch: ListingPatch,
+): Promise<SignedListingUpdate> {
+  const idBytes = hexToBytes(listingId);
+  if (idBytes.length !== 32) {
+    throw new Error(`listing id must be 32 bytes, got ${idBytes.length}`);
+  }
+  if (isEmptyPatch(patch)) {
+    throw new Error('listing update changes nothing');
+  }
+
+  const patchEntries: [string, CborValue][] = [];
+  if (patch.pricing) {
+    patchEntries.push([
+      'pricing',
+      map([
+        ['amount_centi', int(patch.pricing.amountCenti)],
+        ['model', text(patch.pricing.model)],
+        ['negotiable', bool(patch.pricing.negotiable)],
+      ]),
+    ]);
+  }
+  if (patch.description !== undefined) {
+    patchEntries.push(['description', text(patch.description)]);
+  }
+  if (patch.availability) {
+    patchEntries.push([
+      'availability',
+      map([
+        ['status', text(patch.availability.status)],
+        [
+          'capacity',
+          patch.availability.capacity === null
+            ? nul()
+            : int(patch.availability.capacity),
+        ],
+        [
+          'next_slot',
+          patch.availability.nextSlot === null
+            ? nul()
+            : int(patch.availability.nextSlot),
+        ],
+      ]),
+    ]);
+  }
+  if (patch.expires === 'clear') {
+    patchEntries.push(['expires_at', nul()]);
+  } else if (typeof patch.expires === 'number') {
+    patchEntries.push(['expires_at', int(patch.expires)]);
+  }
+
+  const payload: CborValue = map([
+    ['kind', text(UPDATED_KIND)],
+    ['listing_id', bytes(idBytes)],
+    ['patch', map(patchEntries)],
+    ['signed_by', bytes(wallet.publicKey().toBytes())],
+  ]);
+  const canonical = canonicalBytes(payload);
+  const signature = await wallet.sign(canonical);
+  return {
+    listingId,
     payloadBytes: canonical,
     signature: signature.toBytes(),
   };

@@ -208,6 +208,7 @@ export class StationClient {
       | 'submit_confirmation'
       | 'submit_vouch'
       | 'submit_listing'
+      | 'submit_listing_update'
       | 'submit_listing_close'
       | 'submit_inquiry'
       | 'submit_inquiry_message'
@@ -219,6 +220,7 @@ export class StationClient {
       | 'signed_confirmation'
       | 'signed_vouch'
       | 'signed_listing'
+      | 'signed_listing_update'
       | 'signed_listing_close'
       | 'signed_inquiry'
       | 'signed_message'
@@ -351,6 +353,27 @@ export class StationClient {
     return {
       listingId: typeof result.listing_id === 'string' ? result.listing_id : '',
       oracleTier: typeof result.oracle_tier === 'number' ? result.oracle_tier : 0,
+    };
+  }
+
+  /**
+   * `submit_listing_update` — apply a mobile-signed patch to one of the member's
+   * own listings (T1.7.2 Phase B). The wallet is the provider and signed the
+   * `ListingUpdated` on-device; the station verifies, applies, and re-validates
+   * it. The listing's content id is fixed and returned unchanged.
+   */
+  async submitListingUpdate(
+    canonicalPayload: Uint8Array,
+    signature: Uint8Array,
+  ): Promise<{listingId: string}> {
+    const result = await this.submitSignedRecord(
+      'submit_listing_update',
+      'signed_listing_update',
+      canonicalPayload,
+      signature,
+    );
+    return {
+      listingId: typeof result.listing_id === 'string' ? result.listing_id : '',
     };
   }
 

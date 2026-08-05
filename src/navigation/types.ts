@@ -83,8 +83,12 @@ export type MainStackParamList = {
   Marketplace: undefined;
   /** One listing in full, with the Inquire CTA (T1.7.1), by content-address id. */
   ListingDetail: {listingId: string};
-  /** The multi-step create-a-listing flow (T1.7.2). */
-  CreateListing: undefined;
+  /**
+   * The multi-step listing form (T1.7.2). No param creates a listing; an
+   * `editListingId` re-enters the same form to edit that listing (Phase B),
+   * pre-filled, with the fields a patch can't change shown read-only.
+   */
+  CreateListing: {editListingId?: string} | undefined;
   /** The member's own listings, with the close flow (T1.7.2). */
   MyListings: undefined;
   /** The member's own inquiries, as buyer or provider (T1.7.4). */

@@ -14,24 +14,39 @@
  *
  * Two things kept deliberately simple for this pass: the reputation floor is a
  * whole number (the signed encoder is float-free — see `wallet/listing.ts`), and
- * there is no expiry field yet (a listing stands until closed; the CLI sets
- * expiries). Editing an existing listing is T1.7.2 Phase B.
+ * there is no expiry field (a listing stands until closed; the CLI sets expiries).
+ *
+ * # Edit (Phase B)
+ *
+ * The same form, re-entered with an `editListingId`, edits a listing rather than
+ * creating one. Only what a `ListingPatch` may change is editable — price,
+ * description, availability; a listing's identity (surface, category, title) and
+ * its requirements are fixed at publication (ADR-0010), so those steps show
+ * read-only. On review the form diffs against the original and signs a
+ * `ListingUpdated` carrying just the changed fields (see `wallet/listing.ts` and
+ * the station's `submit_listing_update`). Expiry is not edited here, matching how
+ * create can't set one — the CLI owns expiries.
  */
-import {useMemo, useState} from 'react';
+import {useEffect, useMemo, useState} from 'react';
 import {Pressable, ScrollView, StyleSheet, Switch, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 import {Amount, Badge, Button, Card, Field, ScreenHeader, Text} from '../../components';
-import {parseCommons} from '../../ledger';
+import {formatCommons, parseCommons} from '../../ledger';
 import {
   CATEGORIES,
   SURFACES,
   categoryLabel,
   useCreateListing,
+  useEditListing,
+  useListingDetail,
   type ListingAvailabilityStatus,
   type ListingDraft,
+  type ListingPatch,
   type ListingSurface,
 } from '../../marketplace';
+import type {StationListingDetail} from '../../network/StationClient';
+import {isEmptyPatch} from '../../wallet/listing';
 import {useTheme, type Theme} from '../../theme';
 import type {MainStackScreenProps} from '../../navigation/types';
 
@@ -112,6 +127,13 @@ function amountCentiOf(form: FormState): {centi: number} | {error: string} {
   return {centi: form.isSubsidy ? -parsed.centi : parsed.centi};
 }
 
+/** Formats Unix seconds as a local YYYY-MM-DD date (the inverse of {@link parseDate}). */
+function formatDate(seconds: number): string {
+  const d = new Date(seconds * 1000);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 /** Parses a YYYY-MM-DD date to Unix seconds (local midnight), or an error. */
 function parseDate(input: string): {seconds: number} | {error: string} {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(input.trim());
@@ -126,15 +148,33 @@ function parseDate(input: string): {seconds: number} | {error: string} {
   return {seconds: Math.floor(date.getTime() / 1000)};
 }
 
-export function CreateListing({navigation}: MainStackScreenProps<'CreateListing'>) {
+export function CreateListing({navigation, route}: MainStackScreenProps<'CreateListing'>) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const createListing = useCreateListing();
+  const editListing = useEditListing();
+
+  const editListingId = route.params?.editListingId;
+  const editing = editListingId !== undefined;
+  // In edit mode the original listing seeds the form and is the baseline the
+  // review step diffs the patch against. Disabled (and unused) when creating.
+  const detail = useListingDetail(editListingId ?? '');
+  const original = detail.data;
 
   const [form, setForm] = useState<FormState>(INITIAL);
+  const [seeded, setSeeded] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [error, setError] = useState<string | undefined>();
   const [submitting, setSubmitting] = useState(false);
+
+  // Pre-fill the form from the listing once, when editing. After that the member
+  // owns the form state; a background refetch must not stomp their edits.
+  useEffect(() => {
+    if (editing && !seeded && original !== undefined) {
+      setForm(formStateFromDetail(original));
+      setSeeded(true);
+    }
+  }, [editing, seeded, original]);
 
   const step = STEPS[stepIndex];
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
@@ -178,6 +218,42 @@ export function CreateListing({navigation}: MainStackScreenProps<'CreateListing'
     }
   };
 
+  const save = async () => {
+    if (original === undefined) {
+      return;
+    }
+    const built = buildPatch(form, original);
+    if ('error' in built) {
+      setError(built.error);
+      return;
+    }
+    if (isEmptyPatch(built.patch)) {
+      setError('You haven’t changed anything yet.');
+      return;
+    }
+    setSubmitting(true);
+    setError(undefined);
+    const result = await editListing(original.listing_id, built.patch);
+    setSubmitting(false);
+    if (result.ok) {
+      navigation.goBack();
+    } else {
+      setError(result.message);
+    }
+  };
+
+  // Editing waits for the listing before it can pre-fill; show a placeholder
+  // rather than a blank form the seed would overwrite a beat later.
+  if (editing && !seeded) {
+    return (
+      <View style={[styles.fill, styles.center, {backgroundColor: theme.colors.bg}]}>
+        <Text variant="body" color={theme.colors.textSecondary}>
+          {detail.isError ? 'Couldn’t load this listing.' : 'Loading…'}
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.fill, {backgroundColor: theme.colors.bg}]}>
       <ScrollView
@@ -190,14 +266,14 @@ export function CreateListing({navigation}: MainStackScreenProps<'CreateListing'
         }}
         keyboardShouldPersistTaps="handled">
         <ScreenHeader
-          title="New listing"
+          title={editing ? 'Edit listing' : 'New listing'}
           subtitle={`Step ${stepIndex + 1} of ${STEPS.length}`}
           onBack={goBack}
           backLabel={stepIndex === 0 ? 'Cancel' : 'Back'}
         />
         <ProgressDots theme={theme} count={STEPS.length} active={stepIndex} />
 
-        <StepBody theme={theme} step={step} form={form} set={set} />
+        <StepBody theme={theme} step={step} form={form} set={set} editing={editing} />
 
         {error !== undefined && (
           <Text variant="caption" color={theme.colors.danger}>
@@ -218,8 +294,8 @@ export function CreateListing({navigation}: MainStackScreenProps<'CreateListing'
           },
         ]}>
         {step === 'review' ? (
-          <Button fullWidth onPress={publish} loading={submitting}>
-            Publish listing
+          <Button fullWidth onPress={editing ? save : publish} loading={submitting}>
+            {editing ? 'Save changes' : 'Publish listing'}
           </Button>
         ) : (
           <Button fullWidth onPress={goNext} disabled={submitting}>
@@ -229,6 +305,66 @@ export function CreateListing({navigation}: MainStackScreenProps<'CreateListing'
       </View>
     </View>
   );
+}
+
+/** Seeds the form from an existing listing for the edit flow. Immutable fields
+ * are carried too (they show read-only) so the review card reads in full. */
+function formStateFromDetail(d: StationListingDetail): FormState {
+  const centi = d.amount_centi;
+  return {
+    surface: d.surface,
+    title: d.title,
+    description: d.description,
+    category: d.category,
+    // formatCommons groups with commas; parseCommons does not accept them, so
+    // strip them for a value that round-trips through the pricing field.
+    amountText: centi === 0 ? '' : formatCommons(centi).replace(/,/g, ''),
+    isSubsidy: centi < 0,
+    negotiable: d.negotiable,
+    availabilityStatus: d.availability.status,
+    capacityText: d.availability.capacity === null ? '' : String(d.availability.capacity),
+    nextSlotText: d.availability.next_slot === null ? '' : formatDate(d.availability.next_slot),
+    minReputation: Math.round(d.min_reputation),
+    communityMemberOnly: d.community_member_only,
+    oracleTier: d.oracle_tier,
+  };
+}
+
+/** Diffs the form against the original listing and builds a patch of just the
+ * changed fields. Only what a `ListingPatch` may carry is compared — identity and
+ * requirements are read-only in edit mode, so they can never differ. */
+function buildPatch(
+  form: FormState,
+  original: StationListingDetail,
+): {patch: ListingPatch} | {error: string} {
+  const built = buildDraft(form);
+  if ('error' in built) {
+    return built;
+  }
+  const d = built.draft;
+  const patch: ListingPatch = {expires: 'unchanged'};
+  if (
+    d.amountCenti !== original.amount_centi ||
+    d.pricingModel !== original.pricing_model ||
+    d.negotiable !== original.negotiable
+  ) {
+    patch.pricing = {amountCenti: d.amountCenti, model: d.pricingModel, negotiable: d.negotiable};
+  }
+  if (d.description !== original.description) {
+    patch.description = d.description;
+  }
+  if (
+    d.availabilityStatus !== original.availability.status ||
+    d.capacity !== original.availability.capacity ||
+    d.nextSlot !== original.availability.next_slot
+  ) {
+    patch.availability = {
+      status: d.availabilityStatus,
+      capacity: d.capacity,
+      nextSlot: d.nextSlot,
+    };
+  }
+  return {patch};
 }
 
 /** Validates just what a step collects — the station re-validates the whole. */
@@ -307,14 +443,28 @@ function StepBody({
   step,
   form,
   set,
+  editing,
 }: {
   theme: Theme;
   step: Step;
   form: FormState;
   set: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
+  editing: boolean;
 }) {
   switch (step) {
     case 'surface':
+      // A listing's surface is part of its identity (it fixes the content id and
+      // the reputation domain), so it can't change on an edit — show it read-only.
+      if (editing) {
+        return (
+          <LockedStep
+            theme={theme}
+            title="What you're offering"
+            value={SURFACES.find(s => s.tag === form.surface)?.label ?? form.surface}
+            note="The surface is fixed once a listing is published."
+          />
+        );
+      }
       return (
         <StepFrame theme={theme} title="What are you offering?" hint="Pick the marketplace it belongs in.">
           {SURFACES.map(s => (
@@ -330,9 +480,22 @@ function StepBody({
         </StepFrame>
       );
     case 'basics':
+      // The title is identity (fixed); the description is patchable, so it stays
+      // editable even in edit mode.
       return (
         <StepFrame theme={theme} title="Describe it" hint="A clear title, and any detail a taker needs.">
-          <Field label="Title" value={form.title} onChangeText={t => set('title', t)} placeholder="e.g. Sourdough loaves" />
+          <Field
+            label="Title"
+            value={form.title}
+            onChangeText={t => set('title', t)}
+            placeholder="e.g. Sourdough loaves"
+            editable={!editing}
+          />
+          {editing && (
+            <Text variant="caption" color={theme.colors.textMuted}>
+              The title is fixed once a listing is published.
+            </Text>
+          )}
           <Field
             label="Description"
             value={form.description}
@@ -344,6 +507,16 @@ function StepBody({
         </StepFrame>
       );
     case 'category':
+      if (editing) {
+        return (
+          <LockedStep
+            theme={theme}
+            title="Category"
+            value={form.category !== null ? categoryLabel(form.category) : '—'}
+            note="The category is fixed once a listing is published — it sets the reputation domain."
+          />
+        );
+      }
       return (
         <StepFrame theme={theme} title="Category" hint="Used to find your listing and to build your domain reputation.">
           <View style={styles.chips}>
@@ -364,10 +537,57 @@ function StepBody({
     case 'availability':
       return <AvailabilityStep theme={theme} form={form} set={set} />;
     case 'requirements':
+      // What a taker must meet is fixed at publication (it can't move under a
+      // buyer mid-offer), so requirements are read-only on an edit.
+      if (editing) {
+        return (
+          <LockedStep
+            theme={theme}
+            title="Who can take it"
+            value={requirementsSummary(form)}
+            note="Requirements are fixed once a listing is published."
+          />
+        );
+      }
       return <RequirementsStep theme={theme} form={form} set={set} />;
     case 'review':
       return <ReviewStep theme={theme} form={form} />;
   }
+}
+
+/** A read-only step for a field an edit may not change — the create flow's
+ * interactive step, shown as a fixed value with a note explaining why. */
+function LockedStep({
+  theme,
+  title,
+  value,
+  note,
+}: {
+  theme: Theme;
+  title: string;
+  value: string;
+  note: string;
+}) {
+  return (
+    <StepFrame theme={theme} title={title} hint={note}>
+      <Card>
+        <Text variant="label" color={theme.colors.text}>
+          {value}
+        </Text>
+      </Card>
+    </StepFrame>
+  );
+}
+
+/** A one-line summary of the (read-only) requirements, for the locked edit step. */
+function requirementsSummary(form: FormState): string {
+  const parts: string[] = [];
+  parts.push(form.minReputation > 0 ? `Minimum standing ${form.minReputation}` : 'Open to anyone');
+  if (form.communityMemberOnly) {
+    parts.push('community members only');
+  }
+  parts.push(`Tier ${form.oracleTier ?? 1}`);
+  return parts.join(' · ');
 }
 
 function PricingStep({
@@ -733,6 +953,7 @@ function surfaceHint(surface: ListingSurface): string {
 
 const styles = StyleSheet.create({
   fill: {flex: 1},
+  center: {alignItems: 'center', justifyContent: 'center'},
   footer: {borderTopWidth: 1},
   dots: {flexDirection: 'row', gap: 6, justifyContent: 'center'},
   dot: {width: 8, height: 8, borderRadius: 4},

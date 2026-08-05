@@ -204,14 +204,21 @@ test('the Inquire CTA is disabled with the reason when the member is ineligible'
 
 test('the provider’s own listing offers Close listing instead of Inquire', async () => {
   session.wallet = {address: PROVIDER};
-  const r = await renderDetail();
+  const navigation = nav();
+  const r = await renderDetail(navigation);
   expect(findButton(r, 'Inquire')).toBeUndefined();
 
   // It reads plainly as yours: the owner marker leads, the "Offered by [your own
-  // address]" panel is dropped, and Close sits under a Manage heading.
+  // address]" panel is dropped, and Edit/Close sit under a Manage heading.
   expect(hasText(r, 'Your listing')).toBe(true);
   expect(hasText(r, 'Manage this listing')).toBe(true);
   expect(hasText(r, 'Offered by')).toBe(false);
+
+  // Edit routes back into the listing form in edit mode, on this listing.
+  await press(button(r, 'Edit listing'));
+  expect(navigation.navigate).toHaveBeenCalledWith('CreateListing', {
+    editListingId: 'abc123',
+  });
 
   await press(button(r, 'Close listing')); // reveal the inline confirm
   expect(findButton(r, 'Keep it')).toBeDefined(); // the stacked way-out appears
