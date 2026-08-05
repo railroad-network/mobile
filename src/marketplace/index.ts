@@ -5,6 +5,8 @@ export {
   REPUTATION_FLOORS,
   categoryLabel,
   bandVariant,
+  cadenceLabel,
+  perPeriodLabel,
   type PriceCeiling,
   type ReputationFloor,
 } from './catalog';
@@ -22,6 +24,10 @@ export {
   useOpenInquiry,
   useSendInquiryMessage,
   useCloseInquiry,
+  useContractDetail,
+  useMyContracts,
+  useCreateContract,
+  useTerminateContract,
   PAGE_SIZE,
   type MarketplaceFilters,
   type ListingWriteResult,
@@ -33,3 +39,8 @@ export {
   type ListingAvailabilityStatus,
 } from '../wallet/listing';
 export {type InquiryCloseOutcome} from '../wallet/inquiry';
+export {
+  type ContractTermsInput,
+  type ContractTerminatedBy,
+  type Frequency,
+} from '../wallet/contract';

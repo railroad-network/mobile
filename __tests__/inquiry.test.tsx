@@ -15,7 +15,7 @@ import {SafeAreaProvider} from 'react-native-safe-area-context';
 
 import {Inquiry} from '../src/screens/main/Inquiry';
 import {ThemeProvider} from '../src/theme';
-import type {StationInquiryThread} from '../src/network/StationClient';
+import type {StationContractRow, StationInquiryThread} from '../src/network/StationClient';
 
 const mockThread: {data?: StationInquiryThread; isLoading: boolean; isError: boolean; error: Error | null} = {
   data: undefined,
@@ -31,11 +31,22 @@ const mockSend = jest.fn(
 const mockClose = jest.fn(
   async (_args: {inquiryId: string; outcome: unknown}) => ({ok: true}) as const,
 );
+const mockCreateContract = jest.fn(
+  async (_args: {
+    inquiryId: string;
+    listingId: string;
+    providerAddress: string;
+    terms: unknown;
+  }) => ({ok: true, contractId: 'c1'}) as const,
+);
+const mockMyContracts: {data: StationContractRow[]} = {data: []};
 jest.mock('../src/marketplace', () => ({
   ...jest.requireActual('../src/marketplace'),
   useInquiryThread: () => mockThread,
   useSendInquiryMessage: () => mockSend,
   useCloseInquiry: () => mockClose,
+  useCreateContract: () => mockCreateContract,
+  useMyContracts: () => mockMyContracts,
 }));
 
 const BUYER = 'rrn1qbuyeraaaaaaaaaaaaaaaaaaaaaaaa';
@@ -94,14 +105,14 @@ type Renderer = ReactTestRenderer.ReactTestRenderer;
 type Instance = ReactTestRenderer.ReactTestInstance;
 let current: Renderer | undefined;
 
-async function render(): Promise<Renderer> {
+async function render(nav: Record<string, unknown> = {}): Promise<Renderer> {
   let r!: Renderer;
   await act(async () => {
     r = ReactTestRenderer.create(
       <SafeAreaProvider initialMetrics={metrics}>
         <ThemeProvider>
           <Inquiry
-            navigation={{navigate: jest.fn(), goBack: jest.fn()} as any}
+            navigation={{navigate: jest.fn(), goBack: jest.fn(), replace: jest.fn(), ...nav} as any}
             route={{params: {inquiryId: 'iq1'}} as any}
           />
         </ThemeProvider>
@@ -154,6 +165,76 @@ beforeEach(() => {
   mockThread.error = null;
   mockSession.wallet = {address: BUYER};
   mockActivity.data = [];
+  mockMyContracts.data = [];
+});
+
+/** A weekly recurring block, as the station carries it on an agreed thread. */
+const recurring = {
+  frequency: 'weekly' as const,
+  period_secs: 604_800,
+  duration_periods: 4,
+  notice_period_days: 7,
+  early_termination_penalty_centi: 500,
+};
+
+test('the buyer sets up a recurring contract instead of a one-off payment', async () => {
+  mockSession.wallet = {address: BUYER};
+  mockThread.data = thread({
+    state: 'closed',
+    outcome: 'agreed',
+    final_price_centi: 4300,
+    closed_at: NOW + 100,
+    listing_recurring: recurring,
+  });
+  const replace = jest.fn();
+  const r = await render({replace});
+  // A recurring agreement is a contract, not a single payment.
+  expect(findButton(r, 'Send 43.00 payment')).toBeUndefined();
+  await press(button(r, 'Set up recurring contract'));
+  expect(mockCreateContract).toHaveBeenCalledWith({
+    inquiryId: 'iq1',
+    listingId: 'l1',
+    providerAddress: PROVIDER,
+    terms: {
+      frequency: {unit: 'weekly'},
+      durationPeriods: 4,
+      commonsPerPeriodCenti: 4300,
+      performanceMetrics: {},
+      noticePeriodDays: 7,
+      earlyTerminationPenaltyCenti: 500,
+    },
+  });
+  expect(replace).toHaveBeenCalledWith('Contract', {contractId: 'c1'});
+});
+
+test('an agreed recurring inquiry already under contract links to it', async () => {
+  mockSession.wallet = {address: BUYER};
+  mockMyContracts.data = [
+    {
+      contract_id: 'c9',
+      inquiry_id: 'iq1',
+      listing_title: 'Barn raising',
+      role: 'buyer',
+      counterparty: PROVIDER,
+      state: 'active',
+      commons_per_period_centi: 4300,
+      periods_charged: 1,
+      periods_remaining: 3,
+      started_at: NOW,
+    },
+  ];
+  mockThread.data = thread({
+    state: 'closed',
+    outcome: 'agreed',
+    final_price_centi: 4300,
+    listing_recurring: recurring,
+  });
+  const navigate = jest.fn();
+  const r = await render({navigate});
+  expect(findButton(r, 'Set up recurring contract')).toBeUndefined();
+  expect(hasText(r, 'Recurring contract active')).toBe(true);
+  await press(button(r, 'View contract'));
+  expect(navigate).toHaveBeenCalledWith('Contract', {contractId: 'c9'});
 });
 
 test('renders the conversation and the offers on the table', async () => {

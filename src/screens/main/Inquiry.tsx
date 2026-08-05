@@ -32,15 +32,28 @@ import {
 } from '../../components';
 import {formatCommons, inquiryMemo, relativeTime, useActivity, useSettleAgreement} from '../../ledger';
 import {
+  cadenceLabel,
+  perPeriodLabel,
   useCloseInquiry,
+  useCreateContract,
   useInquiryThread,
+  useMyContracts,
   useSendInquiryMessage,
+  type ContractTermsInput,
+  type Frequency,
   type InquiryCloseOutcome,
 } from '../../marketplace';
-import {StationClientError, type StationInquiryThread} from '../../network/StationClient';
+import {
+  StationClientError,
+  type StationFrequency,
+  type StationInquiryThread,
+} from '../../network/StationClient';
 import {useTheme, type Theme} from '../../theme';
 import {useWalletSession} from '../../wallet/WalletSession';
 import type {MainStackScreenProps} from '../../navigation/types';
+
+/** The navigation object for this screen, threaded down to the settle actions. */
+type InquiryNav = MainStackScreenProps<'Inquiry'>['navigation'];
 
 export function Inquiry({navigation, route}: MainStackScreenProps<'Inquiry'>) {
   const theme = useTheme();
@@ -72,7 +85,9 @@ export function Inquiry({navigation, route}: MainStackScreenProps<'Inquiry'>) {
 
       {isError && <ThreadError theme={theme} error={error} />}
 
-      {data !== undefined && <ThreadBody theme={theme} thread={data} />}
+      {data !== undefined && (
+        <ThreadBody theme={theme} thread={data} navigation={navigation} />
+      )}
     </ScrollView>
   );
 }
@@ -90,7 +105,15 @@ function ThreadHeader({theme, thread}: {theme: Theme; thread: StationInquiryThre
   );
 }
 
-function ThreadBody({theme, thread}: {theme: Theme; thread: StationInquiryThread}) {
+function ThreadBody({
+  theme,
+  thread,
+  navigation,
+}: {
+  theme: Theme;
+  thread: StationInquiryThread;
+  navigation: InquiryNav;
+}) {
   const {wallet} = useWalletSession();
   const mineRole: Party | null =
     wallet === null
@@ -103,16 +126,22 @@ function ThreadBody({theme, thread}: {theme: Theme; thread: StationInquiryThread
   const entries = threadEntries(thread);
   const offers = offerSteps(thread);
   const open = thread.state === 'open';
+  const agreedByBuyer =
+    thread.state === 'closed' && thread.outcome === 'agreed' && mineRole === 'buyer';
 
   return (
     <>
       {thread.state !== 'open' && <OutcomeBanner thread={thread} />}
 
-      {/* An agreed inquiry is the buyer's to settle: the provider granted the
-          price, now the buyer sends the payment (T1.7.6). */}
-      {thread.state === 'closed' && thread.outcome === 'agreed' && mineRole === 'buyer' && (
-        <SettleAction theme={theme} thread={thread} />
-      )}
+      {/* An agreed inquiry is the buyer's to act on. A recurring service becomes a
+          standing contract the buyer signs (T1.7.7); a one-off becomes a single
+          payment the buyer sends (T1.7.6). */}
+      {agreedByBuyer &&
+        (thread.listing_recurring !== undefined ? (
+          <RecurringSettleAction theme={theme} thread={thread} navigation={navigation} />
+        ) : (
+          <SettleAction theme={theme} thread={thread} />
+        ))}
 
       {offers.length > 0 && <OfferBar theme={theme} steps={offers} />}
 
@@ -200,6 +229,118 @@ function SettleAction({theme, thread}: {theme: Theme; thread: StationInquiryThre
       )}
     </View>
   );
+}
+
+/**
+ * The buyer's setup of a recurring contract for an agreed inquiry (T1.7.7). Where
+ * a one-off agreement settles with a single payment, a recurring service becomes
+ * a standing contract: the provider granted the terms by agreeing, and this is the
+ * buyer's one signature that pre-authorizes every period's charge.
+ *
+ * Offered once. If a contract already cites this inquiry — found in the member's
+ * own contracts, so the guard reads real state and survives a restart — it links
+ * to that contract instead; a second setup would be refused by the station anyway.
+ */
+function RecurringSettleAction({
+  theme,
+  thread,
+  navigation,
+}: {
+  theme: Theme;
+  thread: StationInquiryThread;
+  navigation: InquiryNav;
+}) {
+  const rec = thread.listing_recurring;
+  const create = useCreateContract();
+  const {data: contracts} = useMyContracts();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | undefined>();
+
+  if (rec === undefined) {
+    return null;
+  }
+  const existing = (contracts ?? []).find(c => c.inquiry_id === thread.inquiry_id);
+  const perPeriodCenti = thread.final_price_centi ?? thread.listed_amount_centi;
+
+  const onSetUp = async () => {
+    setBusy(true);
+    setError(undefined);
+    const terms: ContractTermsInput = {
+      frequency: frequencyFromStation(rec.frequency, rec.period_secs),
+      durationPeriods: rec.duration_periods,
+      commonsPerPeriodCenti: perPeriodCenti,
+      performanceMetrics: {},
+      noticePeriodDays: rec.notice_period_days,
+      earlyTerminationPenaltyCenti: rec.early_termination_penalty_centi,
+    };
+    const result = await create({
+      inquiryId: thread.inquiry_id,
+      listingId: thread.listing_id,
+      providerAddress: thread.provider,
+      terms,
+    });
+    setBusy(false);
+    if (result.ok) {
+      navigation.replace('Contract', {contractId: result.contractId});
+    } else {
+      setError(result.message ?? 'Could not set up the contract.');
+    }
+  };
+
+  if (existing !== undefined) {
+    return (
+      <Card style={{gap: theme.spacing.xs}}>
+        <Text variant="label" color={theme.colors.text}>
+          Recurring contract active
+        </Text>
+        <Text variant="caption" color={theme.colors.textSecondary}>
+          You’ve set up a standing {cadenceLabel(rec.frequency, rec.period_secs).toLowerCase()}{' '}
+          contract for this service.
+        </Text>
+        <Button
+          fullWidth
+          variant="secondary"
+          onPress={() => navigation.navigate('Contract', {contractId: existing.contract_id})}>
+          View contract
+        </Button>
+      </Card>
+    );
+  }
+
+  return (
+    <Card style={{gap: theme.spacing.sm}}>
+      <Text variant="label" color={theme.colors.text}>
+        Set up a recurring contract
+      </Text>
+      <Text variant="caption" color={theme.colors.textSecondary}>
+        {`This is a recurring service. You’ll be charged ${formatCommons(perPeriodCenti)} ${perPeriodLabel(
+          rec.frequency,
+        )} for ${rec.duration_periods} ${rec.duration_periods === 1 ? 'period' : 'periods'} (${cadenceLabel(
+          rec.frequency,
+          rec.period_secs,
+        ).toLowerCase()}). ${
+          rec.notice_period_days > 0
+            ? `You can end it early with ${rec.notice_period_days} ${
+                rec.notice_period_days === 1 ? 'day' : 'days'
+              }’ notice.`
+            : 'You can end it any time.'
+        }`}
+      </Text>
+      <Button fullWidth onPress={onSetUp} loading={busy} disabled={busy}>
+        Set up recurring contract
+      </Button>
+      {error !== undefined && (
+        <Text variant="caption" color={theme.colors.danger}>
+          {error}
+        </Text>
+      )}
+    </Card>
+  );
+}
+
+/** Turns the station's frequency tag + period seconds into a {@link Frequency}. */
+function frequencyFromStation(frequency: StationFrequency, periodSecs: number): Frequency {
+  return frequency === 'custom' ? {unit: 'custom', secs: periodSecs} : {unit: frequency};
 }
 
 // --- offer bar --------------------------------------------------------------

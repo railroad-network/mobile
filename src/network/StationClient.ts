@@ -211,7 +211,9 @@ export class StationClient {
       | 'submit_listing_close'
       | 'submit_inquiry'
       | 'submit_inquiry_message'
-      | 'submit_inquiry_close',
+      | 'submit_inquiry_close'
+      | 'submit_contract'
+      | 'submit_contract_termination',
     field:
       | 'signed_proposal'
       | 'signed_confirmation'
@@ -220,7 +222,9 @@ export class StationClient {
       | 'signed_listing_close'
       | 'signed_inquiry'
       | 'signed_message'
-      | 'signed_close',
+      | 'signed_close'
+      | 'signed_contract'
+      | 'signed_termination',
     canonicalPayload: Uint8Array,
     signature: Uint8Array,
   ): Promise<Record<string, unknown>> {
@@ -473,6 +477,72 @@ export class StationClient {
       ? (result.inquiries as StationMyInquiryRow[])
       : [];
     return {inquiries};
+  }
+
+  /**
+   * `submit_contract` — sign up to a recurring service (T1.7.7 Stage 2). The
+   * wallet is the buyer and signed the mandate on-device, snapshotting the terms
+   * from the agreed inquiry; the station re-checks all of it against the log and
+   * appends it. Returns the content-address `contractId` and its fresh `state`
+   * (`active`).
+   */
+  async submitContract(
+    canonicalPayload: Uint8Array,
+    signature: Uint8Array,
+  ): Promise<{contractId: string; state: string}> {
+    const result = await this.submitSignedRecord(
+      'submit_contract',
+      'signed_contract',
+      canonicalPayload,
+      signature,
+    );
+    return {
+      contractId: typeof result.contract_id === 'string' ? result.contract_id : '',
+      state: typeof result.state === 'string' ? result.state : '',
+    };
+  }
+
+  /**
+   * `submit_contract_termination` — end a contract the member is a party to
+   * (T1.7.7 Stage 2). Either party may; the notice window and any penalty are the
+   * charge sweep's to apply. Returns the `contractId` so the caller can refetch.
+   */
+  async submitContractTermination(
+    canonicalPayload: Uint8Array,
+    signature: Uint8Array,
+  ): Promise<{contractId: string}> {
+    const result = await this.submitSignedRecord(
+      'submit_contract_termination',
+      'signed_termination',
+      canonicalPayload,
+      signature,
+    );
+    return {contractId: typeof result.contract_id === 'string' ? result.contract_id : ''};
+  }
+
+  /**
+   * `marketplace_contracts` — the member's own contracts (T1.7.7 Stage 2), as
+   * buyer or provider, newest first. The member is the authenticated signer, so
+   * there is no address param — a mobile only ever lists its own.
+   */
+  async marketplaceContracts(): Promise<{contracts: StationContractRow[]}> {
+    const result = await this.call('marketplace_contracts', {});
+    const contracts = Array.isArray(result.contracts)
+      ? (result.contracts as StationContractRow[])
+      : [];
+    return {contracts};
+  }
+
+  /**
+   * `marketplace_contract_show` — one contract's full status (T1.7.7 Stage 2).
+   * Only a party may read it; the station answers a non-party (or an unknown id)
+   * with a `method-error`.
+   */
+  async marketplaceContractShow(contractId: string): Promise<StationContractDetail> {
+    const result = await this.call('marketplace_contract_show', {
+      contract_id: contractId,
+    });
+    return result as unknown as StationContractDetail;
   }
 
   /**
@@ -902,6 +972,9 @@ export interface StationListingDetail extends StationListingCard {
   community_member_only: boolean;
   /** The dispute tier a sale would run under (1 or 2 in Phase 1). */
   oracle_tier: number;
+  /** The standing terms, when this listing is a recurring service (T1.7.7).
+   * Absent on a one-off offer; present lets the detail badge it as recurring. */
+  recurring?: StationRecurringTerms;
   /** `active`, `closed`, or `expired`. Treat anything but `active` as off offer. */
   state: StationListingState;
   /** Why it closed, when `state` is `closed`. */
@@ -979,6 +1052,10 @@ export interface StationInquiryThread {
   /** Whether the listing invites offers. When false, only `listed_amount_centi`
    * may be agreed. */
   negotiable: boolean;
+  /** The listing's standing terms, when it is a recurring service (T1.7.7).
+   * Present on an agreed thread lets the buyer's phone build the contract it
+   * signs — the cadence alongside `final_price_centi`. */
+  listing_recurring?: StationRecurringTerms;
   /** The buyer's `rrn1…` address. */
   buyer: string;
   /** The provider's `rrn1…` address. */
@@ -1025,6 +1102,116 @@ export interface StationMyInquiryRow {
   latest_offer_centi?: number;
   /** Unix seconds of the latest activity — rows sort by this, newest first. */
   last_activity_at: number;
+}
+
+/** How often a recurring service's period falls due (T1.7.7). */
+export type StationFrequency = 'daily' | 'weekly' | 'monthly' | 'custom';
+
+/**
+ * A recurring service's standing terms (T1.7.7's `RecurringTermsView`), carried
+ * on the listing detail (to badge the offer) and on the agreed inquiry thread (so
+ * the buyer's phone can snapshot them into the contract it signs).
+ */
+export interface StationRecurringTerms {
+  /** `daily`, `weekly`, `monthly`, or `custom`. */
+  frequency: StationFrequency;
+  /** The period length in seconds — the cadence detail a `custom` frequency needs. */
+  period_secs: number;
+  /** How many periods the commitment runs for. */
+  duration_periods: number;
+  /** Days of notice either side must give to end it early. */
+  notice_period_days: number;
+  /** The penalty in centi-Commons on whoever ends it before its natural end. */
+  early_termination_penalty_centi: number;
+}
+
+/** A contract's lifecycle state (T1.7.7). */
+export type StationContractState = 'active' | 'terminating' | 'ended';
+
+/** Why a contract ended, when its state is `ended`. */
+export type StationContractEndReason = 'completed' | 'terminated';
+
+/** Which party ended a contract early. */
+export type StationTerminatedBy = 'buyer' | 'provider';
+
+/**
+ * One contract as an inbox row (T1.7.7's `ContractRow`): enough to list and
+ * route, not the full status.
+ */
+export interface StationContractRow {
+  /** The contract's content address, hex. */
+  contract_id: string;
+  /** The agreed inquiry this contract was born from, hex — the key to tell
+   * whether an agreed inquiry already has a contract. */
+  inquiry_id: string;
+  /** The listing's title. */
+  listing_title: string;
+  /** The viewer's role: `buyer` or `provider`. */
+  role: 'buyer' | 'provider';
+  /** The other party's `rrn1…` address. */
+  counterparty: string;
+  /** `active`, `terminating`, or `ended`. */
+  state: StationContractState;
+  /** The per-period charge in centi-Commons. */
+  commons_per_period_centi: number;
+  /** How many periods the ledger has charged. */
+  periods_charged: number;
+  /** How many periods are still to run. */
+  periods_remaining: number;
+  /** When the next unbilled period falls due, while billing. */
+  next_charge_due?: number;
+  /** Unix seconds the contract began — rows sort by this, newest first. */
+  started_at: number;
+}
+
+/** One contract in full (T1.7.7's `ContractDetailView`), for the status screen. */
+export interface StationContractDetail {
+  /** The contract's content address, hex. */
+  contract_id: string;
+  /** The agreed inquiry this contract was born from, hex. */
+  inquiry_id: string;
+  /** The listing subscribed to, hex. */
+  listing_id: string;
+  /** The listing's title, for the header. */
+  listing_title: string;
+  /** The subscriber's `rrn1…` address. */
+  buyer: string;
+  /** The provider's `rrn1…` address. */
+  provider: string;
+  /** `daily`, `weekly`, `monthly`, or `custom`. */
+  frequency: StationFrequency;
+  /** The period length in seconds. */
+  period_secs: number;
+  /** How many periods the commitment runs for. */
+  duration_periods: number;
+  /** The per-period charge in centi-Commons. */
+  commons_per_period_centi: number;
+  /** Days of notice either side must give to end it early. */
+  notice_period_days: number;
+  /** The penalty in centi-Commons on whoever ends it before its natural end. */
+  early_termination_penalty_centi: number;
+  /** The buyer's free-form performance notes recorded on the contract. */
+  performance_metrics: Record<string, string>;
+  /** Unix seconds the contract began; period 0 fell due here. */
+  started_at: number;
+  /** `active`, `terminating`, or `ended`. */
+  state: StationContractState;
+  /** How many periods the ledger has charged. */
+  periods_charged: number;
+  /** How many periods are still to run. */
+  periods_remaining: number;
+  /** When the next unbilled period falls due, while billing. */
+  next_charge_due?: number;
+  /** When a pending termination takes effect, while `state` is `terminating`. */
+  terminating_effective_at?: number;
+  /** Why it ended, when `state` is `ended`. */
+  ended_reason?: StationContractEndReason;
+  /** Which party ended it, when it ended by termination. */
+  terminated_by?: StationTerminatedBy;
+  /** Whether it ended before its natural end (so the penalty applied). */
+  ended_early?: boolean;
+  /** Unix seconds it ended, when `state` is `ended`. */
+  ended_at?: number;
 }
 
 /**

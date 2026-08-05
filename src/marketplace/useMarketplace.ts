@@ -37,7 +37,15 @@ import {
   type InquiryCloseOutcome,
 } from '../wallet/inquiry';
 import {
+  createSignedContractTermination,
+  createSignedServiceContract,
+  type ContractTerminatedBy,
+  type ContractTermsInput,
+} from '../wallet/contract';
+import {
   StationClientError,
+  type StationContractDetail,
+  type StationContractRow,
   type StationErrorKind,
   type StationInquiryThread,
   type StationListingCard,
@@ -78,6 +86,8 @@ export const marketplaceKeys = {
   listing: (id: string) => ['marketplace', 'listing', id] as const,
   inquiries: ['marketplace', 'inquiries'] as const,
   inquiry: (id: string) => ['marketplace', 'inquiry', id] as const,
+  contracts: ['marketplace', 'contracts'] as const,
+  contract: (id: string) => ['marketplace', 'contract', id] as const,
 };
 
 /** The outcome of a listing write. Never throws to the screen (mirrors the ledger's). */
@@ -367,6 +377,129 @@ async function refreshInquiry(
   await Promise.all([
     queryClient.invalidateQueries({queryKey: marketplaceKeys.inquiry(inquiryId)}),
     queryClient.invalidateQueries({queryKey: marketplaceKeys.inquiries}),
+  ]);
+}
+
+/**
+ * One contract's full status (T1.7.7 Stage 2). Disabled when locked / unpaired.
+ * Fetched fresh and polled while the screen is open, so the charge sweep's
+ * progress — a period billed, a termination taking effect — lands without the
+ * member pulling to refresh.
+ */
+export function useContractDetail(
+  contractId: string,
+): UseQueryResult<StationContractDetail, Error> {
+  const client = useStationClient();
+  return useQuery({
+    queryKey: [...marketplaceKeys.contract(contractId), client !== null],
+    enabled: client !== null,
+    queryFn: (): Promise<StationContractDetail> => client!.marketplaceContractShow(contractId),
+    staleTime: 0,
+    refetchInterval: 5000,
+  });
+}
+
+/**
+ * The member's own contracts (T1.7.7 Stage 2), as buyer or provider, newest
+ * first. Disabled when locked / unpaired; keyed on the client's presence so
+ * pairing refetches.
+ */
+export function useMyContracts(): UseQueryResult<StationContractRow[], Error> {
+  const client = useStationClient();
+  return useQuery({
+    queryKey: [...marketplaceKeys.contracts, client !== null],
+    enabled: client !== null,
+    queryFn: async (): Promise<StationContractRow[]> => (await client!.marketplaceContracts()).contracts,
+    staleTime: 0,
+  });
+}
+
+/**
+ * Returns a function that signs up to a recurring service: it snapshots the terms
+ * the caller derived from the agreed inquiry thread, signs the mandate on-device,
+ * transmits it, and refreshes the contract lists. Online-only like a send — the
+ * terms are signed into the bytes, so they must be the values the agreement
+ * settled on. The station re-checks them, so a mismatch comes back as a typed
+ * failure rather than a bad contract.
+ */
+export function useCreateContract(): (args: {
+  inquiryId: string;
+  listingId: string;
+  providerAddress: string;
+  terms: ContractTermsInput;
+}) => Promise<ListingWriteResult<{contractId: string}>> {
+  const client = useStationClient();
+  const {wallet} = useWalletSession();
+  const queryClient = useQueryClient();
+  return useCallback(
+    async ({inquiryId, listingId, providerAddress, terms}) => {
+      if (client === null || wallet === null) {
+        return {ok: false, error: 'locked', message: 'Unlock your wallet and pair a station.'};
+      }
+      try {
+        const startedAt = Math.floor(Date.now() / 1000);
+        const signed = await createSignedServiceContract(wallet, {
+          inquiryId,
+          listingId,
+          providerAddress,
+          terms,
+          startedAt,
+        });
+        const {contractId} = await client.submitContract(signed.payloadBytes, signed.signature);
+        await queryClient.invalidateQueries({queryKey: marketplaceKeys.contracts});
+        return {ok: true, contractId: contractId.length > 0 ? contractId : signed.contractId};
+      } catch (e) {
+        return asListingWriteError(e);
+      }
+    },
+    [client, wallet, queryClient],
+  );
+}
+
+/**
+ * Returns a function that ends a contract early — the member terminating from
+ * their own side — then refreshes that contract and the list. The notice window
+ * and any penalty are the station's charge sweep to apply.
+ */
+export function useTerminateContract(): (args: {
+  contractId: string;
+  terminatedBy: ContractTerminatedBy;
+}) => Promise<ListingWriteResult> {
+  const client = useStationClient();
+  const {wallet} = useWalletSession();
+  const queryClient = useQueryClient();
+  return useCallback(
+    async ({contractId, terminatedBy}) => {
+      if (client === null || wallet === null) {
+        return {ok: false, error: 'locked', message: 'Unlock your wallet and pair a station.'};
+      }
+      try {
+        const requestedAt = Math.floor(Date.now() / 1000);
+        const signed = await createSignedContractTermination(
+          wallet,
+          contractId,
+          terminatedBy,
+          requestedAt,
+        );
+        await client.submitContractTermination(signed.payloadBytes, signed.signature);
+        await refreshContract(queryClient, contractId);
+        return {ok: true};
+      } catch (e) {
+        return asListingWriteError(e);
+      }
+    },
+    [client, wallet, queryClient],
+  );
+}
+
+/** Invalidates one contract's detail and the list together, after a write. */
+async function refreshContract(
+  queryClient: ReturnType<typeof useQueryClient>,
+  contractId: string,
+): Promise<void> {
+  await Promise.all([
+    queryClient.invalidateQueries({queryKey: marketplaceKeys.contract(contractId)}),
+    queryClient.invalidateQueries({queryKey: marketplaceKeys.contracts}),
   ]);
 }
 

@@ -43,7 +43,9 @@ import {
 import {dayLabel, formatCommons, shortAddress} from '../../ledger';
 import {
   bandVariant,
+  cadenceLabel,
   categoryLabel,
+  perPeriodLabel,
   useCloseListing,
   useListingDetail,
   useOpenInquiry,
@@ -148,6 +150,7 @@ function DetailBody({
       )}
 
       <AvailabilityCard theme={theme} listing={listing} />
+      {listing.recurring !== undefined && <RecurringCard theme={theme} listing={listing} />}
       {/* "Offered by [your own address]" is noise on your own listing — the owner
           marker above already says it's yours. */}
       {!isOwn && <ProviderCard theme={theme} listing={listing} />}
@@ -466,6 +469,51 @@ function AvailabilityCard({theme, listing}: {theme: Theme; listing: StationListi
   );
 }
 
+/**
+ * A recurring service's standing terms (T1.7.7): its cadence, per-period charge,
+ * length, and how to end it. Shown only when the listing carries `recurring`, so a
+ * one-off offer looks unchanged. Agreeing to an inquiry here becomes a contract,
+ * not a single payment — the badge sets that expectation up front.
+ */
+function RecurringCard({theme, listing}: {theme: Theme; listing: StationListingDetail}) {
+  const rec = listing.recurring;
+  if (rec === undefined) {
+    return null;
+  }
+  const feeLine =
+    rec.early_termination_penalty_centi > 0
+      ? ` A ${formatCommons(rec.early_termination_penalty_centi)} fee applies if ended early.`
+      : '';
+  const noticeLine =
+    rec.notice_period_days > 0
+      ? `End it any time with ${rec.notice_period_days} ${
+          rec.notice_period_days === 1 ? 'day' : 'days'
+        }’ notice.${feeLine}`
+      : `End it any time.${feeLine}`;
+  return (
+    <View style={{gap: theme.spacing.xs}}>
+      <View style={styles.recurringHead}>
+        <Text variant="label" color={theme.colors.textSecondary}>
+          Recurring service
+        </Text>
+        <Badge variant="accent" size="sm">
+          {cadenceLabel(rec.frequency, rec.period_secs)}
+        </Badge>
+      </View>
+      <Card style={{gap: theme.spacing.xs}}>
+        <Text variant="body" color={theme.colors.text}>
+          {`${formatCommons(listing.amount_centi)} ${perPeriodLabel(rec.frequency)}, for ${
+            rec.duration_periods
+          } ${rec.duration_periods === 1 ? 'period' : 'periods'}.`}
+        </Text>
+        <Text variant="caption" color={theme.colors.textSecondary}>
+          {noticeLine}
+        </Text>
+      </Card>
+    </View>
+  );
+}
+
 /** The provider snippet: identicon, address, band, composite, vouching context. */
 function ProviderCard({theme, listing}: {theme: Theme; listing: StationListingDetail}) {
   return (
@@ -593,5 +641,6 @@ const styles = StyleSheet.create({
   ownerMarker: {flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 12, borderWidth: 1},
   ownerMarkerText: {flex: 1, minWidth: 0, gap: 2},
   errorHead: {flexDirection: 'row', alignItems: 'center', gap: 8},
+  recurringHead: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8},
   footer: {textAlign: 'center'},
 });

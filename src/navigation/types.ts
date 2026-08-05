@@ -91,6 +91,10 @@ export type MainStackParamList = {
   Inquiries: undefined;
   /** One inquiry's chat thread — messages, offers, accept/decline (T1.7.4). */
   Inquiry: {inquiryId: string};
+  /** The member's own service contracts, as buyer or provider (T1.7.7). */
+  Contracts: undefined;
+  /** One contract's status — cadence, periods charged, terminate (T1.7.7). */
+  Contract: {contractId: string};
   /** Vouch for someone: scan their address QR, review, sign & submit (T1.4.1). */
   Vouch: undefined;
   /** The vouching browser (T1.4.5): given/received vouch lists, opened on a tab. */

@@ -9,6 +9,7 @@
  * the one place the mobile side names them, so a drift shows up in one file.
  */
 import type {
+  StationFrequency,
   StationReputationBandName,
   StationSurface,
 } from '../network/StationClient';
@@ -78,6 +79,55 @@ export const REPUTATION_FLOORS: ReputationFloor[] = [
   {key: 'member', label: 'Member +', minComposite: 2.0},
   {key: 'trusted', label: 'Trusted +', minComposite: 3.5},
 ];
+
+/**
+ * A recurring service's cadence as a short adjective, for a badge or heading:
+ * `weekly` → "Weekly", a custom period → "Every 3 days". Mirrors the station's
+ * `Frequency` (T1.7.7).
+ */
+export function cadenceLabel(
+  frequency: StationFrequency,
+  periodSecs: number,
+): string {
+  switch (frequency) {
+    case 'daily':
+      return 'Daily';
+    case 'weekly':
+      return 'Weekly';
+    case 'monthly':
+      return 'Monthly';
+    case 'custom':
+      return customCadence(periodSecs);
+  }
+}
+
+/** A custom period rendered in its largest whole unit (days, else hours, else minutes). */
+function customCadence(periodSecs: number): string {
+  if (periodSecs % 86_400 === 0) {
+    const days = periodSecs / 86_400;
+    return `Every ${days} day${days === 1 ? '' : 's'}`;
+  }
+  if (periodSecs % 3_600 === 0) {
+    const hours = periodSecs / 3_600;
+    return `Every ${hours} hour${hours === 1 ? '' : 's'}`;
+  }
+  const mins = Math.max(1, Math.round(periodSecs / 60));
+  return `Every ${mins} min`;
+}
+
+/** The per-period suffix next to a price: `weekly` → "per week". */
+export function perPeriodLabel(frequency: StationFrequency): string {
+  switch (frequency) {
+    case 'daily':
+      return 'per day';
+    case 'weekly':
+      return 'per week';
+    case 'monthly':
+      return 'per month';
+    case 'custom':
+      return 'per period';
+  }
+}
 
 /** The Badge variant a provider's band draws with — mirrors the Standing screen. */
 export function bandVariant(

@@ -146,6 +146,23 @@ test('renders the full listing', async () => {
   expect(hasText(r, 'Construction')).toBe(true);
 });
 
+test('a recurring service listing shows its standing terms and a cadence badge', async () => {
+  detail.data = listing({
+    recurring: {
+      frequency: 'weekly',
+      period_secs: 604_800,
+      duration_periods: 4,
+      notice_period_days: 7,
+      early_termination_penalty_centi: 500,
+    },
+  });
+  const r = await renderDetail();
+  expect(hasText(r, 'Recurring service')).toBe(true);
+  expect(hasText(r, 'Weekly')).toBe(true);
+  expect(hasText(r, '45.00 per week, for 4 periods')).toBe(true);
+  expect(hasText(r, '7 days’ notice')).toBe(true);
+});
+
 test('shows the provider band and vouching context', async () => {
   const r = await renderDetail();
   expect(hasText(r, 'Member')).toBe(true);
