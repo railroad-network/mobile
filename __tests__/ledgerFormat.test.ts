@@ -15,7 +15,7 @@ import {
   shortAddress,
   MINUS,
 } from '../src/ledger/format';
-import {stateBadge} from '../src/ledger/txDisplay';
+import {stateBadge, tierBadge, tierLabel} from '../src/ledger/txDisplay';
 
 describe('dayLabel', () => {
   // Fixed local reference: Monday, Jul 15 2024, noon.
@@ -125,9 +125,23 @@ describe('stateBadge', () => {
   test('maps each state to a variant + label', () => {
     expect(stateBadge('settled')).toEqual({variant: 'success', label: 'Settled'});
     expect(stateBadge('pending')).toEqual({variant: 'neutral', label: 'Pending'});
-    expect(stateBadge('window')).toEqual({variant: 'warning', label: 'Dispute window'});
+    expect(stateBadge('window')).toEqual({variant: 'warning', label: 'Settlement window'});
     expect(stateBadge('disputed')).toEqual({variant: 'danger', label: 'Disputed'});
     expect(stateBadge('cancelled')).toEqual({variant: 'neutral', label: 'Cancelled'});
     expect(stateBadge('confirmed')).toEqual({variant: 'info', label: 'Confirmed'});
+  });
+});
+
+describe('tierBadge / tierLabel (T1.8.6)', () => {
+  test('tierBadge surfaces Tier 2 and stays quiet for Tier 1 / unknown', () => {
+    expect(tierBadge(2)).toEqual({variant: 'info', label: 'Tier 2 · staked'});
+    expect(tierBadge(1)).toBeNull();
+    expect(tierBadge(undefined)).toBeNull();
+  });
+
+  test('tierLabel names both tiers, defaulting an unknown tier to Tier 1', () => {
+    expect(tierLabel(2)).toBe('Tier 2 — reputation-staked');
+    expect(tierLabel(1)).toBe('Tier 1 — settlement window');
+    expect(tierLabel(undefined)).toBe('Tier 1 — settlement window');
   });
 });

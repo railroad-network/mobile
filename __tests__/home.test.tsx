@@ -173,6 +173,25 @@ test('"See all" jumps to the History tab', async () => {
   expect(navigation.navigate).toHaveBeenCalledWith('History');
 });
 
+test('shows the bootstrap-grace banner while the community is in grace (T1.8.6)', async () => {
+  Object.assign(mockIdentity, {
+    data: {...IDENTITY, bootstrap: {inGrace: true, established: 1, threshold: 3}},
+    isLoading: false,
+  });
+  const r = await renderHome();
+  expect(hasText(r, 'New community — in bootstrap grace')).toBe(true);
+  expect(hasText(r, 'Until 3 members build up standing')).toBe(true);
+});
+
+test('hides the grace banner once grace has ended', async () => {
+  Object.assign(mockIdentity, {
+    data: {...IDENTITY, bootstrap: {inGrace: false, established: 3, threshold: 3}},
+    isLoading: false,
+  });
+  const r = await renderHome();
+  expect(hasText(r, 'bootstrap grace')).toBe(false);
+});
+
 test('shows the empty state when there is no activity', async () => {
   Object.assign(mockActivity, {data: [], isLoading: false});
   const r = await renderHome();

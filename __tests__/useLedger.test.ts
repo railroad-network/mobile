@@ -61,6 +61,20 @@ describe('stationRowToTransaction', () => {
     // The counterparty label is a shortened address until a contact book exists.
     expect(t.counterparty).toContain('…');
   });
+
+  test('carries the oracle tier and the station settle-by (T1.8.6)', () => {
+    const t = stationRowToTransaction(
+      row({state: 'confirmed', confirmed_at: 100, oracle_tier: 2, settle_by: 100 + 172_800}),
+    );
+    expect(t.oracleTier).toBe(2);
+    expect(t.settleBy).toBe(100 + 172_800);
+  });
+
+  test('tolerates a station that omits the tier fields', () => {
+    const t = stationRowToTransaction(row({}));
+    expect(t.oracleTier).toBeUndefined();
+    expect(t.settleBy).toBeUndefined();
+  });
 });
 
 describe('assembleActivity', () => {

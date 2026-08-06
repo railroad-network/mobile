@@ -44,6 +44,19 @@ export interface Transaction {
    * memo. Absent on a direct pay. */
   listingTitle?: string;
   state: TransactionState;
+  /**
+   * The oracle tier governing this transaction (T1.8.1): `1` — settlement window
+   * only — or `2` — reputation-staked confirmation. Absent (treated as Tier 1) on
+   * a row from a station that predates the field. Drives the tier badge and the
+   * per-tier settlement window.
+   */
+  oracleTier?: number;
+  /**
+   * Unix seconds when the settlement window closes, as the station computed it
+   * from the tier (T1.8.6). Present once confirmed; {@link settlementAt} prefers
+   * it over a locally-derived window. Absent from a legacy station.
+   */
+  settleBy?: number;
   /** When the transaction was proposed, in unix seconds. */
   timestamp: number;
   /**
@@ -71,6 +84,23 @@ export interface Identity {
   nickname?: string;
   /** The community/collective the member belongs to. */
   community?: string;
+  /**
+   * Tier-2 bootstrap-grace status (T1.8.6), read from `whoami`. Present when the
+   * paired station reports it; absent when offline or from a station predating
+   * the field. Home shows a banner while {@link BootstrapGrace.inGrace} is true.
+   */
+  bootstrap?: BootstrapGrace;
+}
+
+/** The community's Tier-2 bootstrap-grace status (T1.8.6). */
+export interface BootstrapGrace {
+  /** Whether fewer than {@link threshold} members are established, so any member
+   * may confirm a Tier-2 payment (a weaker oracle the banner makes visible). */
+  inGrace: boolean;
+  /** How many members are currently established (composite over the Member band). */
+  established: number;
+  /** The established-member count at which grace ends. */
+  threshold: number;
 }
 
 /** The member's current balance. */

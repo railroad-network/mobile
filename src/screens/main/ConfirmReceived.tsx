@@ -20,6 +20,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {
   Amount,
   BackLink,
+  Badge,
   Banner,
   Button,
   Card,
@@ -32,6 +33,7 @@ import {
   isExpired,
   settlementAt,
   shortAddress,
+  tierBadge,
   useActivity,
   useConfirmProposal,
   useRecordDecision,
@@ -116,8 +118,8 @@ export function ConfirmReceived({route, navigation}: MainStackScreenProps<'Confi
         <View style={styles.center}>
           <Heading level="headingLarge">You confirmed receipt</Heading>
           <Text variant="body" color={theme.colors.textSecondary} style={styles.centerText}>
-            You signed for “{tx.memo ?? 'this payment'}” from {tx.counterparty}. It settles unless a
-            dispute is raised.
+            You signed for “{tx.memo ?? 'this payment'}” from {tx.counterparty}. It settles once the
+            window below passes.
           </Text>
         </View>
         <Card style={styles.settleCard}>
@@ -126,7 +128,7 @@ export function ConfirmReceived({route, navigation}: MainStackScreenProps<'Confi
           </Text>
           <Countdown until={settleAt ?? 0} color={theme.colors.text} style={styles.settleClock} />
           <Text variant="caption" color={theme.colors.textSecondary}>
-            Dispute window
+            Settlement window
           </Text>
         </Card>
         <Button variant="primary" size="lg" fullWidth onPress={() => navigation.goBack()}>
@@ -163,6 +165,11 @@ export function ConfirmReceived({route, navigation}: MainStackScreenProps<'Confi
           {tx.counterparty} is paying you
         </Text>
         <Amount centi={tx.amountCenti} size="xl" />
+        {tierBadge(tx.oracleTier) !== null && (
+          <Badge variant={tierBadge(tx.oracleTier)!.variant}>
+            {tierBadge(tx.oracleTier)!.label}
+          </Badge>
+        )}
       </View>
       <Card style={{gap: theme.spacing.md}}>
         <Row theme={theme} label="For">
@@ -196,9 +203,15 @@ export function ConfirmReceived({route, navigation}: MainStackScreenProps<'Confi
       ) : (
         <>
           <Banner variant="info" title="Only confirm what’s true">
-            Confirming signs your name to “I received this.” If you didn’t, reject it — your word is
-            part of the ledger.
+            Tapping “All good” signs your name to “I received this.” If you didn’t, reject it — your
+            word is part of the ledger.
           </Banner>
+          {tx.oracleTier === 2 && (
+            <Banner variant="warning" title="This one stakes your reputation">
+              At this amount, confirming puts your standing behind the payment (Tier 2). Only vouch
+              for it if you truly received it.
+            </Banner>
+          )}
           {confirmError !== null && (
             <Banner variant="danger" title="Not confirmed">
               {confirmError}
@@ -210,7 +223,7 @@ export function ConfirmReceived({route, navigation}: MainStackScreenProps<'Confi
             fullWidth
             loading={busy}
             onPress={confirmReceipt}>
-            Confirm — I received this
+            All good — I received this
           </Button>
           <Button variant="ghost" size="lg" fullWidth onPress={reject}>
             Reject

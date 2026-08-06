@@ -134,10 +134,26 @@ export class StationClient {
   /**
    * `whoami` — the station's own address (a cheap reachability probe), plus the
    * `community` a member stamps into a vouch (T1.4.3; `undefined` from a station
-   * that predates the field).
+   * that predates the field) and the Tier-2 **bootstrap-grace** status (T1.8.6):
+   * while `bootstrap_in_grace` is true the community has fewer than
+   * `grace_threshold` established members, so any member may confirm a Tier-2
+   * payment — the wallet shows a banner. All three grace fields are `undefined`
+   * from a station that predates them.
    */
-  async whoami(): Promise<{address: string; community?: string}> {
-    return this.call('whoami', {}) as Promise<{address: string; community?: string}>;
+  async whoami(): Promise<{
+    address: string;
+    community?: string;
+    bootstrap_in_grace?: boolean;
+    established_members?: number;
+    grace_threshold?: number;
+  }> {
+    return this.call('whoami', {}) as Promise<{
+      address: string;
+      community?: string;
+      bootstrap_in_grace?: boolean;
+      established_members?: number;
+      grace_threshold?: number;
+    }>;
   }
 
   /** `balance` — the signed-integer centi balance of `address` (defaults to us). */
@@ -763,9 +779,18 @@ export interface StationTransactionRow {
    * bought. Present when the station knows the listing. */
   listing_title?: string;
   state: 'pending' | 'confirmed' | 'settled' | 'cancelled';
+  /** The oracle tier governing this transaction (T1.8.1): `1` (settlement window
+   * only) or `2` (reputation-staked confirmation). Optional so a station that
+   * predates the field is tolerated — the UI treats an absent tier as Tier 1. */
+  oracle_tier?: number;
   timestamp: number;
   expires_at?: number;
   confirmed_at?: number;
+  /** Unix seconds the settlement window closes — `confirmed_at` plus this tier's
+   * window (T1.8.4/T1.8.6). Present once confirmed; the wallet counts down to it
+   * rather than hardcoding the window. Absent from a station predating the field
+   * (the wallet falls back to a tier-derived window). */
+  settle_by?: number;
   settled_at?: number;
   nonce: number;
 }

@@ -55,6 +55,8 @@ export function stationRowToTransaction(row: StationTransactionRow): Transaction
     memo: row.memo,
     listingTitle: row.listing_title,
     state: row.state,
+    oracleTier: row.oracle_tier,
+    settleBy: row.settle_by,
     timestamp: row.timestamp,
     expiresAt: row.expires_at,
     confirmedAt: row.confirmed_at,
@@ -113,15 +115,26 @@ export function useIdentity(): UseQueryResult<Identity> {
         // No secure store (e.g. tests) — the address alone is a valid identity.
       }
       let community: string | undefined;
+      let bootstrap: Identity['bootstrap'];
       if (client !== null) {
         try {
-          community = (await client.whoami()).community;
+          const who = await client.whoami();
+          community = who.community;
+          // Present only from a station that carries the grace fields (T1.8.6);
+          // a legacy station omits them and Home simply shows no grace banner.
+          if (who.bootstrap_in_grace !== undefined) {
+            bootstrap = {
+              inGrace: who.bootstrap_in_grace,
+              established: who.established_members ?? 0,
+              threshold: who.grace_threshold ?? 0,
+            };
+          }
         } catch {
           // Offline or unreachable — the identity is still valid without the
           // community line; the refetch below fills it in.
         }
       }
-      return {address, nickname, community};
+      return {address, nickname, community, bootstrap};
     },
     // If we are paired but the community line is still blank — e.g. the station
     // was momentarily unreachable when this first ran at launch, so `whoami`

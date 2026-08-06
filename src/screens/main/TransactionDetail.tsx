@@ -26,7 +26,7 @@ import {
   ScreenHeader,
   Text,
 } from '../../components';
-import {relativeTime, settlementAt, stateBadge, useActivity} from '../../ledger';
+import {relativeTime, settlementAt, stateBadge, tierBadge, tierLabel, useActivity} from '../../ledger';
 import {useTheme, type Theme} from '../../theme';
 import type {MainStackScreenProps} from '../../navigation/types';
 
@@ -118,6 +118,11 @@ export function TransactionDetail({route, navigation}: MainStackScreenProps<'Tra
               <Badge variant={stateBadge(tx.state).variant} dot>
                 {stateBadge(tx.state).label}
               </Badge>
+              {tierBadge(tx.oracleTier) !== null && (
+                <Badge variant={tierBadge(tx.oracleTier)!.variant}>
+                  {tierBadge(tx.oracleTier)!.label}
+                </Badge>
+              )}
             </View>
           </Card>
 
@@ -137,6 +142,7 @@ export function TransactionDetail({route, navigation}: MainStackScreenProps<'Tra
               label="Direction"
               value={tx.direction === 'in' ? 'Incoming credit' : 'Outgoing debit'}
             />
+            <DetailRow theme={theme} label="Oracle tier" value={tierLabel(tx.oracleTier)} />
             {tx.nonce !== undefined && (
               <DetailRow theme={theme} label="Nonce" value={String(tx.nonce)} mono />
             )}
@@ -272,7 +278,7 @@ function SignatureRow({
 
 const styles = StyleSheet.create({
   hero: {alignItems: 'center', gap: 10, paddingVertical: 24},
-  heroBadge: {alignSelf: 'center'},
+  heroBadge: {alignSelf: 'center', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8},
   settleRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16},
   settleClock: {fontSize: 22, lineHeight: 28, fontWeight: '700'},
   fields: {gap: 14},

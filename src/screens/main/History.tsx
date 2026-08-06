@@ -20,6 +20,7 @@ import {
   dayLabel,
   relativeTime,
   stateBadge,
+  tierBadge,
   useActivity,
   type Transaction,
   type TransactionDirection,
@@ -185,6 +186,7 @@ function FilterChip({
 
 function HistoryRow({theme, tx, onPress}: {theme: Theme; tx: Transaction; onPress: () => void}) {
   const badge = stateBadge(tx.state);
+  const tier = tierBadge(tx.oracleTier);
   const [pressed, setPressed] = useState(false);
   return (
     <Pressable
@@ -215,6 +217,11 @@ function HistoryRow({theme, tx, onPress}: {theme: Theme; tx: Transaction; onPres
         <Badge variant={badge.variant} size="sm" dot>
           {badge.label}
         </Badge>
+        {tier !== null && (
+          <Badge variant={tier.variant} size="sm">
+            {tier.label}
+          </Badge>
+        )}
       </View>
     </Pressable>
   );

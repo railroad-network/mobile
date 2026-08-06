@@ -121,7 +121,7 @@ test('shows the proposal detail', async () => {
 test('confirming signs + sends via the hook and shows the countdown — no re-prompt', async () => {
   const r = await renderScreen();
   // The wallet is unlocked for the session; one tap signs, sends, and advances.
-  await press(button(r, 'Confirm — I received this'));
+  await press(button(r, 'All good — I received this'));
 
   expect(mockConfirmProposal).toHaveBeenCalledWith(PROPOSAL_ID);
   expect(hasText(r, 'You confirmed receipt')).toBe(true);
@@ -143,7 +143,7 @@ test('an expired proposal cannot be confirmed', async () => {
   mockActivity.data = [proposal({expiresAt: Math.floor(Date.now() / 1000) - 3600})];
   const r = await renderScreen();
   expect(hasText(r, 'This proposal expired')).toBe(true);
-  expect(buttons(r, 'Confirm — I received this')).toHaveLength(0);
+  expect(buttons(r, 'All good — I received this')).toHaveLength(0);
 });
 
 test('a confirm that cannot reach the station surfaces a failure and stays on the detail', async () => {
@@ -153,7 +153,7 @@ test('a confirm that cannot reach the station surfaces a failure and stays on th
     message: 'ECONNREFUSED',
   });
   const r = await renderScreen();
-  await press(button(r, 'Confirm — I received this'));
+  await press(button(r, 'All good — I received this'));
   expect(hasText(r, 'Not confirmed')).toBe(true);
   expect(hasText(r, 'Couldn’t reach your station')).toBe(true);
   expect(hasText(r, 'You confirmed receipt')).toBe(false);

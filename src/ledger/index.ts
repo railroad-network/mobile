@@ -1,5 +1,6 @@
 export type {
   Balance,
+  BootstrapGrace,
   Identity,
   Transaction,
   TransactionDirection,
@@ -18,7 +19,11 @@ export {
   stateBadge,
   isExpired,
   settlementAt,
-  SETTLEMENT_WINDOW_SECS,
+  settlementWindowSecs,
+  tierBadge,
+  tierLabel,
+  TIER1_WINDOW_SECS,
+  TIER2_WINDOW_SECS,
   type StateBadge,
 } from './txDisplay';
 export {encodeAddressQr, parseAddressQr, type ScannedAddress} from './addressQr';

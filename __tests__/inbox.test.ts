@@ -6,7 +6,12 @@
  * drive the countdown and the expired-and-uncomfirmable state.
  */
 import {applyDecisions, clearDecisions, recordDecision} from '../src/ledger/decisions';
-import {isExpired, settlementAt, SETTLEMENT_WINDOW_SECS} from '../src/ledger/txDisplay';
+import {
+  isExpired,
+  settlementAt,
+  TIER1_WINDOW_SECS,
+  TIER2_WINDOW_SECS,
+} from '../src/ledger/txDisplay';
 import type {Transaction} from '../src/ledger';
 
 const tx = (o: Partial<Transaction>): Transaction => ({
@@ -49,8 +54,15 @@ describe('isExpired / settlementAt', () => {
     expect(isExpired(tx({}), Number.MAX_SAFE_INTEGER)).toBe(false); // no expiry → never
   });
 
-  test('settlementAt is confirmedAt + window, or undefined when unconfirmed', () => {
-    expect(settlementAt(tx({confirmedAt: 100}))).toBe(100 + SETTLEMENT_WINDOW_SECS);
+  test('settlementAt prefers the station settleBy, else falls back to a tier window', () => {
+    // The station's authoritative settle-by wins when present.
+    expect(settlementAt(tx({confirmedAt: 100, settleBy: 9_999}))).toBe(9_999);
+    // No settleBy: fall back to confirmedAt + the tier's window.
+    expect(settlementAt(tx({confirmedAt: 100, oracleTier: 1}))).toBe(100 + TIER1_WINDOW_SECS);
+    expect(settlementAt(tx({confirmedAt: 100, oracleTier: 2}))).toBe(100 + TIER2_WINDOW_SECS);
+    // Unknown tier assumes the longer Tier-2 window.
+    expect(settlementAt(tx({confirmedAt: 100}))).toBe(100 + TIER2_WINDOW_SECS);
+    // Unconfirmed → nothing to settle.
     expect(settlementAt(tx({}))).toBeUndefined();
   });
 });

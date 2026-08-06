@@ -143,6 +143,17 @@ export function Home({navigation}: MainTabScreenProps<'Home'>) {
           )
         )}
 
+        {/* Bootstrap grace — a young community where any member may confirm a
+            Tier-2 payment until enough members are established (T1.8.6). */}
+        {identity.data?.bootstrap?.inGrace === true && (
+          <View style={{paddingHorizontal: theme.spacing.lg}}>
+            <Banner variant="warning" title="New community — in bootstrap grace">
+              Until {identity.data.bootstrap.threshold} members build up standing, anyone here can
+              confirm larger (Tier 2) payments. Higher-value trades carry less protection for now.
+            </Banner>
+          </View>
+        )}
+
         {/* Balance hero */}
         <View style={{paddingHorizontal: theme.spacing.lg}}>
           <View style={[styles.balCard, {backgroundColor: hero.bg}]}>
