@@ -20,6 +20,12 @@ export interface BadgeProps {
   size?: 'sm' | 'md';
   /** Show a leading status dot in the badge's own color. */
   dot?: boolean;
+  /**
+   * Which edge the pill hugs when its container is wider than the pill.
+   * Defaults to `'start'` (left). Use `'end'` to right-align, e.g. under a
+   * right-aligned amount.
+   */
+  align?: 'start' | 'end';
   children: string;
 }
 
@@ -42,7 +48,13 @@ function palette(variant: BadgeVariant, c: ColorTokens): {bg: string; fg: string
   }
 }
 
-export function Badge({variant = 'neutral', size = 'md', dot = false, children}: BadgeProps) {
+export function Badge({
+  variant = 'neutral',
+  size = 'md',
+  dot = false,
+  align = 'start',
+  children,
+}: BadgeProps) {
   const theme = useTheme();
   const {bg, fg} = palette(variant, theme.colors);
   const sm = size === 'sm';
@@ -52,6 +64,7 @@ export function Badge({variant = 'neutral', size = 'md', dot = false, children}:
       style={[
         styles.pill,
         {
+          alignSelf: align === 'end' ? 'flex-end' : 'flex-start',
           backgroundColor: bg,
           borderRadius: theme.radius.full,
           paddingVertical: sm ? 3 : 4,
@@ -68,7 +81,7 @@ export function Badge({variant = 'neutral', size = 'md', dot = false, children}:
 }
 
 const styles = StyleSheet.create({
-  pill: {flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start'},
+  pill: {flexDirection: 'row', alignItems: 'center', gap: 5},
   dot: {width: 7, height: 7, borderRadius: 3.5},
   text: {fontWeight: '700'},
 });

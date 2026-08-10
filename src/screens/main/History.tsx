@@ -214,11 +214,11 @@ function HistoryRow({theme, tx, onPress}: {theme: Theme; tx: Transaction; onPres
       </View>
       <View style={styles.rowRight}>
         <Amount centi={tx.amountCenti} size="sm" />
-        <Badge variant={badge.variant} size="sm" dot>
+        <Badge variant={badge.variant} size="sm" dot align="end">
           {badge.label}
         </Badge>
         {tier !== null && (
-          <Badge variant={tier.variant} size="sm">
+          <Badge variant={tier.variant} size="sm" align="end">
             {tier.label}
           </Badge>
         )}
