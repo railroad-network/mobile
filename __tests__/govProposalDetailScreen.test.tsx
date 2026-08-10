@@ -71,22 +71,33 @@ function detail(overrides: Partial<StationProposalDetail> = {}): StationProposal
 
 let current: Renderer | undefined;
 
+function element(): React.ReactElement {
+  return (
+    <SafeAreaProvider initialMetrics={metrics}>
+      <ThemeProvider>
+        <GovProposalDetail
+          navigation={{goBack: jest.fn()} as any}
+          route={{params: {proposalId: 'aa'.repeat(32)}} as any}
+        />
+      </ThemeProvider>
+    </SafeAreaProvider>
+  );
+}
+
 async function renderDetail(): Promise<Renderer> {
   let r!: Renderer;
   await act(async () => {
-    r = ReactTestRenderer.create(
-      <SafeAreaProvider initialMetrics={metrics}>
-        <ThemeProvider>
-          <GovProposalDetail
-            navigation={{goBack: jest.fn()} as any}
-            route={{params: {proposalId: 'aa'.repeat(32)}} as any}
-          />
-        </ThemeProvider>
-      </SafeAreaProvider>,
-    );
+    r = ReactTestRenderer.create(element());
   });
   current = r;
   return r;
+}
+
+/** Re-render with the current `mockProposal.data`, standing in for a poll tick. */
+async function poll(r: Renderer): Promise<void> {
+  await act(async () => {
+    r.update(element());
+  });
 }
 
 function textOf(node: Instance): string {
@@ -193,4 +204,39 @@ test('co-signing calls the hook and confirms', async () => {
   await press(pressableByLabel(r, 'Co-sign this proposal').onPress);
   expect(mockCosignFn).toHaveBeenCalledWith('aa'.repeat(32));
   expect(hasText(r, 'Co-signed')).toBe(true);
+});
+
+test('after co-signing, a poll into voting reveals the ballot without leaving', async () => {
+  mockProposal.data = detail({phase: 'deliberation', published: false, cosigner_count: 0});
+  mockCosignFn.mockResolvedValue({ok: true, cosignerCount: 1});
+  const r = await renderDetail();
+
+  await press(pressableByLabel(r, 'Co-sign this proposal').onPress);
+  // Immediately after, the confirmation shows and no ballot yet.
+  expect(hasText(r, 'Co-signed')).toBe(true);
+  expect(hasText(r, 'Cast your vote')).toBe(false);
+
+  // The co-sign opened voting; the next poll observes it.
+  mockProposal.data = detail({phase: 'voting', published: true, cosigner_count: 1});
+  await poll(r);
+
+  // The confirmation yields to the ballot in place — no back-and-forth.
+  expect(hasText(r, 'Cast your vote')).toBe(true);
+  expect(hasText(r, 'Co-signed')).toBe(false);
+});
+
+test('a cast ballot stays confirmed even as the tally keeps polling', async () => {
+  mockCastVoteFn.mockResolvedValue({ok: true});
+  const r = await renderDetail();
+  await press(pressableByLabel(r, 'Yes').onPress);
+  await press(pressableByLabel(r, 'Cast “Yes”').onPress);
+  expect(hasText(r, 'Vote cast')).toBe(true);
+
+  // A later poll brings a moved tally but must not re-offer the ballot.
+  mockProposal.data = detail({
+    tally: {yes: 3, no: 1, abstain: 0, eligible_voters: 5, quorum_met: true, approval_met: true},
+  });
+  await poll(r);
+  expect(hasText(r, 'Vote cast')).toBe(true);
+  expect(hasText(r, 'Cast your vote')).toBe(false);
 });

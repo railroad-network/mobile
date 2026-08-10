@@ -47,6 +47,13 @@ import type {Balance, Identity, Transaction} from './types';
 /** How long, in seconds, a freshly-sent proposal stays valid before auto-cancel. */
 const PROPOSAL_EXPIRY_SECS = 24 * 3600;
 
+/**
+ * How often the open-proposal detail refetches while it is on screen. Governance
+ * moves at human pace, so a few seconds keeps the tally and phase feeling live
+ * without hammering the station.
+ */
+const PROPOSAL_POLL_MS = 5000;
+
 /** Maps one station transaction row to the display {@link Transaction} model. */
 export function stationRowToTransaction(row: StationTransactionRow): Transaction {
   return {
@@ -304,6 +311,12 @@ export function useProposals(): UseQueryResult<StationProposalSummary[]> {
  * One proposal in full (T1.9.8) for the detail screen: summary, markdown body,
  * and co-signers. Keyed by the proposal id; fetched fresh so a co-sign or vote
  * the member just cast is reflected when they return to it.
+ *
+ * While the proposal is still live it **polls** (every {@link PROPOSAL_POLL_MS}),
+ * so the detail screen reflects the community acting in near-real-time — a
+ * co-sign that opens voting, ballots landing in the tally, the phase turning
+ * over — without the member re-opening it. Polling stops once the proposal has
+ * concluded, since a settled outcome no longer changes.
  */
 export function useProposal(proposalId: string): UseQueryResult<StationProposalDetail> {
   const client = useStationClient();
@@ -313,6 +326,8 @@ export function useProposal(proposalId: string): UseQueryResult<StationProposalD
     enabled: client !== null && wallet !== null,
     queryFn: (): Promise<StationProposalDetail> => client!.governanceProposal(proposalId),
     staleTime: 0,
+    refetchInterval: query =>
+      query.state.data?.phase === 'concluded' ? false : PROPOSAL_POLL_MS,
   });
 }
 

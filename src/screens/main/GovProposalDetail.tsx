@@ -244,20 +244,24 @@ function ProposalBody({
   );
 
   function renderAction() {
-    // Local success takes precedence — show what the member just did.
-    if (acted === 'cosigned') {
+    // A cast ballot is terminal for this member: the read surface can't tell us
+    // they voted, so we hold the confirmation locally and never re-offer a vote.
+    if (acted === 'voted') {
+      return (
+        <Banner variant="success" title="Vote cast">
+          Your ballot is recorded. It can’t be changed.
+        </Banner>
+      );
+    }
+    // A co-sign shows its confirmation only until polling reveals voting has
+    // opened — then we fall through to the ballot, so the member can vote
+    // without leaving and re-opening the screen.
+    if (acted === 'cosigned' && action !== 'vote') {
       return (
         <Banner variant="success" title="Co-signed">
           Your endorsement is recorded. Once{' '}
           {cosignThreshold !== undefined ? cosignThreshold : 'enough'} members
           co-sign, voting opens.
-        </Banner>
-      );
-    }
-    if (acted === 'voted') {
-      return (
-        <Banner variant="success" title="Vote cast">
-          Your ballot is recorded. It can’t be changed.
         </Banner>
       );
     }
