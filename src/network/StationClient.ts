@@ -230,7 +230,9 @@ export class StationClient {
       | 'submit_inquiry_message'
       | 'submit_inquiry_close'
       | 'submit_contract'
-      | 'submit_contract_termination',
+      | 'submit_contract_termination'
+      | 'governance_submit_cosign'
+      | 'governance_submit_vote',
     field:
       | 'signed_proposal'
       | 'signed_confirmation'
@@ -242,7 +244,9 @@ export class StationClient {
       | 'signed_message'
       | 'signed_close'
       | 'signed_contract'
-      | 'signed_termination',
+      | 'signed_termination'
+      | 'signed_cosign'
+      | 'signed_vote',
     canonicalPayload: Uint8Array,
     signature: Uint8Array,
   ): Promise<Record<string, unknown>> {
@@ -582,6 +586,94 @@ export class StationClient {
       contract_id: contractId,
     });
     return result as unknown as StationContractDetail;
+  }
+
+  /**
+   * `governance_charter` — the community's Charter (T1.9.8), as the constitutional
+   * layer the governance hub renders. A community that has not published its
+   * genesis Charter yet comes back as a placeholder with `published: false` and
+   * all-zero defaults; the hub renders a "still bootstrapping" empty state for it
+   * rather than a real charter.
+   */
+  async governanceCharter(): Promise<StationCharter> {
+    const result = await this.call('governance_charter', {});
+    return result as unknown as StationCharter;
+  }
+
+  /**
+   * `governance_proposals` — every proposal the station knows (T1.9.8), each with
+   * its phase, co-signer count, and live tally, for the hub list. Derived on the
+   * station from the log on each read; there is no address param.
+   */
+  async governanceProposals(): Promise<{proposals: StationProposalSummary[]}> {
+    const result = await this.call('governance_proposals', {});
+    const proposals = Array.isArray(result.proposals)
+      ? (result.proposals as StationProposalSummary[])
+      : [];
+    return {proposals};
+  }
+
+  /**
+   * `governance_proposal` — one proposal in full (T1.9.8), for the detail screen:
+   * the summary fields plus the markdown `body` and the list of co-signers.
+   * Throws a `method-error` when the station has never seen the id.
+   */
+  async governanceProposal(proposalId: string): Promise<StationProposalDetail> {
+    const result = await this.call('governance_proposal', {proposal_id: proposalId});
+    return result as unknown as StationProposalDetail;
+  }
+
+  /**
+   * `governance_statutes` — the statutes in force (T1.9.8): proposals that passed
+   * and have been enacted, newest first, for the "in force" section of the hub.
+   */
+  async governanceStatutes(): Promise<{statutes: StationStatuteSummary[]}> {
+    const result = await this.call('governance_statutes', {});
+    const statutes = Array.isArray(result.statutes)
+      ? (result.statutes as StationStatuteSummary[])
+      : [];
+    return {statutes};
+  }
+
+  /**
+   * `governance_submit_cosign` — endorse a proposal toward its publication
+   * threshold (T1.9.8). `canonicalPayload`/`signature` come from
+   * `createSignedCosign`; the station verifies the co-signer is this paired
+   * mobile and an established member, appends it, and returns the distinct
+   * co-signer count now gathered.
+   */
+  async submitCosign(
+    canonicalPayload: Uint8Array,
+    signature: Uint8Array,
+  ): Promise<{cosignerCount: number}> {
+    const result = await this.submitSignedRecord(
+      'governance_submit_cosign',
+      'signed_cosign',
+      canonicalPayload,
+      signature,
+    );
+    return {
+      cosignerCount:
+        typeof result.cosigner_count === 'number' ? result.cosigner_count : 0,
+    };
+  }
+
+  /**
+   * `governance_submit_vote` — cast a ballot on a published proposal (T1.9.8).
+   * `canonicalPayload`/`signature` come from `createSignedVote`; the station
+   * verifies the voter is this paired mobile and an established member, that the
+   * window is open, and that they have not already voted, then appends it.
+   */
+  async submitVote(
+    canonicalPayload: Uint8Array,
+    signature: Uint8Array,
+  ): Promise<void> {
+    await this.submitSignedRecord(
+      'governance_submit_vote',
+      'signed_vote',
+      canonicalPayload,
+      signature,
+    );
   }
 
   /**
@@ -933,6 +1025,128 @@ export interface StationReputationBand {
   band: StationReputationBandName;
   /** Unix seconds the underlying profile was computed as of. */
   computed_at: number;
+}
+
+/**
+ * A community's Charter, as the station reports it (T1.9.8). A community that has
+ * not published its genesis Charter yet comes back with `published: false` and
+ * all-zero defaults — the governance hub renders a bootstrapping empty state for
+ * that rather than a real charter.
+ */
+export interface StationCharter {
+  /** Whether a genuine Charter has been published (vs. the bootstrap placeholder). */
+  published: boolean;
+  /** The Charter's version; 1 for the genesis Charter, +1 per enacted amendment. */
+  version: number;
+  /** Content address: hex of the Blake3 hash of the Charter body; null while unpublished. */
+  charter_hash: string | null;
+  /** The community identifier the Charter governs. */
+  community_id: string;
+  /** The founding principles, as free-text lines. */
+  founding_principles: string[];
+  /** The rights floor every member is guaranteed, as free-text lines. */
+  rights_floor: string[];
+  /** The founders' bech32m `rrn1…` addresses. */
+  founders: string[];
+  /** Statute proposals: participation quorum, as a percent of the electorate. */
+  statute_quorum_pct: number;
+  /** Statute proposals: yes-of-decisive approval, as a percent. */
+  statute_approval_pct: number;
+  /** Days a proposal deliberates and votes (one concurrent window). */
+  deliberation_window_days: number;
+  /** Days between a proposal passing and taking effect. */
+  implementation_delay_days: number;
+  /** Emergency proposals: the approval threshold, as a percent. */
+  emergency_threshold_pct: number;
+  /** Charter amendments: participation quorum, as a percent. */
+  charter_quorum_pct: number;
+  /** Charter amendments: yes-of-decisive approval, as a percent. */
+  charter_approval_pct: number;
+  /** Days a charter amendment deliberates and votes. */
+  charter_deliberation_window_days: number;
+  /** Distinct established co-signers a proposal needs to publish. */
+  cosign_threshold: number;
+}
+
+/** What a proposal would do (T1.9.8) — the station's `kind` discriminant. */
+export type StationProposalKind =
+  | 'statute'
+  | 'administrative_rule'
+  | 'charter_amendment'
+  | 'emergency';
+
+/** Where a proposal sits in its lifecycle (T1.9.8). */
+export type StationProposalPhase = 'deliberation' | 'voting' | 'concluded';
+
+/** A concluded proposal's result, once its window has closed. */
+export type StationProposalOutcome = 'passed' | 'failed';
+
+/** A proposal's running vote count and thresholds (T1.9.8). */
+export interface StationTally {
+  /** Yes ballots. */
+  yes: number;
+  /** No ballots. */
+  no: number;
+  /** Abstain ballots — turnout toward quorum, but not toward approval. */
+  abstain: number;
+  /** The electorate size (established members) the thresholds are measured against. */
+  eligible_voters: number;
+  /** Whether participation has reached the quorum threshold. */
+  quorum_met: boolean;
+  /** Whether yes-of-decisive has reached the approval threshold. */
+  approval_met: boolean;
+  /** The decided outcome; absent while voting is still open. */
+  outcome?: StationProposalOutcome;
+}
+
+/** One proposal as the hub list shows it (T1.9.8). */
+export interface StationProposalSummary {
+  /** Content address: hex of the Blake3 hash of the proposal's canonical bytes. */
+  proposal_id: string;
+  /** The author's bech32m `rrn1…` address. */
+  author: string;
+  /** The proposal's title. */
+  title: string;
+  /** What the proposal would do. */
+  kind: StationProposalKind;
+  /** The administrative scope — present only for `administrative_rule`. */
+  scope?: string;
+  /** Unix seconds the proposal was created. */
+  created_at: number;
+  /** Unix seconds the deliberation+voting window closes. */
+  voting_ends_at: number;
+  /** Unix seconds the proposal takes effect if it passes. */
+  implementation_at: number;
+  /** Where the proposal sits in its lifecycle. */
+  phase: StationProposalPhase;
+  /** Whether the co-sign threshold has been met (voting is genuinely open). */
+  published: boolean;
+  /** Distinct established co-signers gathered. */
+  cosigner_count: number;
+  /** The running vote count and thresholds. */
+  tally: StationTally;
+  /** Whether the proposal has been enacted (its effect recorded). */
+  enacted: boolean;
+}
+
+/** One proposal in full (T1.9.8) — the summary plus body and co-signers. */
+export interface StationProposalDetail extends StationProposalSummary {
+  /** The proposal's markdown body. */
+  body: string;
+  /** The co-signers' bech32m `rrn1…` addresses. */
+  cosigners: string[];
+}
+
+/** A statute in force (T1.9.8): a proposal that passed and was enacted. */
+export interface StationStatuteSummary {
+  /** The originating proposal's content address, hex. */
+  proposal_id: string;
+  /** The statute's title. */
+  title: string;
+  /** What kind of rule it enacted. */
+  kind: StationProposalKind;
+  /** Unix seconds the statute took effect. */
+  implemented_at: number;
 }
 
 /** A marketplace surface tag (T1.7.0): which of the three catalogues a listing sits in. */

@@ -99,6 +99,10 @@ export type MainStackParamList = {
   Contracts: undefined;
   /** One contract's status — cadence, periods charged, terminate (T1.7.7). */
   Contract: {contractId: string};
+  /** The governance hub (T1.9.8): the Charter, proposals, and statutes in force. */
+  Governance: undefined;
+  /** One proposal in full (T1.9.8): body, tally, and co-sign / vote actions. */
+  GovProposalDetail: {proposalId: string};
   /** Vouch for someone: scan their address QR, review, sign & submit (T1.4.1). */
   Vouch: undefined;
   /** The vouching browser (T1.4.5): given/received vouch lists, opened on a tab. */

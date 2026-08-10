@@ -24,13 +24,18 @@ import {
 } from '../network/useStation';
 import {
   StationClientError,
+  type StationCharter,
   type StationErrorKind,
+  type StationProposalDetail,
+  type StationProposalSummary,
   type StationReputation,
+  type StationStatuteSummary,
   type StationTransactionRow,
   type StationVouchCounts,
   type StationVouchLists,
 } from '../network/StationClient';
 import {createConfirmation} from '../wallet/confirmation';
+import {createSignedCosign, createSignedVote, type VoteChoice} from '../wallet/governance';
 import {createSendProposal} from '../wallet/proposal';
 import {createSignedVouch} from '../wallet/vouch';
 import {saveVouchNickname} from '../wallet/vouchNicknames';
@@ -93,6 +98,10 @@ export const ledgerKeys = {
   vouchCounts: ['ledger', 'vouchCounts'] as const,
   vouches: ['ledger', 'vouches'] as const,
   reputation: ['ledger', 'reputation'] as const,
+  charter: ['ledger', 'charter'] as const,
+  proposals: ['ledger', 'proposals'] as const,
+  proposal: ['ledger', 'proposal'] as const,
+  statutes: ['ledger', 'statutes'] as const,
 };
 
 export function useIdentity(): UseQueryResult<Identity> {
@@ -255,6 +264,139 @@ export function useReputation(): UseQueryResult<StationReputation> {
     queryFn: (): Promise<StationReputation> => client!.reputation(),
     staleTime: 0,
   });
+}
+
+/**
+ * The community's Charter (T1.9.8) — the constitutional layer the governance hub
+ * renders. Disabled when locked / unpaired; keyed by the client's presence so
+ * pairing refetches. A community that has not published a genesis Charter comes
+ * back with `published: false`, which the hub renders as a bootstrapping state.
+ */
+export function useCharter(): UseQueryResult<StationCharter> {
+  const client = useStationClient();
+  const {wallet} = useWalletSession();
+  return useQuery({
+    queryKey: [...ledgerKeys.charter, wallet?.address, client !== null],
+    enabled: client !== null && wallet !== null,
+    queryFn: (): Promise<StationCharter> => client!.governanceCharter(),
+    staleTime: 0,
+  });
+}
+
+/**
+ * Every governance proposal the station knows (T1.9.8), newest activity first,
+ * for the hub list. Fetched fresh (no stale window) so a just-cast vote or a
+ * just-published proposal shows on next open. Disabled when locked / unpaired.
+ */
+export function useProposals(): UseQueryResult<StationProposalSummary[]> {
+  const client = useStationClient();
+  const {wallet} = useWalletSession();
+  return useQuery({
+    queryKey: [...ledgerKeys.proposals, wallet?.address, client !== null],
+    enabled: client !== null && wallet !== null,
+    queryFn: async (): Promise<StationProposalSummary[]> =>
+      (await client!.governanceProposals()).proposals,
+    staleTime: 0,
+  });
+}
+
+/**
+ * One proposal in full (T1.9.8) for the detail screen: summary, markdown body,
+ * and co-signers. Keyed by the proposal id; fetched fresh so a co-sign or vote
+ * the member just cast is reflected when they return to it.
+ */
+export function useProposal(proposalId: string): UseQueryResult<StationProposalDetail> {
+  const client = useStationClient();
+  const {wallet} = useWalletSession();
+  return useQuery({
+    queryKey: [...ledgerKeys.proposal, proposalId, wallet?.address, client !== null],
+    enabled: client !== null && wallet !== null,
+    queryFn: (): Promise<StationProposalDetail> => client!.governanceProposal(proposalId),
+    staleTime: 0,
+  });
+}
+
+/** The statutes in force (T1.9.8): enacted proposals, newest first. */
+export function useStatutes(): UseQueryResult<StationStatuteSummary[]> {
+  const client = useStationClient();
+  const {wallet} = useWalletSession();
+  return useQuery({
+    queryKey: [...ledgerKeys.statutes, wallet?.address, client !== null],
+    enabled: client !== null && wallet !== null,
+    queryFn: async (): Promise<StationStatuteSummary[]> =>
+      (await client!.governanceStatutes()).statutes,
+    staleTime: 0,
+  });
+}
+
+/**
+ * Returns a function that co-signs a proposal: it builds and signs a
+ * {@link createSignedCosign} on-device and transmits it over the authenticated
+ * channel (T1.9.8), endorsing the proposal toward its publication threshold.
+ * Online-only like a vouch — the endorsement is signed at co-sign time — and on
+ * success returns the distinct co-signer count the station now counts.
+ */
+export function useCosignProposal(): (
+  proposalId: string,
+) => Promise<WriteResult<{cosignerCount: number}>> {
+  const client = useStationClient();
+  const {wallet} = useWalletSession();
+  const queryClient = useQueryClient();
+  return useCallback(
+    async proposalId => {
+      if (client === null || wallet === null) {
+        return {ok: false, error: 'locked', message: 'Unlock your wallet and pair a station.'};
+      }
+      try {
+        const cosignedAt = Math.floor(Date.now() / 1000);
+        const cosign = await createSignedCosign(wallet, proposalId, cosignedAt);
+        const {cosignerCount} = await client.submitCosign(
+          cosign.payloadBytes,
+          cosign.signature,
+        );
+        await queryClient.invalidateQueries({queryKey: ledgerKeys.proposals});
+        await queryClient.invalidateQueries({queryKey: ledgerKeys.proposal});
+        return {ok: true, cosignerCount};
+      } catch (e) {
+        return asWriteError(e);
+      }
+    },
+    [client, wallet, queryClient],
+  );
+}
+
+/**
+ * Returns a function that casts a ballot on a published proposal: it builds and
+ * signs a {@link createSignedVote} on-device and transmits it over the
+ * authenticated channel (T1.9.8). Online-only — the ballot is signed at cast
+ * time — and the station rejects a second ballot from the same member, so the
+ * detail screen treats a successful cast as final.
+ */
+export function useCastVote(): (
+  proposalId: string,
+  choice: VoteChoice,
+) => Promise<WriteResult> {
+  const client = useStationClient();
+  const {wallet} = useWalletSession();
+  const queryClient = useQueryClient();
+  return useCallback(
+    async (proposalId, choice) => {
+      if (client === null || wallet === null) {
+        return {ok: false, error: 'locked', message: 'Unlock your wallet and pair a station.'};
+      }
+      try {
+        const castAt = Math.floor(Date.now() / 1000);
+        const vote = await createSignedVote(wallet, proposalId, choice, castAt);
+        await client.submitVote(vote.payloadBytes, vote.signature);
+        await queryClient.invalidateQueries({queryKey: ledgerKeys.proposals});
+        await queryClient.invalidateQueries({queryKey: ledgerKeys.proposal});
+        return {ok: true};
+      } catch (e) {
+        return asWriteError(e);
+      }
+    },
+    [client, wallet, queryClient],
+  );
 }
 
 /** Current transport state. */

@@ -85,6 +85,15 @@ export function Community({navigation}: MainTabScreenProps<'Community'>) {
         />
       </Group>
 
+      <Group theme={theme} label="Governance">
+        <NavRow
+          theme={theme}
+          title="Charter & proposals"
+          subtitle="Read the community’s rules, co-sign and vote on proposals"
+          onPress={() => navigation.navigate('Governance')}
+        />
+      </Group>
+
       <Group theme={theme} label="Web of trust">
         <NavRow
           theme={theme}

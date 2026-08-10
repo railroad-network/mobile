@@ -462,4 +462,159 @@ describe('StationClient', () => {
     });
     expect(band.band).toBe('New');
   });
+
+  test('governance_charter asks for no address and returns the charter (T1.9.8)', async () => {
+    const store = await pairedStore();
+    let seen: {method: string; params: string} | null = null;
+    const fetchImpl = (async (_url: string, init: {body: Uint8Array}) => {
+      const {method, params} = readRequest(init.body);
+      seen = {method, params};
+      return okResponse(
+        stationReply(init.body, () => ({
+          result: JSON.stringify({
+            published: true,
+            version: 1,
+            charter_hash: 'ab'.repeat(32),
+            community_id: 'rrn-phase0',
+            founding_principles: ['Be kind'],
+            rights_floor: ['A voice'],
+            founders: ['rrn1a', 'rrn1b'],
+            statute_quorum_pct: 30,
+            statute_approval_pct: 50,
+            deliberation_window_days: 7,
+            implementation_delay_days: 7,
+            emergency_threshold_pct: 67,
+            charter_quorum_pct: 50,
+            charter_approval_pct: 75,
+            charter_deliberation_window_days: 30,
+            cosign_threshold: 3,
+          }),
+        })),
+      );
+    }) as unknown as typeof fetch;
+
+    const charter = await clientWith(store, fetchImpl).governanceCharter();
+    expect(seen).toEqual({method: 'governance_charter', params: '{}'});
+    expect(charter.published).toBe(true);
+    expect(charter.cosign_threshold).toBe(3);
+  });
+
+  test('governance_proposals unwraps the proposals array (T1.9.8)', async () => {
+    const store = await pairedStore();
+    const fetchImpl = (async (_url: string, init: {body: Uint8Array}) =>
+      okResponse(
+        stationReply(init.body, () => ({
+          result: JSON.stringify({
+            proposals: [
+              {
+                proposal_id: 'aa'.repeat(32),
+                author: 'rrn1a',
+                title: 'A statute',
+                kind: 'statute',
+                created_at: 1,
+                voting_ends_at: 2,
+                implementation_at: 3,
+                phase: 'voting',
+                published: true,
+                cosigner_count: 3,
+                tally: {
+                  yes: 2,
+                  no: 1,
+                  abstain: 0,
+                  eligible_voters: 5,
+                  quorum_met: false,
+                  approval_met: true,
+                },
+                enacted: false,
+              },
+            ],
+          }),
+        })),
+      )) as unknown as typeof fetch;
+
+    const {proposals} = await clientWith(store, fetchImpl).governanceProposals();
+    expect(proposals).toHaveLength(1);
+    expect(proposals[0].kind).toBe('statute');
+    expect(proposals[0].tally.yes).toBe(2);
+  });
+
+  test('governance_proposal carries the proposal id it asks about (T1.9.8)', async () => {
+    const store = await pairedStore();
+    let seen: {method: string; params: string} | null = null;
+    const id = 'cc'.repeat(32);
+    const fetchImpl = (async (_url: string, init: {body: Uint8Array}) => {
+      const {method, params} = readRequest(init.body);
+      seen = {method, params};
+      return okResponse(
+        stationReply(init.body, () => ({
+          result: JSON.stringify({
+            proposal_id: id,
+            author: 'rrn1a',
+            title: 'A statute',
+            kind: 'statute',
+            created_at: 1,
+            voting_ends_at: 2,
+            implementation_at: 3,
+            phase: 'deliberation',
+            published: false,
+            cosigner_count: 1,
+            tally: {
+              yes: 0,
+              no: 0,
+              abstain: 0,
+              eligible_voters: 5,
+              quorum_met: false,
+              approval_met: false,
+            },
+            enacted: false,
+            body: 'The full text.',
+            cosigners: ['rrn1a'],
+          }),
+        })),
+      );
+    }) as unknown as typeof fetch;
+
+    const detail = await clientWith(store, fetchImpl).governanceProposal(id);
+    expect(seen).toEqual({
+      method: 'governance_proposal',
+      params: JSON.stringify({proposal_id: id}),
+    });
+    expect(detail.body).toBe('The full text.');
+    expect(detail.cosigners).toEqual(['rrn1a']);
+  });
+
+  test('submitCosign posts governance_submit_cosign and returns the count (T1.9.8)', async () => {
+    const store = await pairedStore();
+    let seenMethod = '';
+    const fetchImpl = (async (_url: string, init: {body: Uint8Array}) => {
+      seenMethod = readRequest(init.body).method;
+      return okResponse(
+        stationReply(init.body, () => ({result: JSON.stringify({cosigner_count: 2})})),
+      );
+    }) as unknown as typeof fetch;
+
+    const result = await clientWith(store, fetchImpl).submitCosign(
+      new Uint8Array([1, 2, 3]),
+      new Uint8Array(64),
+    );
+    expect(seenMethod).toBe('governance_submit_cosign');
+    expect(result.cosignerCount).toBe(2);
+  });
+
+  test('submitVote posts governance_submit_vote (T1.9.8)', async () => {
+    const store = await pairedStore();
+    let seenMethod = '';
+    const fetchImpl = (async (_url: string, init: {body: Uint8Array}) => {
+      seenMethod = readRequest(init.body).method;
+      return okResponse(
+        stationReply(init.body, () => ({result: JSON.stringify({ok: true})})),
+      );
+    }) as unknown as typeof fetch;
+
+    await clientWith(store, fetchImpl).submitVote(
+      new Uint8Array([1, 2, 3]),
+      new Uint8Array(64),
+    );
+    expect(seenMethod).toBe('governance_submit_vote');
+  });
 });
