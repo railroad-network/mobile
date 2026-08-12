@@ -45,6 +45,16 @@ describe('applyDecisions', () => {
     const input = [tx({id: 'y'})];
     expect(applyDecisions(input)).toEqual(input);
   });
+
+  test('does not mask a station row that has advanced past pending', () => {
+    // The station is authoritative once it reconciles the proposal. A stale local
+    // "confirmed" decision must not override a `cancelled` row for a transfer the
+    // dispute jury voided after the receiver had confirmed it (T1.10.7 finding).
+    recordDecision('x', {state: 'confirmed', confirmedAt: 500});
+    expect(applyDecisions([tx({id: 'x', state: 'cancelled'})])[0].state).toBe('cancelled');
+    expect(applyDecisions([tx({id: 'x', state: 'settled'})])[0].state).toBe('settled');
+    expect(applyDecisions([tx({id: 'x', state: 'disputed'})])[0].state).toBe('disputed');
+  });
 });
 
 describe('isExpired / settlementAt', () => {

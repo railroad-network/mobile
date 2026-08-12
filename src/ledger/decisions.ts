@@ -53,6 +53,14 @@ export function applyDecisions(txs: Transaction[]): Transaction[] {
     if (decision === undefined) {
       return tx;
     }
+    // The station is authoritative once it has advanced the proposal past
+    // `pending`: a stale local decision must never mask the row the station now
+    // reports — most importantly a `cancelled` row for a dispute-voided transfer
+    // the receiver had earlier confirmed. Only overlay while the station has not
+    // yet reconciled the confirm/reject (still `pending`).
+    if (tx.state !== 'pending') {
+      return tx;
+    }
     return {...tx, state: decision.state, confirmedAt: decision.confirmedAt ?? tx.confirmedAt};
   });
 }
