@@ -235,7 +235,9 @@ export class StationClient {
       | 'governance_submit_vote'
       | 'submit_dispute'
       | 'submit_dispute_response'
-      | 'submit_verdict',
+      | 'submit_verdict'
+      | 'submit_escalation'
+      | 'submit_escalation_ballot',
     field:
       | 'signed_proposal'
       | 'signed_confirmation'
@@ -252,7 +254,9 @@ export class StationClient {
       | 'signed_vote'
       | 'signed_dispute'
       | 'signed_response'
-      | 'signed_verdict',
+      | 'signed_verdict'
+      | 'signed_escalation'
+      | 'signed_ballot',
     canonicalPayload: Uint8Array,
     signature: Uint8Array,
   ): Promise<Record<string, unknown>> {
@@ -757,6 +761,44 @@ export class StationClient {
     await this.submitSignedRecord(
       'submit_verdict',
       'signed_verdict',
+      canonicalPayload,
+      signature,
+    );
+  }
+
+  /**
+   * `submit_escalation` — put a dispute to the electorate (ADR-0014 §5, T1.10.6).
+   * `canonicalPayload`/`signature` come from `createSignedEscalation`; the station
+   * verifies the initiator is this paired mobile and a party, and that the reason
+   * fits the dispute's state (an appeal only against a live ruling in its appeal
+   * window; a cannot-seat only when the pool genuinely can't seat a panel).
+   */
+  async submitEscalation(
+    canonicalPayload: Uint8Array,
+    signature: Uint8Array,
+  ): Promise<void> {
+    await this.submitSignedRecord(
+      'submit_escalation',
+      'signed_escalation',
+      canonicalPayload,
+      signature,
+    );
+  }
+
+  /**
+   * `submit_escalation_ballot` — cast a ballot in an open escalation (ADR-0014 §5,
+   * T1.10.6). `canonicalPayload`/`signature` come from
+   * `createSignedEscalationBallot`; the station verifies the voter is this paired
+   * mobile and an eligible established non-party member, that the sub-window is
+   * open, and that they have not already voted.
+   */
+  async submitEscalationBallot(
+    canonicalPayload: Uint8Array,
+    signature: Uint8Array,
+  ): Promise<void> {
+    await this.submitSignedRecord(
+      'submit_escalation_ballot',
+      'signed_ballot',
       canonicalPayload,
       signature,
     );

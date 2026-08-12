@@ -38,6 +38,17 @@ const DISPUTE_KIND = 'rrn.tx.dispute';
 const DISPUTE_RESPONSE_KIND = 'rrn.tx.dispute.response';
 /** The `kind` discriminant on a juror verdict's canonical CBOR. */
 const VERDICT_KIND = 'rrn.dispute.verdict';
+/** The `kind` discriminant on an escalation's canonical CBOR. */
+const ESCALATION_KIND = 'rrn.dispute.escalation';
+/** The `kind` discriminant on an escalation ballot's canonical CBOR. */
+const ESCALATION_BALLOT_KIND = 'rrn.dispute.escalation_ballot';
+
+/**
+ * Why a dispute is put to the electorate (ADR-0014 §5): a party contests the
+ * jury's ruling (`appeal`), or the jury could not seat a panel (`cannot_seat`).
+ * Matches the text the station's `EscalationReason` encodes to.
+ */
+export type EscalationReason = 'appeal' | 'cannot_seat';
 
 /** A signed dispute, ready to transmit to the paired station. */
 export interface SignedDispute {
@@ -186,6 +197,105 @@ export async function createSignedVerdict(
   return {
     txId: txIdHex,
     jurorAddress: wallet.address,
+    uphold,
+    castAt,
+    payloadBytes: canonical,
+    signature: signature.toBytes(),
+  };
+}
+
+/** A signed escalation, ready to transmit to the paired station. */
+export interface SignedEscalation {
+  /** The disputed transaction's content address, hex. */
+  txId: string;
+  /** The initiator's (this wallet's) bech32m `rrn1…` address. */
+  initiatorAddress: string;
+  /** Why the escalation was opened. */
+  reason: EscalationReason;
+  /** Unix seconds when the escalation was opened. */
+  openedAt: number;
+  /** The canonical dCBOR bytes that were signed. */
+  payloadBytes: Uint8Array;
+  /** The initiator's Ed25519 signature over {@link payloadBytes}. */
+  signature: Uint8Array;
+}
+
+/** A signed escalation ballot, ready to transmit to the paired station. */
+export interface SignedEscalationBallot {
+  /** The disputed transaction's content address, hex. */
+  txId: string;
+  /** The voter's (this wallet's) bech32m `rrn1…` address. */
+  voterAddress: string;
+  /** Whether the voter votes to uphold the dispute (true) or reject it (false). */
+  uphold: boolean;
+  /** Unix seconds when the ballot was cast. */
+  castAt: number;
+  /** The canonical dCBOR bytes that were signed. */
+  payloadBytes: Uint8Array;
+  /** The voter's Ed25519 signature over {@link payloadBytes}. */
+  signature: Uint8Array;
+}
+
+/**
+ * Builds and signs a {@link SignedEscalation} putting the dispute over `txIdHex`
+ * to the electorate with `wallet` (ADR-0014 §5). A party opens it — to `appeal`
+ * a jury ruling or because the jury `cannot_seat` a panel.
+ */
+export async function createSignedEscalation(
+  wallet: Wallet,
+  txIdHex: string,
+  reason: EscalationReason,
+  openedAt: number,
+): Promise<SignedEscalation> {
+  // Matches the station's `From<EscalationRecord> for CBOR` (rrn-dispute
+  // `escalation.rs`). `reason` is a text field (`appeal`/`cannot_seat`).
+  const payload: CborValue = map([
+    ['kind', text(ESCALATION_KIND)],
+    ['proposal_id', bytes(hexToBytes(txIdHex))],
+    ['initiator', bytes(wallet.publicKey().toBytes())],
+    ['reason', text(reason)],
+    ['opened_at', int(openedAt)],
+  ]);
+
+  const canonical = canonicalBytes(payload);
+  const signature = await wallet.sign(canonical);
+
+  return {
+    txId: txIdHex,
+    initiatorAddress: wallet.address,
+    reason,
+    openedAt,
+    payloadBytes: canonical,
+    signature: signature.toBytes(),
+  };
+}
+
+/**
+ * Builds and signs a {@link SignedEscalationBallot} casting an eligible member's
+ * ballot on an open escalation with `wallet` (ADR-0014 §5).
+ */
+export async function createSignedEscalationBallot(
+  wallet: Wallet,
+  txIdHex: string,
+  uphold: boolean,
+  castAt: number,
+): Promise<SignedEscalationBallot> {
+  // Matches the station's `From<EscalationBallot> for CBOR`. As with a juror
+  // verdict, the boolean encodes as a text `ruling` field (`uphold`/`reject`).
+  const payload: CborValue = map([
+    ['kind', text(ESCALATION_BALLOT_KIND)],
+    ['proposal_id', bytes(hexToBytes(txIdHex))],
+    ['voter', bytes(wallet.publicKey().toBytes())],
+    ['ruling', text(uphold ? 'uphold' : 'reject')],
+    ['cast_at', int(castAt)],
+  ]);
+
+  const canonical = canonicalBytes(payload);
+  const signature = await wallet.sign(canonical);
+
+  return {
+    txId: txIdHex,
+    voterAddress: wallet.address,
     uphold,
     castAt,
     payloadBytes: canonical,

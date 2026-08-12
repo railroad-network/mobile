@@ -40,7 +40,10 @@ import {createConfirmation} from '../wallet/confirmation';
 import {
   createSignedDispute,
   createSignedDisputeResponse,
+  createSignedEscalation,
+  createSignedEscalationBallot,
   createSignedVerdict,
+  type EscalationReason,
 } from '../wallet/dispute';
 import {createSignedCosign, createSignedVote, type VoteChoice} from '../wallet/governance';
 import {createSendProposal} from '../wallet/proposal';
@@ -566,6 +569,73 @@ export function useCastVerdict(): (
         const castAt = Math.floor(Date.now() / 1000);
         const verdict = await createSignedVerdict(wallet, txId, uphold, castAt);
         await client.submitVerdict(verdict.payloadBytes, verdict.signature);
+        await queryClient.invalidateQueries({queryKey: ledgerKeys.dispute});
+        return {ok: true};
+      } catch (e) {
+        return asWriteError(e);
+      }
+    },
+    [client, wallet, queryClient],
+  );
+}
+
+/**
+ * Returns a function that puts a dispute to the electorate (ADR-0014 §5,
+ * T1.10.6): it builds and signs a {@link createSignedEscalation} on-device and
+ * transmits it over the authenticated channel — an `appeal` of a jury ruling or
+ * a `cannot_seat` when the pool is too small to seat a panel. Online-only, and
+ * the station rejects a non-party, a reason that doesn't fit the dispute's state,
+ * or a second escalation, so the detail screen surfaces a typed rejection plainly.
+ */
+export function useOpenEscalation(): (
+  txId: string,
+  reason: EscalationReason,
+) => Promise<WriteResult> {
+  const client = useStationClient();
+  const {wallet} = useWalletSession();
+  const queryClient = useQueryClient();
+  return useCallback(
+    async (txId, reason) => {
+      if (client === null || wallet === null) {
+        return {ok: false, error: 'locked', message: 'Unlock your wallet and pair a station.'};
+      }
+      try {
+        const openedAt = Math.floor(Date.now() / 1000);
+        const escalation = await createSignedEscalation(wallet, txId, reason, openedAt);
+        await client.submitEscalation(escalation.payloadBytes, escalation.signature);
+        await queryClient.invalidateQueries({queryKey: ledgerKeys.dispute});
+        return {ok: true};
+      } catch (e) {
+        return asWriteError(e);
+      }
+    },
+    [client, wallet, queryClient],
+  );
+}
+
+/**
+ * Returns a function that casts a ballot in an open escalation (ADR-0014 §5,
+ * T1.10.6): it builds and signs a {@link createSignedEscalationBallot} on-device
+ * and transmits it. Online-only — the ballot is signed at cast time — and the
+ * station rejects a party (recused), a non-established member, or a second
+ * ballot, so the detail screen treats a successful ballot as final.
+ */
+export function useCastEscalationBallot(): (
+  txId: string,
+  uphold: boolean,
+) => Promise<WriteResult> {
+  const client = useStationClient();
+  const {wallet} = useWalletSession();
+  const queryClient = useQueryClient();
+  return useCallback(
+    async (txId, uphold) => {
+      if (client === null || wallet === null) {
+        return {ok: false, error: 'locked', message: 'Unlock your wallet and pair a station.'};
+      }
+      try {
+        const castAt = Math.floor(Date.now() / 1000);
+        const ballot = await createSignedEscalationBallot(wallet, txId, uphold, castAt);
+        await client.submitEscalationBallot(ballot.payloadBytes, ballot.signature);
         await queryClient.invalidateQueries({queryKey: ledgerKeys.dispute});
         return {ok: true};
       } catch (e) {

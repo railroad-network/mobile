@@ -29,6 +29,8 @@ import {
 import {
   createSignedDispute,
   createSignedDisputeResponse,
+  createSignedEscalation,
+  createSignedEscalationBallot,
   createSignedVerdict,
 } from '../src/wallet/dispute';
 import type {Wallet} from '../src/wallet/Wallet';
@@ -197,6 +199,65 @@ describe('createSignedVerdict', () => {
       // The boolean verdict encodes as a text `ruling` field, not a bool.
       expect(e.ruling).toEqual({text: ruling});
       expect(e.cast_at).toEqual({int: '1754001000'});
+    },
+  );
+});
+
+describe('createSignedEscalation', () => {
+  test.each(['appeal', 'cannot_seat'] as const)(
+    'builds a station-matching %s escalation and signs it',
+    async reason => {
+      const s = await createSignedEscalation(
+        fakeWallet('rrn1initiator'),
+        TX_ID,
+        reason,
+        1_754_002_000,
+      );
+
+      expect(s.txId).toBe(TX_ID);
+      expect(s.initiatorAddress).toBe('rrn1initiator');
+      expect(s.reason).toBe(reason);
+      expect(s.openedAt).toBe(1_754_002_000);
+      expect(s.signature.length).toBeGreaterThan(0);
+
+      const e = capturedEntries();
+      expect(e.kind).toEqual({text: 'rrn.dispute.escalation'});
+      expect(e.proposal_id).toEqual({bytes: TX_ID});
+      expect(e.initiator).toHaveProperty('bytes');
+      // The reason is a text string appeal/cannot_seat, matching EscalationReason.
+      expect(e.reason).toEqual({text: reason});
+      expect(e.opened_at).toEqual({int: '1754002000'});
+    },
+  );
+});
+
+describe('createSignedEscalationBallot', () => {
+  test.each([
+    [true, 'uphold'],
+    [false, 'reject'],
+  ] as const)(
+    'builds a station-matching ballot (uphold=%s → ruling=%s) and signs it',
+    async (uphold, ruling) => {
+      const b = await createSignedEscalationBallot(
+        fakeWallet('rrn1voter'),
+        TX_ID,
+        uphold,
+        1_754_002_500,
+      );
+
+      expect(b.txId).toBe(TX_ID);
+      expect(b.voterAddress).toBe('rrn1voter');
+      expect(b.uphold).toBe(uphold);
+      expect(b.castAt).toBe(1_754_002_500);
+      expect(b.signature.length).toBeGreaterThan(0);
+
+      const e = capturedEntries();
+      expect(e.kind).toEqual({text: 'rrn.dispute.escalation_ballot'});
+      expect(e.proposal_id).toEqual({bytes: TX_ID});
+      expect(e.voter).toHaveProperty('bytes');
+      // As with a juror verdict, the boolean encodes as a text `ruling` field.
+      expect(e.ruling).toEqual({text: ruling});
+      expect(e.cast_at).toEqual({int: '1754002500'});
     },
   );
 });

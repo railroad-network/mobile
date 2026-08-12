@@ -30,6 +30,8 @@ const mockDispute: {
 
 const mockRespondFn = jest.fn();
 const mockCastVerdictFn = jest.fn();
+const mockOpenEscalationFn = jest.fn();
+const mockCastBallotFn = jest.fn();
 
 jest.mock('../src/ledger', () => ({
   ...jest.requireActual('../src/ledger'),
@@ -37,6 +39,8 @@ jest.mock('../src/ledger', () => ({
   useIdentity: () => ({data: {address: SELF}}),
   useRespondToDispute: () => mockRespondFn,
   useCastVerdict: () => mockCastVerdictFn,
+  useOpenEscalation: () => mockOpenEscalationFn,
+  useCastEscalationBallot: () => mockCastBallotFn,
 }));
 
 const metrics = {
@@ -132,7 +136,28 @@ beforeEach(() => {
   mockDispute.refetch = jest.fn();
   mockRespondFn.mockReset();
   mockCastVerdictFn.mockReset();
+  mockOpenEscalationFn.mockReset();
+  mockCastBallotFn.mockReset();
 });
+
+/** An open escalation view, as the station's read surface returns it. */
+function escalation(
+  overrides: Partial<NonNullable<DisputeDetailData['escalation']>> = {},
+): NonNullable<DisputeDetailData['escalation']> {
+  const now = Math.floor(Date.now() / 1000);
+  return {
+    reason: 'appeal',
+    initiator: OTHER,
+    opened_at: now - 600,
+    closes_at: now + 3600,
+    uphold: 1,
+    reject: 0,
+    eligible: 5,
+    quorum_met: false,
+    approval_met: true,
+    ...overrides,
+  };
+}
 
 test('the counterparty (a party who did not raise it) is offered a response', async () => {
   // SELF is the receiver; OTHER raised it — so SELF is the counterparty.
@@ -240,4 +265,73 @@ test('a terminal outcome closes the actions and shows the result', async () => {
   expect(hasText(r, 'This dispute has reached an outcome')).toBe(true);
   expect(hasText(r, 'You’ve been drawn onto the jury')).toBe(false);
   expect(hasText(r, 'Upheld')).toBe(true);
+});
+
+test('a party can appeal a jury ruling in its appeal window', async () => {
+  // SELF is a party; the jury has ruled and the appeal window is open.
+  mockOpenEscalationFn.mockResolvedValue({ok: true});
+  mockDispute.data = detail({resolution: 'awaiting_appeal'});
+  const r = await renderDetail();
+  expect(hasText(r, 'The jury has ruled')).toBe(true);
+
+  await press(pressableByLabel(r, 'Appeal to the community').onPress);
+  expect(mockOpenEscalationFn).toHaveBeenCalledWith(TX_ID, 'appeal');
+  expect(hasText(r, 'Put to the community')).toBe(true);
+});
+
+test('a party can escalate when the jury pool is too small to seat a panel', async () => {
+  // Pending, with a pool of 1 — below the majority of a 3-seat panel.
+  mockOpenEscalationFn.mockResolvedValue({ok: true});
+  mockDispute.data = detail({resolution: 'pending', eligible_pool_size: 1});
+  const r = await renderDetail();
+  expect(hasText(r, 'The jury pool is too small')).toBe(true);
+
+  await press(pressableByLabel(r, 'Escalate to the community').onPress);
+  expect(mockOpenEscalationFn).toHaveBeenCalledWith(TX_ID, 'cannot_seat');
+});
+
+test('an eligible non-party member is offered an escalation ballot', async () => {
+  mockCastBallotFn.mockResolvedValue({ok: true});
+  // SELF is neither party; an escalation is open and the sub-window is running.
+  mockDispute.data = detail({
+    sender: OTHER,
+    receiver: JUROR2,
+    raiser: OTHER,
+    resolution: 'escalation_pending',
+    escalation: escalation({reason: 'cannot_seat'}),
+  });
+  const r = await renderDetail();
+  expect(hasText(r, 'Cast your ballot')).toBe(true);
+
+  // Two taps, like a juror verdict.
+  expect(pressableByLabel(r, 'Pick a ballot').onPress).toBeUndefined();
+  await press(pressableByLabel(r, 'Uphold').onPress);
+  await press(pressableByLabel(r, 'Cast “Uphold”').onPress);
+
+  expect(mockCastBallotFn).toHaveBeenCalledWith(TX_ID, true);
+  expect(hasText(r, 'Ballot cast')).toBe(true);
+});
+
+test('a party is recused from voting in an open escalation', async () => {
+  // SELF is the receiver — a party — so no ballot, just a recusal note.
+  mockDispute.data = detail({
+    resolution: 'escalation_pending',
+    escalation: escalation(),
+  });
+  const r = await renderDetail();
+  expect(hasText(r, 'You’re a party — recused')).toBe(true);
+  expect(hasText(r, 'Cast your ballot')).toBe(false);
+});
+
+test('a decided escalation is read-only and shows the outcome', async () => {
+  mockDispute.data = detail({
+    sender: OTHER,
+    receiver: JUROR2,
+    raiser: OTHER,
+    resolution: 'escalation_upheld',
+    escalation: escalation({uphold: 4, reject: 1, quorum_met: true}),
+  });
+  const r = await renderDetail();
+  expect(hasText(r, 'The community has decided')).toBe(true);
+  expect(hasText(r, 'Cast your ballot')).toBe(false);
 });
