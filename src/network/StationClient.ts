@@ -232,7 +232,10 @@ export class StationClient {
       | 'submit_contract'
       | 'submit_contract_termination'
       | 'governance_submit_cosign'
-      | 'governance_submit_vote',
+      | 'governance_submit_vote'
+      | 'submit_dispute'
+      | 'submit_dispute_response'
+      | 'submit_verdict',
     field:
       | 'signed_proposal'
       | 'signed_confirmation'
@@ -246,7 +249,10 @@ export class StationClient {
       | 'signed_contract'
       | 'signed_termination'
       | 'signed_cosign'
-      | 'signed_vote',
+      | 'signed_vote'
+      | 'signed_dispute'
+      | 'signed_response'
+      | 'signed_verdict',
     canonicalPayload: Uint8Array,
     signature: Uint8Array,
   ): Promise<Record<string, unknown>> {
@@ -671,6 +677,86 @@ export class StationClient {
     await this.submitSignedRecord(
       'governance_submit_vote',
       'signed_vote',
+      canonicalPayload,
+      signature,
+    );
+  }
+
+  /**
+   * `disputes` — every disputed transaction the station knows (T1.10.6), each as
+   * a browse row with its live jury tally and the outcome a resolve pass would
+   * enact right now. Derived on the station from the log on each read; there is
+   * no address param. A resolved transaction has left the `Disputed` state, so
+   * it no longer appears here.
+   */
+  async disputes(): Promise<{disputes: DisputeSummary[]}> {
+    const result = await this.call('disputes', {});
+    const disputes = Array.isArray(result.disputes)
+      ? (result.disputes as DisputeSummary[])
+      : [];
+    return {disputes};
+  }
+
+  /**
+   * `dispute` — one disputed transaction in full (T1.10.6), for the detail
+   * screen: the summary fields plus every party response, the seated jury with
+   * each juror's verdict, and any open escalation. Throws a `method-error` when
+   * there is no live dispute for the id.
+   */
+  async dispute(txId: string): Promise<DisputeDetail> {
+    const result = await this.call('dispute', {tx_id: txId});
+    return result as unknown as DisputeDetail;
+  }
+
+  /**
+   * `submit_dispute` — open a dispute against a confirmed transaction (T1.10.6).
+   * `canonicalPayload`/`signature` come from `createSignedDispute`; the station
+   * verifies the raiser is this paired mobile and a party to the transaction,
+   * freezes settlement across the `Confirmed → Disputed` edge, and appends it.
+   */
+  async submitDispute(
+    canonicalPayload: Uint8Array,
+    signature: Uint8Array,
+  ): Promise<void> {
+    await this.submitSignedRecord(
+      'submit_dispute',
+      'signed_dispute',
+      canonicalPayload,
+      signature,
+    );
+  }
+
+  /**
+   * `submit_dispute_response` — file the counterparty's rebuttal on an open
+   * dispute (T1.10.6). `canonicalPayload`/`signature` come from
+   * `createSignedDisputeResponse`; the station verifies the responder is this
+   * paired mobile and a party, and that they have not already responded.
+   */
+  async submitDisputeResponse(
+    canonicalPayload: Uint8Array,
+    signature: Uint8Array,
+  ): Promise<void> {
+    await this.submitSignedRecord(
+      'submit_dispute_response',
+      'signed_response',
+      canonicalPayload,
+      signature,
+    );
+  }
+
+  /**
+   * `submit_verdict` — cast a seated juror's ruling on an open dispute (T1.10.6).
+   * `canonicalPayload`/`signature` come from `createSignedVerdict`; the station
+   * verifies the juror is this paired mobile and holds a live seat on the derived
+   * panel, and that they have not already voted.
+   */
+  async submitVerdict(
+    canonicalPayload: Uint8Array,
+    signature: Uint8Array,
+  ): Promise<void> {
+    await this.submitSignedRecord(
+      'submit_verdict',
+      'signed_verdict',
       canonicalPayload,
       signature,
     );
@@ -1147,6 +1233,123 @@ export interface StationStatuteSummary {
   kind: StationProposalKind;
   /** Unix seconds the statute took effect. */
   implemented_at: number;
+}
+
+/**
+ * The outcome a resolve pass would enact on a dispute right now (T1.10.6),
+ * recomputed by the station on each read. `pending` = jury still out, window
+ * open; `awaiting_appeal` = jury ruled, appeal window open; `upheld`/`rejected`
+ * = a terminal jury majority; `lapsed` = window closed with no majority (the
+ * confirmed transaction stands); the `escalation_*` variants appear once a party
+ * has put the dispute to the electorate (ADR-0014 §5, surfaced fully in Slice B).
+ */
+export type StationDisputeResolution =
+  | 'pending'
+  | 'awaiting_appeal'
+  | 'upheld'
+  | 'rejected'
+  | 'lapsed'
+  | 'escalation_pending'
+  | 'escalation_upheld'
+  | 'escalation_rejected'
+  | 'escalation_lapsed';
+
+/** A seated juror's verdict as of the view's `now` (T1.10.6). */
+export type StationJurorVerdict = 'uphold' | 'reject' | 'awaiting';
+
+/** The seated jury's verdict counts (T1.10.6). */
+export interface DisputeTallyView {
+  /** Seated jurors who have voted to uphold. */
+  uphold: number;
+  /** Seated jurors who have voted to reject. */
+  reject: number;
+  /** Seated jurors yet to cast a valid verdict. */
+  awaiting: number;
+  /** The panel size a majority is measured against (3 in Phase 1). */
+  panel_size: number;
+}
+
+/** One disputed transaction as a browse row (T1.10.6). */
+export interface DisputeSummary {
+  /** The disputed transaction's content address, hex. */
+  tx_id: string;
+  /** The transaction's sender `rrn1…` address. */
+  sender: string;
+  /** The transaction's receiver (also the confirmer under contest). */
+  receiver: string;
+  /** The party who raised the dispute. */
+  raiser: string;
+  /** The grievance, free text. */
+  reason: string;
+  /** The opening evidence hash, hex — present only when one was attached. */
+  evidence_hash?: string;
+  /** Unix seconds the dispute was opened — the start of its window. */
+  opened_at: number;
+  /** Unix seconds the resolution window closes; past it an unresolved dispute lapses. */
+  window_ends_at: number;
+  /** The seated jury's counts so far. */
+  tally: DisputeTallyView;
+  /** The outcome a resolve pass would enact right now. */
+  resolution: StationDisputeResolution;
+}
+
+/** A party's filed response to a dispute (T1.10.6). */
+export interface DisputeResponseView {
+  /** The responding party's `rrn1…` address. */
+  responder: string;
+  /** Their statement, free text. */
+  statement: string;
+  /** Their evidence hash, hex — present only when one was attached. */
+  evidence_hash?: string;
+  /** Unix seconds the response was filed. */
+  responded_at: number;
+}
+
+/** One occupied seat on the jury as of the view's `now` (T1.10.6). */
+export interface PanelSeatView {
+  /** The juror in this seat, `rrn1…`. */
+  juror: string;
+  /** Unix seconds they took the seat. */
+  seated_at: number;
+  /** Their verdict, or `awaiting` if they have not cast a valid one. */
+  verdict: StationJurorVerdict;
+}
+
+/**
+ * An open escalation to the electorate (ADR-0014 §5, T1.10.6). Read-only here in
+ * Slice A — the ballot write path arrives in Slice B.
+ */
+export interface EscalationView {
+  /** Why it was opened: `appeal` of a ruling, or `cannot_seat` when no jury could sit. */
+  reason: 'appeal' | 'cannot_seat';
+  /** The party who opened it, `rrn1…`. */
+  initiator: string;
+  /** Unix seconds it was opened — the electorate is snapshotted here. */
+  opened_at: number;
+  /** Unix seconds its window closes (clamped to the dispute's overall window). */
+  closes_at: number;
+  /** Ballots to uphold the dispute from eligible voters inside the window. */
+  uphold: number;
+  /** Ballots to reject the dispute from eligible voters inside the window. */
+  reject: number;
+  /** Established, non-party members eligible to vote. */
+  eligible: number;
+  /** Whether turnout has reached the escalation quorum. */
+  quorum_met: boolean;
+  /** Whether the uphold share of decisive ballots has cleared the approval bar. */
+  approval_met: boolean;
+}
+
+/** One disputed transaction in full (T1.10.6) — the summary plus responses and jury. */
+export interface DisputeDetail extends DisputeSummary {
+  /** The responses each party filed, in the order they were made. */
+  responses: DisputeResponseView[];
+  /** The jury as seated right now, each juror with their verdict if cast. */
+  panel: PanelSeatView[];
+  /** How many members were eligible for the draw (the pool the jury was seated from). */
+  eligible_pool_size: number;
+  /** The escalation to the electorate, if a party has opened one. */
+  escalation?: EscalationView;
 }
 
 /** A marketplace surface tag (T1.7.0): which of the three catalogues a listing sits in. */

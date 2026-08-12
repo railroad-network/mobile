@@ -22,11 +22,20 @@ import {
   Button,
   Card,
   Countdown,
+  Field,
   Identicon,
   ScreenHeader,
   Text,
 } from '../../components';
-import {relativeTime, settlementAt, stateBadge, tierBadge, tierLabel, useActivity} from '../../ledger';
+import {
+  relativeTime,
+  settlementAt,
+  stateBadge,
+  tierBadge,
+  tierLabel,
+  useActivity,
+  useRaiseDispute,
+} from '../../ledger';
 import {useTheme, type Theme} from '../../theme';
 import type {MainStackScreenProps} from '../../navigation/types';
 
@@ -45,6 +54,9 @@ function formatDateTime(unixSeconds: number): string {
 function shortHash(id: string): string {
   return `b3:${id.slice(0, 8)}…`;
 }
+
+/** The longest a dispute reason may be, matching the station's byte bound. */
+const MAX_REASON = 2048;
 
 /**
  * The "For" line's value. When the station resolved the listing this paid for
@@ -81,6 +93,31 @@ export function TransactionDetail({route, navigation}: MainStackScreenProps<'Tra
 
   const [copied, setCopied] = useState(false);
   const [showLogNote, setShowLogNote] = useState(false);
+
+  const raiseDispute = useRaiseDispute();
+  const [disputing, setDisputing] = useState(false);
+  const [reason, setReason] = useState('');
+  const [raising, setRaising] = useState(false);
+  const [disputeError, setDisputeError] = useState<string | null>(null);
+
+  // A confirmed-but-not-yet-settled transaction can still be contested: raising
+  // a dispute freezes settlement while a jury weighs it.
+  const canRaise = tx !== undefined && (tx.state === 'confirmed' || tx.state === 'window');
+
+  async function submitDispute() {
+    if (tx === undefined || raising || reason.trim().length === 0) return;
+    setRaising(true);
+    setDisputeError(null);
+    const result = await raiseDispute(tx.id, reason.trim());
+    setRaising(false);
+    if (result.ok) {
+      setDisputing(false);
+      setReason('');
+      navigation.navigate('DisputeDetail', {txId: tx.id});
+      return;
+    }
+    setDisputeError(raiseErrorMessage(result.error, result.message));
+  }
 
   const settleAt = tx !== undefined ? settlementAt(tx) : undefined;
   const receiverSigned =
@@ -133,6 +170,69 @@ export function TransactionDetail({route, navigation}: MainStackScreenProps<'Tra
               </Text>
               <Countdown until={settleAt} color={theme.colors.text} style={styles.settleClock} />
             </Card>
+          )}
+
+          {/* This transaction is under dispute — jump to the dispute. */}
+          {tx.state === 'disputed' && (
+            <Button
+              variant="secondary"
+              size="lg"
+              fullWidth
+              onPress={() => navigation.navigate('DisputeDetail', {txId: tx.id})}>
+              View dispute
+            </Button>
+          )}
+
+          {/* Raise a dispute while the transaction is still settling. */}
+          {canRaise && (
+            <View style={{gap: theme.spacing.sm}}>
+              {disputeError !== null && (
+                <Banner variant="danger" title="Couldn’t raise the dispute">
+                  {disputeError}
+                </Banner>
+              )}
+              {disputing ? (
+                <Card style={{gap: theme.spacing.sm}}>
+                  <Text variant="label" color={theme.colors.text}>
+                    Raise a dispute
+                  </Text>
+                  <Text variant="caption" color={theme.colors.textMuted}>
+                    This freezes settlement while a jury of three weighs it. Only
+                    dispute a transaction you believe is genuinely wrong.
+                  </Text>
+                  <Field
+                    label="What’s wrong?"
+                    placeholder="Describe the problem…"
+                    value={reason}
+                    onChangeText={setReason}
+                    multiline
+                    maxLength={MAX_REASON}
+                  />
+                  <Button
+                    variant="danger"
+                    size="lg"
+                    fullWidth
+                    loading={raising}
+                    disabled={reason.trim().length === 0}
+                    onPress={submitDispute}>
+                    Raise dispute
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="md"
+                    onPress={() => {
+                      setDisputing(false);
+                      setDisputeError(null);
+                    }}>
+                    Cancel
+                  </Button>
+                </Card>
+              ) : (
+                <Button variant="ghost" size="md" onPress={() => setDisputing(true)}>
+                  Something wrong? Raise a dispute
+                </Button>
+              )}
+            </View>
           )}
 
           <Card style={styles.fields}>
@@ -218,6 +318,23 @@ export function TransactionDetail({route, navigation}: MainStackScreenProps<'Tra
       )}
     </ScrollView>
   );
+}
+
+/** Friendly copy for a failed raise, special-casing the common rejections. */
+function raiseErrorMessage(error: string, message: string): string {
+  if (error === 'unreachable') {
+    return 'Couldn’t reach your station. Connect to it and try again.';
+  }
+  if (/window|closed/i.test(message)) {
+    return 'The window to dispute this transaction has closed.';
+  }
+  if (/confirmed|not.*disputed|state/i.test(message)) {
+    return 'This transaction can’t be disputed in its current state.';
+  }
+  if (/party/i.test(message)) {
+    return 'Only a party to this transaction can dispute it.';
+  }
+  return `Couldn’t raise the dispute: ${message}`;
 }
 
 function DetailRow({

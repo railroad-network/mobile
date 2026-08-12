@@ -103,6 +103,12 @@ export type MainStackParamList = {
   Governance: undefined;
   /** One proposal in full (T1.9.8): body, tally, and co-sign / vote actions. */
   GovProposalDetail: {proposalId: string};
+  /**
+   * One dispute in full (T1.10.6), by the disputed transaction id: the grievance
+   * and responses, the seated jury and tally, and the role-aware action (respond
+   * / rule).
+   */
+  DisputeDetail: {txId: string};
   /** Vouch for someone: scan their address QR, review, sign & submit (T1.4.1). */
   Vouch: undefined;
   /** The vouching browser (T1.4.5): given/received vouch lists, opened on a tab. */

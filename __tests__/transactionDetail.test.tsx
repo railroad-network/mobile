@@ -20,9 +20,11 @@ import type {Transaction} from '../src/ledger';
 const ADDR = 'rrn1qvalleyfarm000000000000000000000000000';
 
 const mockActivity: {data?: Transaction[]} = {};
+const mockRaiseDispute = jest.fn(async () => ({ok: true as const}));
 jest.mock('../src/ledger', () => ({
   ...jest.requireActual('../src/ledger'),
   useActivity: () => mockActivity,
+  useRaiseDispute: () => mockRaiseDispute,
 }));
 
 function tx(overrides: Partial<Transaction> = {}): Transaction {

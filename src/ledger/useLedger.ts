@@ -24,6 +24,8 @@ import {
 } from '../network/useStation';
 import {
   StationClientError,
+  type DisputeDetail,
+  type DisputeSummary,
   type StationCharter,
   type StationErrorKind,
   type StationProposalDetail,
@@ -35,6 +37,11 @@ import {
   type StationVouchLists,
 } from '../network/StationClient';
 import {createConfirmation} from '../wallet/confirmation';
+import {
+  createSignedDispute,
+  createSignedDisputeResponse,
+  createSignedVerdict,
+} from '../wallet/dispute';
 import {createSignedCosign, createSignedVote, type VoteChoice} from '../wallet/governance';
 import {createSendProposal} from '../wallet/proposal';
 import {createSignedVouch} from '../wallet/vouch';
@@ -53,6 +60,14 @@ const PROPOSAL_EXPIRY_SECS = 24 * 3600;
  * without hammering the station.
  */
 const PROPOSAL_POLL_MS = 5000;
+
+/**
+ * How often the open-dispute detail refetches while it is on screen. A dispute
+ * moves at human pace — a response filed, a juror's verdict landing, the window
+ * ticking down — so a few seconds keeps the panel and tally live without
+ * hammering the station.
+ */
+const DISPUTE_POLL_MS = 5000;
 
 /** Maps one station transaction row to the display {@link Transaction} model. */
 export function stationRowToTransaction(row: StationTransactionRow): Transaction {
@@ -109,6 +124,8 @@ export const ledgerKeys = {
   proposals: ['ledger', 'proposals'] as const,
   proposal: ['ledger', 'proposal'] as const,
   statutes: ['ledger', 'statutes'] as const,
+  disputes: ['ledger', 'disputes'] as const,
+  dispute: ['ledger', 'dispute'] as const,
 };
 
 export function useIdentity(): UseQueryResult<Identity> {
@@ -405,6 +422,151 @@ export function useCastVote(): (
         await client.submitVote(vote.payloadBytes, vote.signature);
         await queryClient.invalidateQueries({queryKey: ledgerKeys.proposals});
         await queryClient.invalidateQueries({queryKey: ledgerKeys.proposal});
+        return {ok: true};
+      } catch (e) {
+        return asWriteError(e);
+      }
+    },
+    [client, wallet, queryClient],
+  );
+}
+
+/**
+ * Every disputed transaction the station knows (T1.10.6), most-recent first, for
+ * the dispute list. Fetched fresh (no stale window) so a just-raised dispute or a
+ * just-cast verdict shows on next open. Disabled when locked / unpaired. A
+ * resolved transaction has left the `Disputed` state, so it drops out of here.
+ */
+export function useDisputes(): UseQueryResult<DisputeSummary[]> {
+  const client = useStationClient();
+  const {wallet} = useWalletSession();
+  return useQuery({
+    queryKey: [...ledgerKeys.disputes, wallet?.address, client !== null],
+    enabled: client !== null && wallet !== null,
+    queryFn: async (): Promise<DisputeSummary[]> => (await client!.disputes()).disputes,
+    staleTime: 0,
+  });
+}
+
+/**
+ * One dispute in full (T1.10.6) for the detail screen: the summary, both parties'
+ * responses, and the seated jury with each juror's verdict. Keyed by the disputed
+ * transaction id; fetched fresh so an action the member just took is reflected
+ * when they return to it, and **polls** (every {@link DISPUTE_POLL_MS}) while it
+ * is on screen so the panel and tally track the community acting in near-real
+ * time. A dispute only exists while its transaction is frozen in `Disputed`, so
+ * the query stays live until the station enacts the outcome (after which the read
+ * errors — the screen surfaces that as "resolved").
+ */
+export function useDispute(txId: string): UseQueryResult<DisputeDetail> {
+  const client = useStationClient();
+  const {wallet} = useWalletSession();
+  return useQuery({
+    queryKey: [...ledgerKeys.dispute, txId, wallet?.address, client !== null],
+    enabled: client !== null && wallet !== null,
+    queryFn: (): Promise<DisputeDetail> => client!.dispute(txId),
+    staleTime: 0,
+    refetchInterval: DISPUTE_POLL_MS,
+  });
+}
+
+/**
+ * Returns a function that raises a dispute against a confirmed transaction: it
+ * builds and signs a {@link createSignedDispute} on-device and transmits it over
+ * the authenticated channel (T1.10.6), freezing settlement across the
+ * `Confirmed → Disputed` edge. Online-only — the record is signed at raise time —
+ * and the station rejects a non-party or a transaction that is not confirmed.
+ */
+export function useRaiseDispute(): (
+  txId: string,
+  reason: string,
+) => Promise<WriteResult> {
+  const client = useStationClient();
+  const {wallet} = useWalletSession();
+  const queryClient = useQueryClient();
+  return useCallback(
+    async (txId, reason) => {
+      if (client === null || wallet === null) {
+        return {ok: false, error: 'locked', message: 'Unlock your wallet and pair a station.'};
+      }
+      try {
+        const openedAt = Math.floor(Date.now() / 1000);
+        const dispute = await createSignedDispute(wallet, txId, reason, openedAt);
+        await client.submitDispute(dispute.payloadBytes, dispute.signature);
+        await queryClient.invalidateQueries({queryKey: ledgerKeys.activity});
+        await queryClient.invalidateQueries({queryKey: ledgerKeys.disputes});
+        await queryClient.invalidateQueries({queryKey: ledgerKeys.dispute});
+        return {ok: true};
+      } catch (e) {
+        return asWriteError(e);
+      }
+    },
+    [client, wallet, queryClient],
+  );
+}
+
+/**
+ * Returns a function that files the counterparty's response to an open dispute:
+ * it builds and signs a {@link createSignedDisputeResponse} on-device and
+ * transmits it (T1.10.6). Online-only, and the station rejects a non-party or a
+ * second response from the same party, so the detail screen treats a successful
+ * response as final.
+ */
+export function useRespondToDispute(): (
+  txId: string,
+  statement: string,
+) => Promise<WriteResult> {
+  const client = useStationClient();
+  const {wallet} = useWalletSession();
+  const queryClient = useQueryClient();
+  return useCallback(
+    async (txId, statement) => {
+      if (client === null || wallet === null) {
+        return {ok: false, error: 'locked', message: 'Unlock your wallet and pair a station.'};
+      }
+      try {
+        const respondedAt = Math.floor(Date.now() / 1000);
+        const response = await createSignedDisputeResponse(
+          wallet,
+          txId,
+          statement,
+          respondedAt,
+        );
+        await client.submitDisputeResponse(response.payloadBytes, response.signature);
+        await queryClient.invalidateQueries({queryKey: ledgerKeys.dispute});
+        return {ok: true};
+      } catch (e) {
+        return asWriteError(e);
+      }
+    },
+    [client, wallet, queryClient],
+  );
+}
+
+/**
+ * Returns a function that casts a seated juror's verdict on an open dispute: it
+ * builds and signs a {@link createSignedVerdict} on-device and transmits it
+ * (T1.10.6). Online-only — the verdict is signed at cast time — and the station
+ * rejects a juror who does not hold a live seat or has already voted, so the
+ * detail screen treats a successful verdict as final.
+ */
+export function useCastVerdict(): (
+  txId: string,
+  uphold: boolean,
+) => Promise<WriteResult> {
+  const client = useStationClient();
+  const {wallet} = useWalletSession();
+  const queryClient = useQueryClient();
+  return useCallback(
+    async (txId, uphold) => {
+      if (client === null || wallet === null) {
+        return {ok: false, error: 'locked', message: 'Unlock your wallet and pair a station.'};
+      }
+      try {
+        const castAt = Math.floor(Date.now() / 1000);
+        const verdict = await createSignedVerdict(wallet, txId, uphold, castAt);
+        await client.submitVerdict(verdict.payloadBytes, verdict.signature);
+        await queryClient.invalidateQueries({queryKey: ledgerKeys.dispute});
         return {ok: true};
       } catch (e) {
         return asWriteError(e);
