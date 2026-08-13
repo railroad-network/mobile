@@ -112,25 +112,52 @@ export function ConfirmReceived({route, navigation}: MainStackScreenProps<'Confi
 
   // Step: confirmed (success) ------------------------------------------------
   if (step === 'confirmed') {
+    // The status block reads the *live* transaction (`useActivity` is refreshed by
+    // the station subscribe channel), so if the payment is disputed, voided, or
+    // simply settles while this screen is still open, we show its real state
+    // instead of counting down to a settlement that may never happen.
     const settleAt = settlementAt({...tx, confirmedAt});
     return (
       <ScrollView style={{backgroundColor: theme.colors.bg}} contentContainerStyle={contentPad}>
         <View style={styles.center}>
           <Heading level="headingLarge">You confirmed receipt</Heading>
           <Text variant="body" color={theme.colors.textSecondary} style={styles.centerText}>
-            You signed for “{tx.memo ?? 'this payment'}” from {tx.counterparty}. It settles once the
-            window below passes.
+            You signed for “{tx.memo ?? 'this payment'}” from {tx.counterparty}.
           </Text>
         </View>
-        <Card style={styles.settleCard}>
-          <Text variant="label" color={theme.colors.accent} style={styles.settleLabel}>
-            WILL SETTLE IN
-          </Text>
-          <Countdown until={settleAt ?? 0} color={theme.colors.text} style={styles.settleClock} />
-          <Text variant="caption" color={theme.colors.textSecondary}>
-            Settlement window
-          </Text>
-        </Card>
+        {tx.state === 'disputed' ? (
+          <>
+            <Banner variant="warning" title="This payment is being disputed">
+              Settlement is frozen while a jury of three weighs it. Your confirmation stands unless
+              the dispute is upheld.
+            </Banner>
+            <Button
+              variant="secondary"
+              size="lg"
+              fullWidth
+              onPress={() => navigation.navigate('DisputeDetail', {txId: tx.id})}>
+              View dispute
+            </Button>
+          </>
+        ) : tx.state === 'cancelled' ? (
+          <Banner variant="danger" title="This payment was reversed">
+            A dispute against it was upheld, so the transfer was voided — it no longer counts.
+          </Banner>
+        ) : tx.state === 'settled' ? (
+          <Banner variant="success" title="Settled">
+            The settlement window passed — this payment is complete.
+          </Banner>
+        ) : (
+          <Card style={styles.settleCard}>
+            <Text variant="label" color={theme.colors.accent} style={styles.settleLabel}>
+              WILL SETTLE IN
+            </Text>
+            <Countdown until={settleAt ?? 0} color={theme.colors.text} style={styles.settleClock} />
+            <Text variant="caption" color={theme.colors.textSecondary}>
+              Settlement window
+            </Text>
+          </Card>
+        )}
         <Button variant="primary" size="lg" fullWidth onPress={() => navigation.goBack()}>
           Back to inbox
         </Button>

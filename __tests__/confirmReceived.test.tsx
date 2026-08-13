@@ -80,6 +80,19 @@ async function renderScreen(navigation = nav()): Promise<Renderer> {
   return r;
 }
 
+/** Re-render in place (same component state) so the screen re-reads mocked activity. */
+async function rerender(r: Renderer, navigation: any): Promise<void> {
+  await act(async () => {
+    r.update(
+      <SafeAreaProvider initialMetrics={metrics}>
+        <ThemeProvider>
+          <ConfirmReceived navigation={navigation} route={{params: {id: PROPOSAL_ID}} as any} />
+        </ThemeProvider>
+      </SafeAreaProvider>,
+    );
+  });
+}
+
 function textOf(node: Instance): string {
   return node.children.map(c => (typeof c === 'string' ? c : textOf(c))).join('');
 }
@@ -126,6 +139,35 @@ test('confirming signs + sends via the hook and shows the countdown — no re-pr
   expect(mockConfirmProposal).toHaveBeenCalledWith(PROPOSAL_ID);
   expect(hasText(r, 'You confirmed receipt')).toBe(true);
   expect(hasText(r, 'WILL SETTLE IN')).toBe(true);
+});
+
+test('the confirmed screen drops the countdown and points to the dispute when the payment is disputed', async () => {
+  const navigation = nav();
+  const r = await renderScreen(navigation);
+  await press(button(r, 'All good — I received this'));
+  expect(hasText(r, 'WILL SETTLE IN')).toBe(true);
+
+  // The station pushes the freeze: the activity cache now carries `disputed`.
+  mockActivity.data = [proposal({state: 'disputed'})];
+  await rerender(r, navigation);
+
+  expect(hasText(r, 'WILL SETTLE IN')).toBe(false);
+  expect(hasText(r, 'This payment is being disputed')).toBe(true);
+  await press(button(r, 'View dispute'));
+  expect(navigation.navigate).toHaveBeenCalledWith('DisputeDetail', {txId: PROPOSAL_ID});
+});
+
+test('the confirmed screen shows the reversal when an upheld dispute voids the payment', async () => {
+  const navigation = nav();
+  const r = await renderScreen(navigation);
+  await press(button(r, 'All good — I received this'));
+
+  // An upheld dispute cancels the transfer while the success screen is still open.
+  mockActivity.data = [proposal({state: 'cancelled'})];
+  await rerender(r, navigation);
+
+  expect(hasText(r, 'WILL SETTLE IN')).toBe(false);
+  expect(hasText(r, 'This payment was reversed')).toBe(true);
 });
 
 test('rejecting records a cancelled decision with the right reason', async () => {
