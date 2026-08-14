@@ -85,17 +85,20 @@ export interface Identity {
   /** The community/collective the member belongs to. */
   community?: string;
   /**
-   * Tier-2 bootstrap-grace status (T1.8.6), read from `whoami`. Present when the
-   * paired station reports it; absent when offline or from a station predating
-   * the field. Home shows a banner while {@link BootstrapGrace.inGrace} is true.
+   * Bootstrap-grace status (T1.8.6; widened in T1.11.2 / ADR-0015), read from
+   * `whoami`. Present when the paired station reports it; absent when offline or
+   * from a station predating the field. Home shows a banner while
+   * {@link BootstrapGrace.inGrace} is true.
    */
   bootstrap?: BootstrapGrace;
 }
 
-/** The community's Tier-2 bootstrap-grace status (T1.8.6). */
+/** The community's bootstrap-grace status (T1.8.6 / ADR-0015). */
 export interface BootstrapGrace {
-  /** Whether fewer than {@link threshold} members are established, so any member
-   * may confirm a Tier-2 payment (a weaker oracle the banner makes visible). */
+  /** Whether fewer than {@link threshold} members are established. While true the
+   * community runs under grace across all three subsystems: any member may
+   * confirm a Tier-2 payment, and the genesis founders stand in as the electorate
+   * for governance votes and dispute juries. */
   inGrace: boolean;
   /** How many members are currently established (composite over the Member band). */
   established: number;

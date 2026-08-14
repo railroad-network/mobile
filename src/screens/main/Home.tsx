@@ -167,13 +167,17 @@ export function Home({navigation}: MainTabScreenProps<'Home'>) {
           )
         )}
 
-        {/* Bootstrap grace — a young community where any member may confirm a
-            Tier-2 payment until enough members are established (T1.8.6). */}
+        {/* Bootstrap grace — a young community running under relaxed rules until
+            enough members are established: any member may confirm a Tier-2 payment
+            (T1.8.6), and the founders stand in as the electorate for governance and
+            disputes (T1.11.2 / ADR-0015). */}
         {identity.data?.bootstrap?.inGrace === true && (
           <View style={{paddingHorizontal: theme.spacing.lg}}>
             <Banner variant="warning" title="New community — in bootstrap grace">
-              Until {identity.data.bootstrap.threshold} members build up standing, anyone here can
-              confirm larger (Tier 2) payments. Higher-value trades carry less protection for now.
+              Until {identity.data.bootstrap.threshold} members build up standing, this community
+              runs under bootstrap rules: anyone here can confirm larger (Tier 2) payments, and its
+              founders stand in as the voters and jurors for governance and disputes. Both tighten
+              once {identity.data.bootstrap.threshold} members are established.
             </Banner>
           </View>
         )}

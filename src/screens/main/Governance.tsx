@@ -25,8 +25,14 @@ import {useState} from 'react';
 import {Pressable, ScrollView, StyleSheet, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
-import {Badge, Card, Countdown, ScreenHeader, Text} from '../../components';
-import {relativeTime, useCharter, useProposals, useStatutes} from '../../ledger';
+import {Badge, Banner, Card, Countdown, ScreenHeader, Text} from '../../components';
+import {
+  relativeTime,
+  useCharter,
+  useIdentity,
+  useProposals,
+  useStatutes,
+} from '../../ledger';
 import {
   kindLabel,
   phaseBadge,
@@ -47,6 +53,8 @@ export function Governance({navigation}: MainStackScreenProps<'Governance'>) {
   const charter = useCharter();
   const proposals = useProposals();
   const statutes = useStatutes();
+  const identity = useIdentity();
+  const bootstrap = identity.data?.bootstrap;
 
   const isLoading = charter.isLoading || proposals.isLoading;
   const isError = charter.isError || proposals.isError;
@@ -102,6 +110,17 @@ export function Governance({navigation}: MainStackScreenProps<'Governance'>) {
 
       {charter.data !== undefined && (
         <CharterCard theme={theme} charter={charter.data} />
+      )}
+
+      {/* While the community is bootstrapping, its founders stand in as the
+          electorate (ADR-0015) — say so where votes and co-signs actually happen,
+          not just on Home. Only meaningful once a Charter is published. */}
+      {bootstrap?.inGrace === true && charter.data?.published === true && (
+        <Banner variant="info" title="Founders decide for now">
+          This community is still bootstrapping. Until {bootstrap.threshold} members build up
+          standing, its founders stand in as the voters and jurors for proposals and disputes. Once
+          {' '}{bootstrap.threshold} members are established, every established member takes part.
+        </Banner>
       )}
 
       {proposals.data !== undefined && (

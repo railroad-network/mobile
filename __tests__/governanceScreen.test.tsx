@@ -21,12 +21,19 @@ type Query<T> = {data?: T; isLoading: boolean; isError: boolean};
 const mockCharter: Query<StationCharter> = {isLoading: false, isError: false};
 const mockProposals: Query<StationProposalSummary[]> = {isLoading: false, isError: false};
 const mockStatutes: Query<unknown[]> = {isLoading: false, isError: false, data: []};
+// Identity carries the bootstrap-grace flag the hub's grace note reads; default
+// to no bootstrap (note hidden), overridden per test.
+let mockIdentity: Query<{bootstrap?: {inGrace: boolean; established: number; threshold: number}}> = {
+  isLoading: false,
+  isError: false,
+};
 
 jest.mock('../src/ledger', () => ({
   ...jest.requireActual('../src/ledger'),
   useCharter: () => mockCharter,
   useProposals: () => mockProposals,
   useStatutes: () => mockStatutes,
+  useIdentity: () => mockIdentity,
 }));
 
 const metrics = {
@@ -120,6 +127,7 @@ beforeEach(() => {
   mockProposals.isLoading = false;
   mockProposals.isError = false;
   mockStatutes.data = [];
+  mockIdentity = {isLoading: false, isError: false};
 });
 
 test('a bootstrapping community says its Charter is not ratified yet', async () => {
@@ -136,6 +144,27 @@ test('a published Charter shows its principles and decision rules', async () => 
   // The rules that let a member read a tally honestly.
   expect(hasText(r, '30%')).toBe(true);
   expect(hasText(r, '3 co-signers')).toBe(true);
+});
+
+test('shows a founders-decide note while the community is in bootstrap grace', async () => {
+  mockIdentity = {
+    isLoading: false,
+    isError: false,
+    data: {bootstrap: {inGrace: true, established: 1, threshold: 3}},
+  };
+  const r = await renderHub();
+  expect(hasText(r, 'Founders decide for now')).toBe(true);
+  expect(hasText(r, 'stand in as the voters and jurors')).toBe(true);
+});
+
+test('hides the grace note once the community has left grace', async () => {
+  mockIdentity = {
+    isLoading: false,
+    isError: false,
+    data: {bootstrap: {inGrace: false, established: 3, threshold: 3}},
+  };
+  const r = await renderHub();
+  expect(hasText(r, 'Founders decide for now')).toBe(false);
 });
 
 test('a voting proposal shows its kind, phase, and that it needs the member', async () => {
