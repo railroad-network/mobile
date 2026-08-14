@@ -122,7 +122,7 @@ export function PairedStations({navigation}: MainStackScreenProps<'PairedStation
         variant={stations !== null && stations.length > 0 ? 'secondary' : 'primary'}
         size="lg"
         fullWidth
-        onPress={() => navigation.navigate('Discovery')}>
+        onPress={() => navigation.navigate('Join', {origin: 'settings'})}>
         {stations !== null && stations.length > 0
           ? 'Pair with another station'
           : 'Find a station'}

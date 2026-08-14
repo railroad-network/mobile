@@ -1,22 +1,26 @@
 /**
- * Pair with a station (T1.3.3).
+ * Pair with a station (T1.3.3), step two of joining a community.
  *
- * The station chosen on the Discovery screen (or typed by hand) arrives here as
- * a route param; nothing about it is trusted yet. Pairing is the in-person step
- * that changes that, per ADR-0008: the app signs a request with the wallet key,
- * the station signs back, and both derive the same 8-hex code from the two
- * public keys. The user compares that code against the one the operator reads
- * from `station pair-mobile`. Only if they match — and only when the user says
- * so — does the app remember the station. A network attacker would have to
- * present its own key, which changes the code, so the human comparison is the
- * actual security boundary; the transport underneath is plain HTTP by design.
+ * The station chosen on {@link Find} (or typed by hand) arrives here as a route
+ * param; nothing about it is trusted yet. Pairing is the in-person step that
+ * changes that, per ADR-0008: the app signs a request with the wallet key, the
+ * station signs back, and both derive the same 8-hex code from the two public
+ * keys. The user compares that code against the one the operator reads from
+ * `station pair-mobile`. Only if they match — and only when the user says so —
+ * does the app remember the station. A network attacker would have to present
+ * its own key, which changes the code, so the human comparison is the actual
+ * security boundary; the transport underneath is plain HTTP by design.
  *
  * Signing needs the wallet secret, so — as in Send — the wallet is re-opened
  * here with the passphrase (the OS biometric prompt fires on the keychain read).
+ * When this flow was reached from onboarding (`origin === 'onboarding'`) the app
+ * is not unlocked yet, so the wallet opened here is also what enters the app:
+ * the final step adopts it, mirroring the recovery flow's hand-off.
  */
 import {useState} from 'react';
 import {ScrollView, StyleSheet, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 
 import {
   Banner,
@@ -29,10 +33,11 @@ import {
   Text,
 } from '../../components';
 import {useTheme} from '../../theme';
-import type {MainStackScreenProps} from '../../navigation/types';
+import type {JoinScreenProps, MainStackParamList} from '../../navigation/types';
 import {requestPairing, type PairingFailure} from '../../network/Pairing';
 import {addPairedStation} from '../../network/pairedStation';
-import {loadWallet} from '../../wallet/Wallet';
+import {loadWallet, type Wallet} from '../../wallet/Wallet';
+import {useWalletSession} from '../../wallet/WalletSession';
 
 type Step = 'unlock' | 'confirm' | 'paired';
 
@@ -52,10 +57,11 @@ function failureMessage(failure: PairingFailure): string {
   }
 }
 
-export function Pairing({navigation, route}: MainStackScreenProps<'Pairing'>) {
+export function Pair({navigation, route}: JoinScreenProps<'Pair'>) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const {station} = route.params;
+  const {station, origin} = route.params;
+  const {adopt, refresh} = useWalletSession();
 
   const [step, setStep] = useState<Step>('unlock');
   const [passphrase, setPassphrase] = useState('');
@@ -66,6 +72,12 @@ export function Pairing({navigation, route}: MainStackScreenProps<'Pairing'>) {
   // Set once the handshake succeeds; drives the confirm step.
   const [sas, setSas] = useState('');
   const [stationAddress, setStationAddress] = useState('');
+  // Held across the confirm step so an onboarding pair can adopt it into the app
+  // without a second unlock. Discarded on unmount; the app already holds the
+  // wallet for the whole session once adopted.
+  const [wallet, setWallet] = useState<Wallet | null>(null);
+
+  const onboarding = origin === 'onboarding';
 
   const contentPad = {
     paddingTop: insets.top + theme.spacing.sm,
@@ -81,16 +93,17 @@ export function Pairing({navigation, route}: MainStackScreenProps<'Pairing'>) {
     setBusy(true);
     setError(null);
     try {
-      const wallet = await loadWallet(passphrase);
-      if (wallet === null) {
+      const opened = await loadWallet(passphrase);
+      if (opened === null) {
         setError('No wallet found on this device.');
         return;
       }
-      const result = await requestPairing(station, wallet);
+      const result = await requestPairing(station, opened);
       if (!result.ok) {
         setError(failureMessage(result));
         return;
       }
+      setWallet(opened);
       setSas(result.sas);
       setStationAddress(result.stationAddress);
       setPassphrase('');
@@ -125,6 +138,26 @@ export function Pairing({navigation, route}: MainStackScreenProps<'Pairing'>) {
     } finally {
       setBusy(false);
     }
+  }
+
+  // Leave the flow once paired. From onboarding this is the app hand-off:
+  // adopting the wallet flips the root navigator to the unlocked app (the
+  // onboarding stack unmounts, so no navigation is needed). From settings the
+  // app is already unlocked — return to the tabs.
+  function finish() {
+    if (onboarding) {
+      if (wallet !== null) {
+        adopt(wallet);
+      } else {
+        // The wallet was opened during the unlock step, so this fallback is only
+        // for a lost handle; the lock screen then asks for the passphrase.
+        refresh();
+      }
+      return;
+    }
+    navigation
+      .getParent<NativeStackNavigationProp<MainStackParamList>>()
+      ?.navigate('Tabs', {screen: 'Settings'});
   }
 
   // Step: unlock -------------------------------------------------------------
@@ -253,18 +286,15 @@ export function Pairing({navigation, route}: MainStackScreenProps<'Pairing'>) {
   return (
     <ScrollView style={{backgroundColor: theme.colors.bg}} contentContainerStyle={contentPad}>
       <View style={{alignItems: 'center', gap: theme.spacing.md, marginTop: theme.spacing.lg}}>
-        <Heading level="headingLarge">Paired</Heading>
+        <Heading level="headingLarge">{onboarding ? 'You’re all set' : 'Paired'}</Heading>
         <Text variant="body" color={theme.colors.textSecondary} style={styles.centered}>
-          You’re paired with {station.name}. Your phone and this station now
-          recognise each other.
+          {onboarding
+            ? `You’re connected to ${station.name}. Your community is ready — you can send, vouch, and take part from here.`
+            : `You’re paired with ${station.name}. Your phone and this station now recognise each other.`}
         </Text>
       </View>
-      <Button
-        variant="primary"
-        size="lg"
-        fullWidth
-        onPress={() => navigation.navigate('Tabs', {screen: 'Settings'})}>
-        Done
+      <Button variant="primary" size="lg" fullWidth onPress={finish}>
+        {onboarding ? 'Enter Railroad' : 'Done'}
       </Button>
     </ScrollView>
   );

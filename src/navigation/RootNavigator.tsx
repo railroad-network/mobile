@@ -37,8 +37,7 @@ import {Receive} from '../screens/main/Receive';
 import {ChangePassphrase} from '../screens/main/ChangePassphrase';
 import {ExportWallet} from '../screens/main/ExportWallet';
 import {FactoryReset} from '../screens/main/FactoryReset';
-import {Discovery} from '../screens/main/Discovery';
-import {Pairing} from '../screens/main/Pairing';
+import {JoinNavigator} from '../screens/join/JoinNavigator';
 import {PairedStations} from '../screens/main/PairedStations';
 import {NotificationSettings} from '../screens/main/NotificationSettings';
 import {Lock} from '../screens/main/Lock';
@@ -89,6 +88,7 @@ function OnboardingNavigator() {
           component={RecoveryNavigator}
           options={{gestureEnabled: false}}
         />
+        <OnboardingStack.Screen name="Join" component={JoinNavigator} />
       </OnboardingStack.Navigator>
     </OnboardingProvider>
   );
@@ -157,8 +157,7 @@ function MainNavigator() {
       <MainStack.Screen name="ChangePassphrase" component={ChangePassphrase} />
       <MainStack.Screen name="ExportWallet" component={ExportWallet} />
       <MainStack.Screen name="FactoryReset" component={FactoryReset} />
-      <MainStack.Screen name="Discovery" component={Discovery} />
-      <MainStack.Screen name="Pairing" component={Pairing} />
+      <MainStack.Screen name="Join" component={JoinNavigator} />
       <MainStack.Screen name="PairedStations" component={PairedStations} />
       <MainStack.Screen name="NotificationSettings" component={NotificationSettings} />
       <MainStack.Screen name="Standing" component={Standing} />

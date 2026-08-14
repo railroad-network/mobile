@@ -227,7 +227,9 @@ export function Settings() {
             ) : undefined
           }
           onPress={() =>
-            navigation.navigate(paired.length > 0 ? 'PairedStations' : 'Discovery')
+            paired.length > 0
+              ? navigation.navigate('PairedStations')
+              : navigation.navigate('Join', {origin: 'settings'})
           }
         />
       </Group>

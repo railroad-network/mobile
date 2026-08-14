@@ -14,6 +14,7 @@
 import {useCallback, useState} from 'react';
 import {Pressable, RefreshControl, ScrollView, StyleSheet, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {useFocusEffect} from '@react-navigation/native';
 
 import {
   Amount,
@@ -39,6 +40,7 @@ import {
   type Transaction,
 } from '../../ledger';
 import {useActiveStation} from '../../network/useStation';
+import {loadRecoveryConfig} from '../../wallet/recoveryConfig';
 import {useTheme, type Theme} from '../../theme';
 import type {MainTabScreenProps} from '../../navigation/types';
 
@@ -59,6 +61,28 @@ export function Home({navigation}: MainTabScreenProps<'Home'>) {
   // No station paired yet: the reads have nothing to talk to. Prompt to pair
   // rather than leave the balance an unexplained dash.
   const noStation = !stationLoading && station === null;
+
+  // Nudge to set up social recovery until it exists. `null` = not set up;
+  // `undefined` = not checked yet (don't flash the banner before the first read).
+  // Re-checked every time Home regains focus, so completing setup clears it and a
+  // fresh load re-surfaces it. Dismissal is session-scoped (see below).
+  const [recoverySetUp, setRecoverySetUp] = useState<boolean | undefined>(undefined);
+  const [recoveryDismissed, setRecoveryDismissed] = useState(false);
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      loadRecoveryConfig()
+        .then(c => active && setRecoverySetUp(c !== null))
+        .catch(() => active && setRecoverySetUp(false));
+      return () => {
+        active = false;
+      };
+    }, []),
+  );
+  // Show once we know it isn't set up and the user hasn't dismissed it this
+  // session. "Set up later" only hides it until the next fresh Home load (app
+  // relaunch), never permanently — it returns until recovery actually exists.
+  const showRecoveryNudge = recoverySetUp === false && !recoveryDismissed;
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
@@ -126,7 +150,7 @@ export function Home({navigation}: MainTabScreenProps<'Home'>) {
                 <Button
                   variant="primary"
                   size="sm"
-                  onPress={() => navigation.navigate('Discovery')}>
+                  onPress={() => navigation.navigate('Join', {origin: 'settings'})}>
                   Find a station
                 </Button>
               }>
@@ -150,6 +174,36 @@ export function Home({navigation}: MainTabScreenProps<'Home'>) {
             <Banner variant="warning" title="New community — in bootstrap grace">
               Until {identity.data.bootstrap.threshold} members build up standing, anyone here can
               confirm larger (Tier 2) payments. Higher-value trades carry less protection for now.
+            </Banner>
+          </View>
+        )}
+
+        {/* Protect the account — nudge social-recovery setup until it exists
+            (T1.11.1). Dismissible per session; returns on a fresh load. */}
+        {showRecoveryNudge && (
+          <View style={{paddingHorizontal: theme.spacing.lg}}>
+            <Banner
+              variant="warning"
+              title="Protect your account"
+              action={
+                <View style={styles.nudgeActions}>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onPress={() => navigation.navigate('Recovery', {origin: 'settings'})}>
+                    Set up recovery
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onPress={() => setRecoveryDismissed(true)}>
+                    Set up later
+                  </Button>
+                </View>
+              }>
+              Set up social recovery so trusted people can help you back into your
+              account if you lose this phone. Without it, a lost phone can’t be
+              recovered.
             </Banner>
           </View>
         )}
@@ -364,6 +418,7 @@ const styles = StyleSheet.create({
   balSub: {lineHeight: 17},
   actions: {flexDirection: 'row', gap: 12},
   actionItem: {flex: 1},
+  nudgeActions: {flexDirection: 'row', alignItems: 'center', gap: 8},
   sectionHead: {
     flexDirection: 'row',
     alignItems: 'baseline',

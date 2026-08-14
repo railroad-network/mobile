@@ -1,5 +1,5 @@
 /**
- * Find a station on the local network (T1.3.2).
+ * Find a station on the local network (T1.3.2), step one of joining a community.
  *
  * Lists what mDNS turns up and hands the chosen station to pairing. Nothing on
  * this screen is trusted: a station's name and claimed address come from TXT
@@ -12,6 +12,9 @@
  * It matters more than it looks, because discovery fails in ways this screen
  * cannot see — on iOS a denied local-network permission and an empty network
  * are indistinguishable, both just silence.
+ *
+ * The `origin` from the join stack only shapes the copy here (first-run framing
+ * vs. adding another station); it rides on to {@link Pair} to decide the exit.
  */
 import {useState} from 'react';
 import {Pressable, ScrollView, StyleSheet, View} from 'react-native';
@@ -28,7 +31,7 @@ import {
   Text,
 } from '../../components';
 import {useTheme} from '../../theme';
-import type {MainStackScreenProps} from '../../navigation/types';
+import type {JoinScreenProps} from '../../navigation/types';
 import {
   DEFAULT_STATION_PORT,
   parseManualStation,
@@ -45,9 +48,10 @@ const MANUAL_ERROR_TEXT: Record<ManualEntryError, string> = {
   'port-invalid': 'A port is a number between 1 and 65535.',
 };
 
-export function Discovery({navigation}: MainStackScreenProps<'Discovery'>) {
+export function Find({navigation, route}: JoinScreenProps<'Find'>) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const {origin} = route.params;
   const {state, restart} = useDiscovery();
 
   const [manualOpen, setManualOpen] = useState(false);
@@ -55,8 +59,10 @@ export function Discovery({navigation}: MainStackScreenProps<'Discovery'>) {
   const [port, setPort] = useState(String(DEFAULT_STATION_PORT));
   const [manualError, setManualError] = useState<ManualEntryError | null>(null);
 
+  const onboarding = origin === 'onboarding';
+
   function pair(station: Station) {
-    navigation.navigate('Pairing', {station});
+    navigation.navigate('Pair', {station, origin});
   }
 
   function submitManual() {
@@ -80,10 +86,14 @@ export function Discovery({navigation}: MainStackScreenProps<'Discovery'>) {
       }}
       keyboardShouldPersistTaps="handled">
       <ScreenHeader
-        title="Find a station"
+        title={onboarding ? 'Join your community' : 'Find a station'}
         subtitle={
-          'Stations on your network announce themselves. Pick yours to pair with ' +
-          'it — you’ll confirm it’s the right one in the next step.'
+          onboarding
+            ? 'Connect to your community’s station to finish setting up. It ' +
+              'announces itself on your network — pick yours, and you’ll ' +
+              'confirm it’s the right one next.'
+            : 'Stations on your network announce themselves. Pick yours to pair ' +
+              'with it — you’ll confirm it’s the right one in the next step.'
         }
         onBack={() => navigation.goBack()}
       />

@@ -344,21 +344,35 @@ describe('WalletReady', () => {
     expect(queryByLabel(r, 'QR code for rrn1readyaddress')).not.toBeNull();
   });
 
-  test('Continue enters recovery setup (tagged as onboarding)', async () => {
+  test('"Join your community" enters pairing (tagged as onboarding)', async () => {
     mockOnboarding.createdAddress = 'rrn1readyaddress';
     const navigation = nav();
     const r = await renderScreen(
       <WalletReady navigation={navigation} route={{} as any} />,
     );
 
-    await press(button(r, 'Continue to recovery setup'));
+    await press(button(r, 'Join your community'));
+    expect(navigation.navigate).toHaveBeenCalledWith('Join', {
+      origin: 'onboarding',
+    });
+    expect(mockRefresh).not.toHaveBeenCalled();
+  });
+
+  test('"Set up recovery first" enters recovery setup (tagged as onboarding)', async () => {
+    mockOnboarding.createdAddress = 'rrn1readyaddress';
+    const navigation = nav();
+    const r = await renderScreen(
+      <WalletReady navigation={navigation} route={{} as any} />,
+    );
+
+    await press(button(r, 'Set up recovery first'));
     expect(navigation.navigate).toHaveBeenCalledWith('Recovery', {
       origin: 'onboarding',
     });
     expect(mockRefresh).not.toHaveBeenCalled();
   });
 
-  test('"Set up later" adopts the created wallet (entering the app unlocked)', async () => {
+  test('"Skip for now" adopts the created wallet (entering the app unlocked)', async () => {
     mockOnboarding.createdAddress = 'rrn1readyaddress';
     const created = {address: 'rrn1readyaddress'};
     mockOnboarding.createdWallet = created;
@@ -366,7 +380,7 @@ describe('WalletReady', () => {
       <WalletReady navigation={nav()} route={{} as any} />,
     );
 
-    await press(button(r, 'Set up later'));
+    await press(button(r, 'Skip for now'));
     expect(mockAdopt).toHaveBeenCalledWith(created);
     mockOnboarding.createdWallet = null;
   });

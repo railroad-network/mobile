@@ -152,7 +152,7 @@ test('with no paired station, the pairing row opens discovery', async () => {
   const r = await renderSettings();
   expect(hasText(r, 'Not paired — find a station on your network')).toBe(true);
   await press(control(r, 'Station pairing'));
-  expect(mockNav.navigate).toHaveBeenCalledWith('Discovery');
+  expect(mockNav.navigate).toHaveBeenCalledWith('Join', {origin: 'settings'});
 });
 
 test('when paired, the pairing row summarises and opens the paired list', async () => {

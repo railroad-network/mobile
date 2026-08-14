@@ -98,7 +98,7 @@ describe('Paired stations screen', () => {
     const tree = await render();
     expect(textOf(tree)).toContain('haven’t paired');
     await pressText(tree, 'Find a station');
-    expect(mockNav.navigate).toHaveBeenCalledWith('Discovery');
+    expect(mockNav.navigate).toHaveBeenCalledWith('Join', {origin: 'settings'});
   });
 
   it('lists paired stations by label, host and address', async () => {
@@ -154,6 +154,6 @@ describe('Paired stations screen', () => {
     mockLoad.mockResolvedValue([evening]);
     const tree = await render();
     await pressText(tree, 'Pair with another station');
-    expect(mockNav.navigate).toHaveBeenCalledWith('Discovery');
+    expect(mockNav.navigate).toHaveBeenCalledWith('Join', {origin: 'settings'});
   });
 });

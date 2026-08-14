@@ -14,7 +14,7 @@ import {SafeAreaProvider} from 'react-native-safe-area-context';
 import type {DiscoveredStation, StationDiscovery} from 'rrn-discovery';
 
 import {ThemeProvider} from '../src/theme';
-import {Discovery} from '../src/screens/main/Discovery';
+import {Find} from '../src/screens/join/Find';
 import {
   EMPTY_AFTER_MS,
   registerStationDiscovery,
@@ -72,7 +72,7 @@ afterEach(() => {
   jest.useRealTimers();
 });
 
-function render() {
+function render(origin: 'onboarding' | 'settings' = 'settings') {
   let tree!: ReactTestRenderer.ReactTestRenderer;
   act(() => {
     tree = ReactTestRenderer.create(
@@ -82,9 +82,9 @@ function render() {
           insets: {top: 47, left: 0, right: 0, bottom: 34},
         }}>
         <ThemeProvider>
-          <Discovery
+          <Find
             navigation={mockNav as never}
-            route={{key: 'Discovery', name: 'Discovery'} as never}
+            route={{key: 'Find', name: 'Find', params: {origin}} as never}
           />
         </ThemeProvider>
       </SafeAreaProvider>,
@@ -151,7 +151,7 @@ describe('Discovery screen', () => {
 
     pressLabelled(tree, 'Pair with Railroad Station — Evening Ridge');
 
-    expect(mockNav.navigate).toHaveBeenCalledWith('Pairing', {
+    expect(mockNav.navigate).toHaveBeenCalledWith('Pair', {
       station: {
         name: 'Railroad Station — Evening Ridge',
         host: 'railroad-station-evening-ridge.local.',
@@ -160,7 +160,22 @@ describe('Discovery screen', () => {
         address: 'rrn1evening',
         version: '0.1.0',
       },
+      origin: 'settings',
     });
+  });
+
+  it('frames the step as joining a community during onboarding', () => {
+    const tree = render('onboarding');
+    act(() => fake.onFound?.(reply()));
+
+    const text = textOf(tree);
+    expect(text).toContain('Join your community');
+    // ...and carries that origin through to pairing.
+    pressLabelled(tree, 'Pair with Railroad Station — Evening Ridge');
+    expect(mockNav.navigate).toHaveBeenCalledWith(
+      'Pair',
+      expect.objectContaining({origin: 'onboarding'}),
+    );
   });
 
   it('says it is looking before anything turns up', () => {
@@ -243,13 +258,14 @@ describe('Discovery screen', () => {
       setField(tree, 'Address', '192.168.1.134');
       submit(tree);
 
-      expect(mockNav.navigate).toHaveBeenCalledWith('Pairing', {
+      expect(mockNav.navigate).toHaveBeenCalledWith('Pair', {
         station: {
           name: '192.168.1.134',
           host: '192.168.1.134',
           port: 7500,
           origin: 'manual',
         },
+        origin: 'settings',
       });
     });
 

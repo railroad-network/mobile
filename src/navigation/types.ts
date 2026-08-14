@@ -11,6 +11,13 @@ import type {StationVouchListRow} from '../network/StationClient';
 /** Where the social-recovery flow was entered from — decides how it exits. */
 export type RecoveryOrigin = 'onboarding' | 'settings';
 
+/**
+ * Where the join-a-community flow (discover + pair) was entered from — decides
+ * how its final step exits. From `onboarding` (WalletReady) it enters the app by
+ * adopting the just-unlocked wallet; from `settings` it returns to the tabs.
+ */
+export type JoinOrigin = 'onboarding' | 'settings';
+
 /** Which side of the vouching browser a row belongs to (T1.4.5). */
 export type VouchDirection = 'given' | 'received';
 
@@ -21,11 +28,28 @@ export type OnboardingStackParamList = {
   GenerateWallet: undefined;
   WalletReady: undefined;
   Recovery: {origin: RecoveryOrigin};
+  /** Join a community: discover + pair with its station, then enter the app. */
+  Join: {origin: JoinOrigin};
 };
 
 /** Props for a screen in the onboarding stack. */
 export type OnboardingScreenProps<T extends keyof OnboardingStackParamList> =
   NativeStackScreenProps<OnboardingStackParamList, T>;
+
+/**
+ * The join-a-community stack (nested; launched from onboarding's WalletReady or
+ * from Settings). `Find` discovers a station on the LAN; `Pair` runs the
+ * in-person handshake. The `origin` rides through both so the final step knows
+ * whether to enter the app or return to the tabs.
+ */
+export type JoinStackParamList = {
+  Find: {origin: JoinOrigin};
+  Pair: {station: Station; origin: JoinOrigin};
+};
+
+/** Props for a screen in the join stack. */
+export type JoinScreenProps<T extends keyof JoinStackParamList> =
+  NativeStackScreenProps<JoinStackParamList, T>;
 
 /** The social-recovery setup stack (nested; launched from onboarding or Settings). */
 export type RecoveryStackParamList = {
@@ -71,8 +95,8 @@ export type MainStackParamList = {
   ExportWallet: undefined;
   /** Factory reset, confirmed by typing the given nickname (T1.2.8). */
   FactoryReset: {nickname: string};
-  /** Find a station on the local network to pair with (T1.3.2). */
-  Discovery: undefined;
+  /** Join a community: discover + pair with its station (T1.3.2/T1.3.3). */
+  Join: {origin: JoinOrigin};
   /** The stations this device is paired with, and unpairing them (T1.3.3). */
   PairedStations: undefined;
   /** Local notification + background-sync preferences (T1.3.6). */
@@ -115,13 +139,6 @@ export type MainStackParamList = {
   VouchList: {initial: VouchDirection};
   /** A single vouch's full detail (T1.4.5); the row travels in as a param. */
   VouchDetail: {vouch: StationVouchListRow; mode: VouchDirection};
-  /**
-   * Pair with a station, discovered or hand-typed (T1.3.3).
-   *
-   * Takes the whole {@link Station} rather than an id because nothing has been
-   * stored yet — pairing is what decides a station is worth remembering.
-   */
-  Pairing: {station: Station};
 };
 
 /** Props for a screen in the main stack. */

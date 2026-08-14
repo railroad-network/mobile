@@ -3,9 +3,12 @@
  * code and in full text — others scan it to pay or vouch for the user. From here
  * the user can set up social recovery now (T1.2.3) or skip it and enter the app.
  *
- * "Continue to recovery setup" pushes the recovery flow (tagged `onboarding`, so
- * its final screen enters the app). "Set up later" refreshes the wallet session,
- * which flips the root navigator straight from the onboarding stack to the app.
+ * The primary next step is joining a community: "Join your community" pushes the
+ * pairing flow (tagged `onboarding`, so its final step enters the app once
+ * paired). Setting up social recovery is offered as a secondary path, and "Skip
+ * for now" refreshes the wallet session — which flips the root navigator
+ * straight from the onboarding stack to the app, un-paired (Home then prompts to
+ * pair). Both those paths are also always reachable later from Settings.
  */
 import {StyleSheet, View} from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
@@ -44,11 +47,18 @@ export function WalletReady({navigation}: OnboardingScreenProps<'WalletReady'>) 
             variant="primary"
             size="lg"
             fullWidth
+            onPress={() => navigation.navigate('Join', {origin: 'onboarding'})}>
+            Join your community
+          </Button>
+          <Button
+            variant="ghost"
+            size="lg"
+            fullWidth
             onPress={() => navigation.navigate('Recovery', {origin: 'onboarding'})}>
-            Continue to recovery setup
+            Set up recovery first
           </Button>
           <Button variant="ghost" size="lg" fullWidth onPress={onSkip}>
-            Set up later
+            Skip for now
           </Button>
         </>
       }>

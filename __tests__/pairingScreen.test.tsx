@@ -15,19 +15,24 @@ import ReactTestRenderer, {act} from 'react-test-renderer';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 
 import {ThemeProvider} from '../src/theme';
-import {Pairing} from '../src/screens/main/Pairing';
+import {Pair} from '../src/screens/join/Pair';
 import type {Station} from '../src/network/Discovery';
 import {loadWallet} from '../src/wallet/Wallet';
 import {requestPairing} from '../src/network/Pairing';
 import {addPairedStation} from '../src/network/pairedStation';
+import {useWalletSession} from '../src/wallet/WalletSession';
 
 jest.mock('../src/wallet/Wallet', () => ({loadWallet: jest.fn()}));
 jest.mock('../src/network/Pairing', () => ({requestPairing: jest.fn()}));
 jest.mock('../src/network/pairedStation', () => ({addPairedStation: jest.fn()}));
+jest.mock('../src/wallet/WalletSession', () => ({useWalletSession: jest.fn()}));
 
 const mockLoadWallet = loadWallet as jest.Mock;
 const mockRequestPairing = requestPairing as jest.Mock;
 const mockAddPairedStation = addPairedStation as jest.Mock;
+const mockUseWalletSession = useWalletSession as jest.Mock;
+const mockAdopt = jest.fn();
+const mockRefresh = jest.fn();
 
 const station: Station = {
   name: 'Railroad Station — Evening Ridge',
@@ -45,6 +50,7 @@ const fakeWallet = {} as never;
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockUseWalletSession.mockReturnValue({adopt: mockAdopt, refresh: mockRefresh});
   mockLoadWallet.mockResolvedValue(fakeWallet);
   mockRequestPairing.mockResolvedValue({
     ok: true,
@@ -56,7 +62,7 @@ beforeEach(() => {
   mockAddPairedStation.mockResolvedValue(undefined);
 });
 
-function render() {
+function render(origin: 'onboarding' | 'settings' = 'settings') {
   let tree!: ReactTestRenderer.ReactTestRenderer;
   act(() => {
     tree = ReactTestRenderer.create(
@@ -66,9 +72,11 @@ function render() {
           insets: {top: 47, left: 0, right: 0, bottom: 34},
         }}>
         <ThemeProvider>
-          <Pairing
+          <Pair
             navigation={mockNav as never}
-            route={{key: 'Pairing', name: 'Pairing', params: {station}} as never}
+            route={
+              {key: 'Pair', name: 'Pair', params: {station, origin}} as never
+            }
           />
         </ThemeProvider>
       </SafeAreaProvider>,
@@ -155,6 +163,21 @@ describe('Pairing screen', () => {
     });
     expect(typeof saved.pairedAt).toBe('number');
     expect(textOf(tree)).toContain('Paired');
+  });
+
+  it('adopts the wallet into the app when paired during onboarding', async () => {
+    const tree = render('onboarding');
+    await unlock(tree);
+    await pressLabelled(tree, 'Codes match — pair');
+
+    // The onboarding hand-off: the paired step enters the app rather than
+    // returning to the tabs.
+    const text = textOf(tree);
+    expect(text).toContain('You’re all set');
+    await pressLabelled(tree, 'Enter Railroad');
+
+    expect(mockAdopt).toHaveBeenCalledWith(fakeWallet);
+    expect(mockNav.navigate).not.toHaveBeenCalled();
   });
 
   it('does not persist and backs out when the codes do not match', async () => {

@@ -42,6 +42,20 @@ jest.mock('../src/ledger', () => ({
   useRefreshLedger: () => mockRefresh,
 }));
 
+// Home has no NavigationContainer in these tests; run the focus effect as a
+// plain mount effect, matching the Settings screen test.
+jest.mock('@react-navigation/native', () => {
+  const React2 = require('react');
+  return {useFocusEffect: (cb: () => void | (() => void)) => React2.useEffect(cb, [])};
+});
+
+// The recovery nudge reads the persisted config; `null` = not set up. Tests set
+// this before rendering.
+let mockRecoveryConfig: unknown = null;
+jest.mock('../src/wallet/recoveryConfig', () => ({
+  loadRecoveryConfig: () => Promise.resolve(mockRecoveryConfig),
+}));
+
 // The "pair a station" prompt reads the active station; default to one paired
 // (so the normal data-bearing states render). Individual tests override it.
 let mockActiveStation: {station: unknown; isLoading: boolean} = {
@@ -136,6 +150,15 @@ beforeEach(() => {
     station: {address: 'rrn1station', host: 'h', port: 7500, pairedAt: 1},
     isLoading: false,
   };
+  // Default: recovery already set up, so the nudge stays hidden in tests that
+  // don't care about it.
+  mockRecoveryConfig = {
+    originalAddress: 'rrn1qme',
+    threshold: 2,
+    total: 3,
+    holders: [],
+    createdAt: 1,
+  };
 });
 
 test('renders the member, balance, and recent activity', async () => {
@@ -218,7 +241,36 @@ test('prompts to pair a station when none is paired', async () => {
   const r = await renderHome(navigation);
   expect(hasText(r, 'Connect to a station')).toBe(true);
   await press(button(r, 'Find a station'));
-  expect(navigation.navigate).toHaveBeenCalledWith('Discovery');
+  expect(navigation.navigate).toHaveBeenCalledWith('Join', {origin: 'settings'});
+});
+
+test('nudges to set up recovery when it is not configured', async () => {
+  mockRecoveryConfig = null;
+  const navigation = nav();
+  const r = await renderHome(navigation);
+  expect(hasText(r, 'Protect your account')).toBe(true);
+  await press(button(r, 'Set up recovery'));
+  expect(navigation.navigate).toHaveBeenCalledWith('Recovery', {origin: 'settings'});
+});
+
+test('hides the recovery nudge once recovery is set up', async () => {
+  mockRecoveryConfig = {
+    originalAddress: 'rrn1qme',
+    threshold: 2,
+    total: 3,
+    holders: [],
+    createdAt: 1,
+  };
+  const r = await renderHome();
+  expect(hasText(r, 'Protect your account')).toBe(false);
+});
+
+test('"Set up later" dismisses the recovery nudge for the session', async () => {
+  mockRecoveryConfig = null;
+  const r = await renderHome();
+  expect(hasText(r, 'Protect your account')).toBe(true);
+  await press(button(r, 'Set up later'));
+  expect(hasText(r, 'Protect your account')).toBe(false);
 });
 
 test('does not show the pair prompt while the station check is still loading', async () => {
