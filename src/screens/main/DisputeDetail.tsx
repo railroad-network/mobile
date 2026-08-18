@@ -36,6 +36,7 @@ import {
   ScreenHeader,
   Text,
   type BadgeVariant,
+  type BannerVariant,
 } from '../../components';
 import {
   relativeTime,
@@ -610,6 +611,15 @@ function EscalationSection({
           <Badge variant="warning" size="sm">
             {esc.reason === 'appeal' ? 'Appeal' : 'Jury couldn’t seat'}
           </Badge>
+          {!escTerminal &&
+            (() => {
+              const s = escalationStanding(esc);
+              return (
+                <Badge variant={s.variant} size="sm">
+                  {s.label}
+                </Badge>
+              );
+            })()}
         </View>
         <Text variant="label" color={theme.colors.text}>
           With the community
@@ -637,9 +647,14 @@ function EscalationSection({
       </Card>
 
       {escTerminal ? (
-        <Banner variant="info" title="The community has decided">
-          {terminalNote(dispute.resolution)}
-        </Banner>
+        (() => {
+          const result = escalationResultBanner(dispute);
+          return (
+            <Banner variant={result.variant} title={result.title}>
+              {terminalNote(dispute.resolution)}
+            </Banner>
+          );
+        })()
       ) : acted === 'voted' ? (
         <Banner variant="success" title="Ballot cast">
           Your ballot is recorded. It can’t be changed.
@@ -776,6 +791,75 @@ function terminalNote(res: StationDisputeResolution): string {
     default:
       return 'The station will enact the outcome on its next resolution pass.';
   }
+}
+
+/** The jury's terminal majority from the seated panel, or null if none/tied. */
+function juryMajority(dispute: DisputeDetailData): 'uphold' | 'reject' | null {
+  const up = dispute.panel.filter(s => s.verdict === 'uphold').length;
+  const rej = dispute.panel.filter(s => s.verdict === 'reject').length;
+  if (up === rej) {
+    return null;
+  }
+  return up > rej ? 'uphold' : 'reject';
+}
+
+/**
+ * The community-decision headline once an escalation is terminal — the point of
+ * this screen for a watching party: was the appeal *won* (the community overturned
+ * the jury) or *lost* (the jury's ruling stood / the window lapsed), shown in a
+ * colour that reads at a glance rather than as a bare tally. For a `cannot_seat`
+ * escalation there is no jury to overturn, so it just names the community's call.
+ */
+function escalationResultBanner(dispute: DisputeDetailData): {
+  variant: BannerVariant;
+  title: string;
+} {
+  const res = dispute.resolution;
+  const isAppeal = dispute.escalation?.reason === 'appeal';
+  if (res === 'escalation_lapsed') {
+    return {
+      variant: 'warning',
+      title: isAppeal
+        ? 'Appeal lapsed — no community majority, the jury’s ruling gives way'
+        : 'Community window lapsed — no majority',
+    };
+  }
+  const decision =
+    res === 'escalation_upheld'
+      ? 'uphold'
+      : res === 'escalation_rejected'
+        ? 'reject'
+        : null;
+  if (decision === null) {
+    return {variant: 'info', title: 'The community has decided'};
+  }
+  if (isAppeal) {
+    const jm = juryMajority(dispute);
+    if (jm !== null && jm !== decision) {
+      return {variant: 'success', title: 'Appeal won — the community overturned the jury'};
+    }
+    if (jm !== null) {
+      return {variant: 'warning', title: 'Appeal lost — the jury’s ruling stands'};
+    }
+  }
+  // No jury to overturn (cannot_seat, or a missing panel): name the outcome, and
+  // colour it the way the transaction detail will read — voided vs. left to stand.
+  return decision === 'uphold'
+    ? {variant: 'danger', title: 'Community upheld the dispute'}
+    : {variant: 'success', title: 'Community rejected the dispute'};
+}
+
+/** The live standing of an open escalation, for an at-a-glance badge. */
+function escalationStanding(esc: {
+  quorum_met: boolean;
+  approval_met: boolean;
+}): {label: string; variant: BadgeVariant} {
+  if (!esc.quorum_met) {
+    return {label: 'Awaiting quorum', variant: 'neutral'};
+  }
+  return esc.approval_met
+    ? {label: 'Leaning: uphold', variant: 'warning'}
+    : {label: 'Leaning: reject', variant: 'warning'};
 }
 
 /** Badge label for a juror's verdict. */

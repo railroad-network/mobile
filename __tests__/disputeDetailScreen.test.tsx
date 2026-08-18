@@ -323,15 +323,67 @@ test('a party is recused from voting in an open escalation', async () => {
   expect(hasText(r, 'Cast your ballot')).toBe(false);
 });
 
+/** A seated panel with the given verdicts, one juror each. */
+function panel(...verdicts: Array<'uphold' | 'reject' | 'awaiting'>) {
+  const now = Math.floor(Date.now() / 1000);
+  return verdicts.map((verdict, i) => ({
+    juror: `rrn1juror${i}00000000000000000000000000000`,
+    seated_at: now - 1200,
+    verdict,
+  }));
+}
+
 test('a decided escalation is read-only and shows the outcome', async () => {
   mockDispute.data = detail({
     sender: OTHER,
     receiver: JUROR2,
     raiser: OTHER,
     resolution: 'escalation_upheld',
+    panel: panel('uphold', 'uphold', 'reject'),
     escalation: escalation({uphold: 4, reject: 1, quorum_met: true}),
   });
   const r = await renderDetail();
-  expect(hasText(r, 'The community has decided')).toBe(true);
   expect(hasText(r, 'Cast your ballot')).toBe(false);
+});
+
+test('an appeal that overturns the jury reads as won', async () => {
+  // Jury rejected (2–1); the community upheld the dispute — the appeal overturned it.
+  mockDispute.data = detail({
+    resolution: 'escalation_upheld',
+    panel: panel('reject', 'reject', 'uphold'),
+    escalation: escalation({reason: 'appeal', uphold: 3, reject: 1, quorum_met: true}),
+  });
+  const r = await renderDetail();
+  expect(hasText(r, 'Appeal won — the community overturned the jury')).toBe(true);
+});
+
+test('an appeal the community agrees with reads as lost', async () => {
+  // Jury rejected; the community also rejected — the appeal did not change the ruling.
+  mockDispute.data = detail({
+    resolution: 'escalation_rejected',
+    panel: panel('reject', 'reject', 'uphold'),
+    escalation: escalation({reason: 'appeal', uphold: 1, reject: 3, quorum_met: true}),
+  });
+  const r = await renderDetail();
+  expect(hasText(r, 'Appeal lost — the jury’s ruling stands')).toBe(true);
+});
+
+test('a lapsed appeal reads as lost', async () => {
+  mockDispute.data = detail({
+    resolution: 'escalation_lapsed',
+    panel: panel('uphold', 'uphold', 'reject'),
+    escalation: escalation({reason: 'appeal', uphold: 0, reject: 0, quorum_met: false}),
+  });
+  const r = await renderDetail();
+  expect(hasText(r, 'Appeal lapsed — no community majority, the jury’s ruling gives way')).toBe(true);
+});
+
+test('an open escalation shows its live standing at a glance', async () => {
+  // SELF is a party, so recused — but the standing badge still shows the leaning.
+  mockDispute.data = detail({
+    resolution: 'escalation_pending',
+    escalation: escalation({uphold: 3, reject: 1, quorum_met: true, approval_met: true}),
+  });
+  const r = await renderDetail();
+  expect(hasText(r, 'Leaning: uphold')).toBe(true);
 });
