@@ -73,7 +73,11 @@ export function Badge({
       ]}
       accessibilityRole="text">
       {dot && <View style={[styles.dot, {backgroundColor: fg}]} />}
-      <Text variant={sm ? 'caption' : 'label'} color={fg} style={styles.text}>
+      <Text
+        variant={sm ? 'caption' : 'label'}
+        color={fg}
+        style={styles.text}
+        numberOfLines={1}>
         {children}
       </Text>
     </View>
