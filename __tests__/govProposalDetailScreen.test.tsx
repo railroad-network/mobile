@@ -26,12 +26,20 @@ const mockProposal: {
 const mockCosignFn = jest.fn();
 const mockCastVoteFn = jest.fn();
 
+// Member context feeding ADR-0015 vote eligibility. Default: an established
+// member not in grace, so the phase→action tests below see the ballot as before.
+const mockIdentity: {data?: any} = {};
+const mockReputation: {data?: any} = {};
+const mockCharter: {data?: any} = {};
+
 jest.mock('../src/ledger', () => ({
   ...jest.requireActual('../src/ledger'),
   useProposal: () => mockProposal,
-  useCharter: () => ({data: {cosign_threshold: 3}}),
+  useCharter: () => mockCharter,
   useCosignProposal: () => mockCosignFn,
   useCastVote: () => mockCastVoteFn,
+  useIdentity: () => mockIdentity,
+  useReputation: () => mockReputation,
 }));
 
 const metrics = {
@@ -133,6 +141,13 @@ beforeEach(() => {
   mockProposal.refetch = jest.fn();
   mockCosignFn.mockReset();
   mockCastVoteFn.mockReset();
+  // Default member: established, community out of grace → eligible to vote.
+  mockCharter.data = {cosign_threshold: 3, founders: []};
+  mockIdentity.data = {
+    address: 'rrn1self',
+    bootstrap: {inGrace: false, established: 5, threshold: 3},
+  };
+  mockReputation.data = {band: 'Member'};
 });
 
 test('a deliberating, unpublished proposal offers co-sign — not voting', async () => {
@@ -239,4 +254,46 @@ test('a cast ballot stays confirmed even as the tally keeps polling', async () =
   await poll(r);
   expect(hasText(r, 'Vote cast')).toBe(true);
   expect(hasText(r, 'Cast your vote')).toBe(false);
+});
+
+test('a New non-founder in grace is not offered a ballot, but told why (ADR-0015)', async () => {
+  // Under grace the electorate is the founders; this member is neither a founder
+  // nor established, so the ballot must not appear.
+  mockIdentity.data = {
+    address: 'rrn1self',
+    bootstrap: {inGrace: true, established: 0, threshold: 3},
+  };
+  mockReputation.data = {band: 'New'};
+  mockCharter.data = {cosign_threshold: 3, founders: ['rrn1founderA', 'rrn1founderB']};
+
+  const r = await renderDetail();
+  expect(hasText(r, 'Cast your vote')).toBe(false);
+  expect(hasText(r, 'Founders decide for now')).toBe(true);
+});
+
+test('a founder in grace is offered the ballot even while still New', async () => {
+  // Grace lets a founder stand in for the empty established electorate.
+  mockIdentity.data = {
+    address: 'rrn1self',
+    bootstrap: {inGrace: true, established: 0, threshold: 3},
+  };
+  mockReputation.data = {band: 'New'};
+  mockCharter.data = {cosign_threshold: 3, founders: ['rrn1self', 'rrn1founderB']};
+
+  const r = await renderDetail();
+  expect(hasText(r, 'Cast your vote')).toBe(true);
+});
+
+test('a New member is not offered a co-sign under grace either', async () => {
+  mockProposal.data = detail({phase: 'deliberation', published: false, cosigner_count: 1});
+  mockIdentity.data = {
+    address: 'rrn1self',
+    bootstrap: {inGrace: true, established: 0, threshold: 3},
+  };
+  mockReputation.data = {band: 'New'};
+  mockCharter.data = {cosign_threshold: 3, founders: ['rrn1founderA']};
+
+  const r = await renderDetail();
+  expect(hasText(r, 'Co-sign this proposal')).toBe(false);
+  expect(hasText(r, 'Founders decide for now')).toBe(true);
 });

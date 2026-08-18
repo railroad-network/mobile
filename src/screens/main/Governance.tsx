@@ -31,10 +31,12 @@ import {
   useCharter,
   useIdentity,
   useProposals,
+  useReputation,
   useStatutes,
 } from '../../ledger';
 import {
   kindLabel,
+  memberIsEligibleVoter,
   phaseBadge,
   proposalIsActionable,
   TallyBar,
@@ -54,7 +56,18 @@ export function Governance({navigation}: MainStackScreenProps<'Governance'>) {
   const proposals = useProposals();
   const statutes = useStatutes();
   const identity = useIdentity();
+  const reputation = useReputation();
   const bootstrap = identity.data?.bootstrap;
+
+  // Whether *this* member may co-sign / vote at all, so the "needs you" hint
+  // never fires for someone the electorate excludes (ADR-0015): New non-founders
+  // during grace, or any non-established member once grace ends.
+  const eligible = memberIsEligibleVoter({
+    ownAddress: identity.data?.address,
+    established: reputation.data !== undefined && reputation.data.band !== 'New',
+    inGrace: bootstrap?.inGrace === true,
+    founders: charter.data?.founders ?? [],
+  });
 
   const isLoading = charter.isLoading || proposals.isLoading;
   const isError = charter.isError || proposals.isError;
@@ -142,6 +155,7 @@ export function Governance({navigation}: MainStackScreenProps<'Governance'>) {
                   key={p.proposal_id}
                   theme={theme}
                   proposal={p}
+                  eligible={eligible}
                   first={i === 0}
                   onPress={() =>
                     navigation.navigate('GovProposalDetail', {
@@ -273,17 +287,19 @@ function CharterList({
 function ProposalRow({
   theme,
   proposal,
+  eligible,
   first,
   onPress,
 }: {
   theme: Theme;
   proposal: StationProposalSummary;
+  eligible: boolean;
   first: boolean;
   onPress: () => void;
 }) {
   const [pressed, setPressed] = useState(false);
   const phase = phaseBadge(proposal);
-  const actionable = proposalIsActionable(proposal);
+  const actionable = proposalIsActionable(proposal, eligible);
   return (
     <Pressable
       onPress={onPress}

@@ -39,10 +39,18 @@ import {
   useCastVote,
   useCharter,
   useCosignProposal,
+  useIdentity,
   useProposal,
+  useReputation,
 } from '../../ledger';
 import type {VoteChoice} from '../../wallet/governance';
-import {kindLabel, phaseBadge, proposalAction, TallyBar} from './governanceDisplay';
+import {
+  kindLabel,
+  memberIsEligibleVoter,
+  phaseBadge,
+  proposalAction,
+  TallyBar,
+} from './governanceDisplay';
 import {useTheme, type Theme} from '../../theme';
 import type {StationProposalDetail} from '../../network/StationClient';
 import type {MainStackScreenProps} from '../../navigation/types';
@@ -59,6 +67,18 @@ export function GovProposalDetail({
   const {proposalId} = route.params;
   const {data, isLoading, isError, refetch} = useProposal(proposalId);
   const charter = useCharter();
+  const identity = useIdentity();
+  const reputation = useReputation();
+
+  // Whether this member may act at all under ADR-0015 grace (established, or a
+  // founder while the community bootstraps). When false the action card explains
+  // why instead of offering a ballot the station would only reject.
+  const eligible = memberIsEligibleVoter({
+    ownAddress: identity.data?.address,
+    established: reputation.data !== undefined && reputation.data.band !== 'New',
+    inGrace: identity.data?.bootstrap?.inGrace === true,
+    founders: charter.data?.founders ?? [],
+  });
 
   const contentPad = {
     paddingTop: insets.top + theme.spacing.sm,
@@ -95,6 +115,9 @@ export function GovProposalDetail({
           theme={theme}
           proposal={data}
           cosignThreshold={charter.data?.cosign_threshold}
+          eligible={eligible}
+          inGrace={identity.data?.bootstrap?.inGrace === true}
+          graceThreshold={identity.data?.bootstrap?.threshold}
           onActed={() => refetch()}
         />
       )}
@@ -106,11 +129,17 @@ function ProposalBody({
   theme,
   proposal,
   cosignThreshold,
+  eligible,
+  inGrace,
+  graceThreshold,
   onActed,
 }: {
   theme: Theme;
   proposal: StationProposalDetail;
   cosignThreshold: number | undefined;
+  eligible: boolean;
+  inGrace: boolean;
+  graceThreshold: number | undefined;
   onActed: () => void;
 }) {
   const cosign = useCosignProposal();
@@ -122,7 +151,10 @@ function ProposalBody({
   const [error, setError] = useState<string | null>(null);
 
   const phase = phaseBadge(proposal);
-  const action = proposalAction(proposal);
+  // What the phase allows, and what this member may actually do: an ineligible
+  // member (a New non-founder under grace) is offered no ballot (ADR-0015).
+  const phaseAction = proposalAction(proposal);
+  const action = eligible ? phaseAction : 'none';
 
   async function doCosign() {
     if (busy) return;
@@ -310,6 +342,20 @@ function ProposalBody({
             {choice === null ? 'Pick a choice' : `Cast “${choiceLabel(choice)}”`}
           </Button>
         </View>
+      );
+    }
+
+    // The phase would allow a co-sign or vote, but this member is not part of
+    // the electorate — say why, rather than offer a ballot the station rejects.
+    if (!eligible && phaseAction !== 'none') {
+      return (
+        <Banner variant="info" title="Founders decide for now">
+          {inGrace
+            ? `While the community is bootstrapping, its founders stand in as the electorate. Once ${
+                graceThreshold ?? 3
+              } members are established, every established member — including you — takes part.`
+            : 'Only established members co-sign and vote. Build up standing through trades and vouches to take part.'}
+        </Banner>
       );
     }
 

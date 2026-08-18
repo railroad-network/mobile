@@ -23,10 +23,15 @@ const mockProposals: Query<StationProposalSummary[]> = {isLoading: false, isErro
 const mockStatutes: Query<unknown[]> = {isLoading: false, isError: false, data: []};
 // Identity carries the bootstrap-grace flag the hub's grace note reads; default
 // to no bootstrap (note hidden), overridden per test.
-let mockIdentity: Query<{bootstrap?: {inGrace: boolean; established: number; threshold: number}}> = {
+let mockIdentity: Query<{
+  address?: string;
+  bootstrap?: {inGrace: boolean; established: number; threshold: number};
+}> = {
   isLoading: false,
   isError: false,
 };
+// Standing feeds the ADR-0015 "needs you" eligibility gate; default established.
+let mockReputation: Query<{band: string}> = {isLoading: false, isError: false};
 
 jest.mock('../src/ledger', () => ({
   ...jest.requireActual('../src/ledger'),
@@ -34,6 +39,7 @@ jest.mock('../src/ledger', () => ({
   useProposals: () => mockProposals,
   useStatutes: () => mockStatutes,
   useIdentity: () => mockIdentity,
+  useReputation: () => mockReputation,
 }));
 
 const metrics = {
@@ -127,7 +133,8 @@ beforeEach(() => {
   mockProposals.isLoading = false;
   mockProposals.isError = false;
   mockStatutes.data = [];
-  mockIdentity = {isLoading: false, isError: false};
+  mockIdentity = {isLoading: false, isError: false, data: {address: 'rrn1self'}};
+  mockReputation = {isLoading: false, isError: false, data: {band: 'Member'}};
 });
 
 test('a bootstrapping community says its Charter is not ratified yet', async () => {
@@ -192,6 +199,21 @@ test('a concluded proposal is not flagged as needing the member', async () => {
   ];
   const r = await renderHub();
   expect(hasText(r, 'Passed')).toBe(true);
+  expect(hasText(r, 'Needs you')).toBe(false);
+});
+
+test('does not flag a voting proposal as needing a New non-founder in grace', async () => {
+  // The electorate under grace is the founders; a New non-founder is not one, so
+  // the hub must not nudge them to act (ADR-0015).
+  mockIdentity = {
+    isLoading: false,
+    isError: false,
+    data: {address: 'rrn1self', bootstrap: {inGrace: true, established: 0, threshold: 3}},
+  };
+  mockReputation = {isLoading: false, isError: false, data: {band: 'New'}};
+  mockCharter.data = charter({founders: ['rrn1a', 'rrn1b']});
+  const r = await renderHub();
+  expect(hasText(r, 'Voting open')).toBe(true);
   expect(hasText(r, 'Needs you')).toBe(false);
 });
 

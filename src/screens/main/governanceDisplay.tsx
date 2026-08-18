@@ -62,14 +62,42 @@ export function phaseBadge(proposal: StationProposalSummary): {
 }
 
 /**
+ * Whether this member may co-sign / vote at all, under ADR-0015 bootstrap grace.
+ * An established member always may. While the community is in grace its founders
+ * stand in for the (empty) established electorate, so a founder may too — but a
+ * "New" member who is not a founder may not, and the screens should offer no
+ * ballot rather than let the station reject one. The station stays the authority;
+ * this only spares an ineligible member a button that can only fail.
+ */
+export function memberIsEligibleVoter(args: {
+  ownAddress: string | undefined;
+  established: boolean;
+  inGrace: boolean;
+  founders: string[];
+}): boolean {
+  const {ownAddress, established, inGrace, founders} = args;
+  if (established) {
+    return true;
+  }
+  return (
+    inGrace && ownAddress !== undefined && founders.includes(ownAddress)
+  );
+}
+
+/**
  * Whether the member can act on this proposal right now — used for the hub's
- * "needs you" hint. Note this cannot tell whether *this* member has already
- * co-signed or voted (that needs the detail read), so it is a hint, not a
- * promise: the detail screen makes the final call and the station is the
+ * "needs you" hint. It combines the proposal's phase ({@link proposalAction})
+ * with whether the member is an eligible voter at all ({@link
+ * memberIsEligibleVoter}). Note it still cannot tell whether *this* member has
+ * already co-signed or voted (that needs the detail read), so it is a hint, not
+ * a promise: the detail screen makes the final call and the station is the
  * authority that rejects a duplicate.
  */
-export function proposalIsActionable(proposal: StationProposalSummary): boolean {
-  return proposalAction(proposal) !== 'none';
+export function proposalIsActionable(
+  proposal: StationProposalSummary,
+  eligible: boolean,
+): boolean {
+  return eligible && proposalAction(proposal) !== 'none';
 }
 
 /** What action, if any, the proposal's phase currently allows. */
