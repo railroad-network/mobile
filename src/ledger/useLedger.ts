@@ -12,12 +12,16 @@
  * The activity list still folds in the local outbox and any local confirm/reject
  * decisions on top of the station's authoritative view — see {@link assembleActivity}.
  */
-import {useCallback} from 'react';
+import {useCallback, useSyncExternalStore} from 'react';
 import {useQuery, useQueryClient, type UseQueryResult} from '@tanstack/react-query';
 
 import type {ConnectivityLevel} from '../components';
 import {loadProfile} from '../wallet/profile';
 import {useWalletSession} from '../wallet/WalletSession';
+import {
+  getReachability,
+  subscribeReachability,
+} from '../network/connectivityStore';
 import {
   useActiveStation,
   useStationClient,
@@ -654,32 +658,27 @@ export interface Connectivity {
 }
 
 /**
- * Station reachability, driving the offline banner. A lightweight `whoami` probe
- * against the active station, refreshed periodically; if it errors (with an
- * `unreachable` failure), the station is offline. With no station paired there is
- * nothing to be offline *from*, so it reports online (the "pair a station" empty
- * state is a separate concern the screens handle).
+ * Station reachability, driving the offline banner. The verdict comes from the
+ * subscribe long-poll — the app's live connection to the station — rather than a
+ * separate `whoami` probe: {@link useStationSubscription} reports each pass's
+ * outcome into {@link connectivityStore}, and this hook reflects it. That avoids
+ * the probe-vs-subscribe contention that used to flap the indicator on a cold
+ * connection pool (~30–60s after launch).
+ *
+ * With no station paired (or the wallet locked) there is nothing to be offline
+ * *from*, so it reports online; and an `unknown` verdict — before the first
+ * round-trip, or right after a teardown — is treated as online too, so warm-up
+ * never flashes "offline". Only a confirmed `unreachable` shows offline.
  */
 export function useConnectivity(): Connectivity {
   const client = useStationClient();
   const {station} = useActiveStation();
-  const probe = useQuery({
-    queryKey: ['reachability', station?.address],
-    enabled: client !== null,
-    queryFn: () => client!.whoami(),
-    // A couple of retries ride out the moment right after unlock when the client
-    // exists but its connection is still warming up: the first `whoami` can lose
-    // that race, and with no retry it wrongly flips the header to "offline" —
-    // even as other screens load fine — until the next interval. Retrying holds
-    // the connected state through the warm-up instead of flashing disconnected.
-    retry: 2,
-    // Poll gently while connected, but re-probe every few seconds while we
-    // believe we're offline, so the indicator recovers in ~3s — not up to 15 —
-    // once the station answers again.
-    refetchInterval: query => (query.state.status === 'error' ? 3_000 : 15_000),
-    staleTime: 10_000,
-  });
-  const isOffline = client !== null && probe.isError;
+  const reachability = useSyncExternalStore(
+    subscribeReachability,
+    getReachability,
+  );
+  const isOffline =
+    client !== null && station !== null && reachability === 'unreachable';
   return {level: isOffline ? 'offline' : 'mesh', isOffline};
 }
 

@@ -141,6 +141,58 @@ describe('runSubscription', () => {
     expect(await getCursor(ADDR, store)).toBe(9);
   });
 
+  test('reports reachability per pass via onStatus (drives connectivity)', async () => {
+    const store = new MemStore();
+    const controller = new AbortController();
+    const status: boolean[] = [];
+    let call = 0;
+
+    const client = fakeClient(async () => {
+      call += 1;
+      if (call <= 2) {
+        throw new StationClientError('unreachable', 'ECONNREFUSED');
+      }
+      if (call === 3) {
+        return {lastSeenEventId: 1, events: [event(1)]};
+      }
+      controller.abort();
+      return {lastSeenEventId: 1, events: []};
+    });
+
+    await runSubscription(client, ADDR, {
+      signal: controller.signal,
+      store,
+      onEvent: () => {},
+      onStatus: reachable => status.push(reachable),
+      sleep: async () => {},
+    });
+
+    // Two failed passes report unreachable, then the good pass reports reachable.
+    expect(status).toEqual([false, false, true]);
+  });
+
+  test('an abort does not report a (false) status', async () => {
+    const store = new MemStore();
+    const controller = new AbortController();
+    const status: boolean[] = [];
+
+    const client = fakeClient(async () => {
+      controller.abort(); // background mid-poll: surfaces as an abort error
+      throw new StationClientError('unreachable', 'aborted');
+    });
+
+    await runSubscription(client, ADDR, {
+      signal: controller.signal,
+      store,
+      onEvent: () => {},
+      onStatus: reachable => status.push(reachable),
+      sleep: async () => {},
+    });
+
+    // Aborts are not failures — the indicator must not flip to offline on them.
+    expect(status).toEqual([]);
+  });
+
   test('aborting during backoff stops the loop', async () => {
     const store = new MemStore();
     const controller = new AbortController();

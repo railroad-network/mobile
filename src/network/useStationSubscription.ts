@@ -16,6 +16,7 @@ import {useEffect} from 'react';
 import {useQueryClient} from '@tanstack/react-query';
 
 import {ledgerKeys} from '../ledger/useLedger';
+import {resetReachability, setReachability} from './connectivityStore';
 import {runSubscription} from './stationSubscription';
 import {useActiveStation, useStationClient} from './useStation';
 
@@ -31,6 +32,9 @@ export function useStationSubscription(): void {
 
   useEffect(() => {
     if (client === null || address === null) {
+      // No unlocked client / no station: nothing to be reachable *to*. Clear any
+      // stale verdict so the indicator reads online (nothing to be offline from).
+      resetReachability();
       return;
     }
     const controller = new AbortController();
@@ -40,8 +44,16 @@ export function useStationSubscription(): void {
         // Refetch balance + activity; the read path renders the change.
         queryClient.invalidateQueries({queryKey: ledgerKeys.root}).catch(() => {});
       },
+      // The subscribe loop is the app's live connection to the station, so its
+      // round-trips drive the connectivity indicator (no competing probe).
+      onStatus: reachable =>
+        setReachability(reachable ? 'reachable' : 'unreachable'),
     }).catch(() => {});
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+      // The verdict is only meaningful while this loop runs.
+      resetReachability();
+    };
   }, [client, address, queryClient]);
 }
 

@@ -41,6 +41,13 @@ export interface SubscriptionOptions {
   onEvent: (event: StationEvent) => void;
   /** Called when a subscribe pass fails (before backing off). Optional. */
   onError?: (error: unknown) => void;
+  /**
+   * Called after each pass with whether the station was reached: `true` on a
+   * successful round-trip, `false` on a (non-abort) failure. Drives the
+   * connectivity indicator off this real connection instead of a separate probe
+   * (see {@link network/connectivityStore}). Optional.
+   */
+  onStatus?: (reachable: boolean) => void;
   /** Abortable delay, injectable so tests can drive it with fake timers. */
   sleep?: (ms: number, signal: AbortSignal) => Promise<void>;
 }
@@ -55,7 +62,7 @@ export async function runSubscription(
   stationAddress: string,
   options: SubscriptionOptions,
 ): Promise<void> {
-  const {signal, onEvent, onError} = options;
+  const {signal, onEvent, onError, onStatus} = options;
   const store = options.store ?? getSecureStore();
   const backoff = options.backoff ?? DEFAULT_BACKOFF;
   const sleep = options.sleep ?? abortableSleep;
@@ -72,7 +79,9 @@ export async function runSubscription(
         onEvent(event);
       }
       await setCursor(stationAddress, lastSeenEventId, store);
-      // A good round-trip resets the backoff and re-subscribes immediately.
+      // A good round-trip means the station is reachable, and resets the backoff
+      // so we re-subscribe immediately.
+      onStatus?.(true);
       wait = backoff.baseMs;
     } catch (error) {
       if (signal.aborted) {
@@ -83,6 +92,8 @@ export async function runSubscription(
         break;
       }
       onError?.(error);
+      // A real (non-abort) failure means the station is unreachable.
+      onStatus?.(false);
       await sleep(wait, signal);
       wait = Math.min(wait * 2, backoff.maxMs);
     }
