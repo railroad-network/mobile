@@ -8034,6 +8034,7 @@ __metadata:
     react: "npm:19.2.3"
     react-native: "npm:0.86.0"
     react-native-background-fetch: "npm:^4.4.2"
+    react-native-camera-kit: "npm:^18.0.1"
     react-native-keychain: "npm:^10.0.0"
     react-native-nitro-image: "npm:^0.15.1"
     react-native-nitro-modules: "npm:^0.36.1"
@@ -8122,6 +8123,16 @@ __metadata:
     "@expo/config-plugins":
       optional: true
   checksum: 10/a7487bbc92a69e53550a1accafa2d7c0781c05c099301a5db7a70f8af015d05f021b2cadb045f3bbba2305a79c990dbc5c4d184d0cb7e187a3cde29cce4af045
+  languageName: node
+  linkType: hard
+
+"react-native-camera-kit@npm:^18.0.1":
+  version: 18.0.1
+  resolution: "react-native-camera-kit@npm:18.0.1"
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  checksum: 10/560e90259177e7dc0ad9ef1401bb77789db5a5a24a7bfbb2846bc926b739272c4c546e14b69d454fc9190fd4c859582516b20bbfbbedf09db68fcd3c9daa0488
   languageName: node
   linkType: hard
 
