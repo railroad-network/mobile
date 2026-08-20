@@ -228,8 +228,18 @@ interface NativeModuleInterface {
     address: Uint8Array,
     uniffi_out_err: UniffiRustCallStatus,
   ): number;
+  ubrn_uniffi_rrn_mobile_ffi_fn_func_parse_recovery_request(
+    requestPayload: Uint8Array,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): Uint8Array;
   ubrn_uniffi_rrn_mobile_ffi_fn_func_parse_shard_payload(
     payload: Uint8Array,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): Uint8Array;
+  ubrn_uniffi_rrn_mobile_ffi_fn_func_respond_to_recovery(
+    wallet: bigint,
+    storedShardPayload: Uint8Array,
+    requestPayload: Uint8Array,
     uniffi_out_err: UniffiRustCallStatus,
   ): Uint8Array;
   ubrn_uniffi_rrn_mobile_ffi_fn_constructor_encryptedwallet_encrypt(
@@ -363,7 +373,9 @@ interface NativeModuleInterface {
   ubrn_ffi_rrn_mobile_ffi_uniffi_contract_version(): number;
   ubrn_uniffi_rrn_mobile_ffi_checksum_func_canonical_bytes(): number;
   ubrn_uniffi_rrn_mobile_ffi_checksum_func_is_valid_address(): number;
+  ubrn_uniffi_rrn_mobile_ffi_checksum_func_parse_recovery_request(): number;
   ubrn_uniffi_rrn_mobile_ffi_checksum_func_parse_shard_payload(): number;
+  ubrn_uniffi_rrn_mobile_ffi_checksum_func_respond_to_recovery(): number;
   ubrn_uniffi_rrn_mobile_ffi_checksum_constructor_encryptedwallet_encrypt(): number;
   ubrn_uniffi_rrn_mobile_ffi_checksum_constructor_encryptedwallet_from_bytes(): number;
   ubrn_uniffi_rrn_mobile_ffi_checksum_method_encryptedwallet_decrypt(): number;

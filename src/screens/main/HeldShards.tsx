@@ -155,16 +155,25 @@ export function HeldShards({navigation}: MainStackScreenProps<'HeldShards'>) {
           </View>
         </Card>
       ) : (
-        <Button
-          variant="accent"
-          size="lg"
-          fullWidth
-          onPress={() => {
-            setNotice(null);
-            setScanning(true);
-          }}>
-          Scan a shard
-        </Button>
+        <View style={{gap: theme.spacing.sm}}>
+          <Button
+            variant="accent"
+            size="lg"
+            fullWidth
+            onPress={() => {
+              setNotice(null);
+              setScanning(true);
+            }}>
+            Scan a shard
+          </Button>
+          <Button
+            variant="ghost"
+            size="md"
+            fullWidth
+            onPress={() => navigation.navigate('HelpRecover')}>
+            Help someone recover
+          </Button>
+        </View>
       )}
 
       {shards.length === 0 ? (

@@ -118,6 +118,12 @@ const fakeFfi: RrnCryptoFfi = {
       throw new Error('recovery not exercised by these tests');
     },
   },
+  parseRecoveryRequest: () => {
+    throw new Error('recovery ceremony not exercised by these tests');
+  },
+  respondToRecovery: () => {
+    throw new Error('recovery ceremony not exercised by these tests');
+  },
   parseShardPayload: () => {
     throw new Error('recovery not exercised by these tests');
   },

@@ -319,8 +319,18 @@ extern "C" {
         RustBuffer address, 
         RustCallStatus *uniffi_out_err
     );
+    RustBuffer uniffi_rrn_mobile_ffi_fn_func_parse_recovery_request(
+        RustBuffer request_payload, 
+        RustCallStatus *uniffi_out_err
+    );
     RustBuffer uniffi_rrn_mobile_ffi_fn_func_parse_shard_payload(
         RustBuffer payload, 
+        RustCallStatus *uniffi_out_err
+    );
+    RustBuffer uniffi_rrn_mobile_ffi_fn_func_respond_to_recovery(
+        /*handle*/ uint64_t wallet, 
+        RustBuffer stored_shard_payload, 
+        RustBuffer request_payload, 
         RustCallStatus *uniffi_out_err
     );
     RustBuffer ffi_rrn_mobile_ffi_rustbuffer_alloc(
@@ -524,7 +534,11 @@ extern "C" {
     );
     uint16_t uniffi_rrn_mobile_ffi_checksum_func_is_valid_address(
     );
+    uint16_t uniffi_rrn_mobile_ffi_checksum_func_parse_recovery_request(
+    );
     uint16_t uniffi_rrn_mobile_ffi_checksum_func_parse_shard_payload(
+    );
+    uint16_t uniffi_rrn_mobile_ffi_checksum_func_respond_to_recovery(
     );
     uint16_t uniffi_rrn_mobile_ffi_checksum_method_encryptedwallet_decrypt(
     );
@@ -2414,12 +2428,28 @@ NativeRrnMobileFfi::NativeRrnMobileFfi(
             return this->cpp_uniffi_rrn_mobile_ffi_fn_func_is_valid_address(rt, thisVal, args, count);
         }
     );
+    props["ubrn_uniffi_rrn_mobile_ffi_fn_func_parse_recovery_request"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_fn_func_parse_recovery_request"),
+        1,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_fn_func_parse_recovery_request(rt, thisVal, args, count);
+        }
+    );
     props["ubrn_uniffi_rrn_mobile_ffi_fn_func_parse_shard_payload"] = jsi::Function::createFromHostFunction(
         rt,
         jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_fn_func_parse_shard_payload"),
         1,
         [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
             return this->cpp_uniffi_rrn_mobile_ffi_fn_func_parse_shard_payload(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_rrn_mobile_ffi_fn_func_respond_to_recovery"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_fn_func_respond_to_recovery"),
+        3,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_fn_func_respond_to_recovery(rt, thisVal, args, count);
         }
     );
     props["ubrn_uniffi_rrn_mobile_ffi_checksum_func_canonical_bytes"] = jsi::Function::createFromHostFunction(
@@ -2438,12 +2468,28 @@ NativeRrnMobileFfi::NativeRrnMobileFfi(
             return this->cpp_uniffi_rrn_mobile_ffi_checksum_func_is_valid_address(rt, thisVal, args, count);
         }
     );
+    props["ubrn_uniffi_rrn_mobile_ffi_checksum_func_parse_recovery_request"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_checksum_func_parse_recovery_request"),
+        0,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_checksum_func_parse_recovery_request(rt, thisVal, args, count);
+        }
+    );
     props["ubrn_uniffi_rrn_mobile_ffi_checksum_func_parse_shard_payload"] = jsi::Function::createFromHostFunction(
         rt,
         jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_checksum_func_parse_shard_payload"),
         0,
         [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
             return this->cpp_uniffi_rrn_mobile_ffi_checksum_func_parse_shard_payload(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_rrn_mobile_ffi_checksum_func_respond_to_recovery"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_checksum_func_respond_to_recovery"),
+        0,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_checksum_func_respond_to_recovery(rt, thisVal, args, count);
         }
     );
     props["ubrn_uniffi_rrn_mobile_ffi_checksum_method_encryptedwallet_decrypt"] = jsi::Function::createFromHostFunction(
@@ -3411,9 +3457,29 @@ jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_fn_func_is_valid_addres
         
         return uniffi_jsi::Bridging<int8_t>::toJs(rt, callInvoker, value);
 }
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_fn_func_parse_recovery_request(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        RustCallStatus status = uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
+        auto value = uniffi_rrn_mobile_ffi_fn_func_parse_recovery_request(uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[0]), 
+            &status
+        );
+        uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::copyIntoJs(rt, callInvoker, status, args[count - 1]);
+
+        
+        return uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::toJs(rt, callInvoker, value);
+}
 jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_fn_func_parse_shard_payload(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
         RustCallStatus status = uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
         auto value = uniffi_rrn_mobile_ffi_fn_func_parse_shard_payload(uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[0]), 
+            &status
+        );
+        uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::copyIntoJs(rt, callInvoker, status, args[count - 1]);
+
+        
+        return uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_fn_func_respond_to_recovery(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        RustCallStatus status = uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
+        auto value = uniffi_rrn_mobile_ffi_fn_func_respond_to_recovery(uniffi_jsi::Bridging</*handle*/ uint64_t>::fromJs(rt, callInvoker, args[0]), uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[1]), uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[2]), 
             &status
         );
         uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::copyIntoJs(rt, callInvoker, status, args[count - 1]);
@@ -3435,8 +3501,22 @@ jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_checksum_func_is_valid_
         
         return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
 }
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_checksum_func_parse_recovery_request(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_rrn_mobile_ffi_checksum_func_parse_recovery_request(
+        );
+
+        
+        return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
 jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_checksum_func_parse_shard_payload(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
         auto value = uniffi_rrn_mobile_ffi_checksum_func_parse_shard_payload(
+        );
+
+        
+        return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_checksum_func_respond_to_recovery(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_rrn_mobile_ffi_checksum_func_respond_to_recovery(
         );
 
         

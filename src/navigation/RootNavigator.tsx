@@ -31,6 +31,7 @@ import {GovProposalDetail} from '../screens/main/GovProposalDetail';
 import {History} from '../screens/main/History';
 import {Settings} from '../screens/main/Settings';
 import {HeldShards} from '../screens/main/HeldShards';
+import {HelpRecover} from '../screens/main/HelpRecover';
 import {TransactionDetail} from '../screens/main/TransactionDetail';
 import {ConfirmReceived} from '../screens/main/ConfirmReceived';
 import {Receive} from '../screens/main/Receive';
@@ -151,6 +152,7 @@ function MainNavigator() {
       <MainStack.Screen name="Tabs" component={MainTabs} />
       <MainStack.Screen name="Recovery" component={RecoveryNavigator} />
       <MainStack.Screen name="HeldShards" component={HeldShards} />
+      <MainStack.Screen name="HelpRecover" component={HelpRecover} />
       <MainStack.Screen name="TransactionDetail" component={TransactionDetail} />
       <MainStack.Screen name="ConfirmReceived" component={ConfirmReceived} />
       <MainStack.Screen name="Receive" component={Receive} />

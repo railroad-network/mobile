@@ -27,6 +27,8 @@ function throwUnused(): never {
 const fakeFfi: RrnCryptoFfi = {
   RecoveryPackage: {create: () => throwUnused()},
   parseShardPayload: () => throwUnused(),
+  parseRecoveryRequest: () => throwUnused(),
+  respondToRecovery: () => throwUnused(),
   Keypair: {generate: () => throwUnused()},
   Signature: {fromBytes: () => throwUnused()},
   Hash: {of: () => throwUnused()},

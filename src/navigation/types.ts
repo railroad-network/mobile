@@ -83,6 +83,8 @@ export type MainStackParamList = {
   Recovery: {origin: RecoveryOrigin};
   /** Shards this device holds for other people (T1.2.3 holder-receive). */
   HeldShards: undefined;
+  /** Contribute a held shard to a friend's recovery ceremony (T1.11.3). */
+  HelpRecover: undefined;
   /** A single transaction's detail (T1.2.4 opens it; T1.2.7 expands it). */
   TransactionDetail: {id: string};
   /** Confirm/reject an incoming payment proposal (T1.2.6), by proposal id. */

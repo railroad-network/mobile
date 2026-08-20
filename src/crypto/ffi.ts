@@ -105,6 +105,18 @@ export interface ShardInfo {
 }
 
 /**
+ * Non-secret description of a station key-recovery *request* (T1.11.3 slice D),
+ * for a holder's confirm screen. During a recovery ceremony the operator mints
+ * an ephemeral key and publishes a request naming the identity to be recovered;
+ * a holder reads this off the scanned request to see whom they are being asked
+ * to help before contributing their piece.
+ */
+export interface RecoveryRequestInfo {
+  /** The `rrn1…` address of the identity this request seeks to recover. */
+  targetAddress: string;
+}
+
+/**
  * Opaque handle to a social-recovery package: `N` shards of the wallet secret,
  * each sealed to a holder, any `K` of which reconstruct the identity. The
  * package's secret material never crosses this boundary — only the per-holder
@@ -176,6 +188,28 @@ export interface RrnCryptoFfi {
    * bytes are not a valid payload.
    */
   parseShardPayload(payload: Uint8Array): ShardInfo;
+  /**
+   * Reads which identity a station key-recovery request targets (T1.11.3 slice
+   * D), so a holder's app can show whom it is being asked to help recover
+   * before contributing a shard. `request` is the request bytes decoded from a
+   * `rrnrecover-req:` QR. Throws (recovery error) if the bytes are malformed.
+   */
+  parseRecoveryRequest(request: Uint8Array): RecoveryRequestInfo;
+  /**
+   * A holder's contribution to a recovery ceremony (T1.11.3 slice D): turns the
+   * sealed shard the holder stored (`storedShardPayload`) into a raw Shamir
+   * share re-sealed to the operator's ephemeral recovery key (carried in
+   * `request`), returning the opaque response bytes to hand back (as a
+   * `rrnrecover-resp:` QR). The raw share never leaves in the clear — only the
+   * recovery secret opens the response — and `wallet`'s secret never crosses the
+   * boundary. Throws (recovery error): `AddressMismatch` if the held shard is
+   * for a different identity than the request targets, or a corrupt-input error.
+   */
+  respondToRecovery(
+    wallet: WalletContents,
+    storedShardPayload: Uint8Array,
+    request: Uint8Array,
+  ): Uint8Array;
 }
 
 let registered: RrnCryptoFfi | null = null;
