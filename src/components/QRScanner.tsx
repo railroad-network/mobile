@@ -1,41 +1,42 @@
 /**
  * The camera seam: a reusable QR-code scanner (T1.2.3 Phase 1).
  *
- * Wraps `react-native-vision-camera` v5's object-output scanner so the rest of
- * the app depends on this small surface — `<QRScanner onScan={…} />` — rather
- * than on the camera library's API. It owns the camera-permission gate and the
- * no-device fallback, and hands the parent a decoded string.
+ * Wraps a native barcode scanner so the rest of the app depends on this small
+ * surface — `<QRScanner onScan={…} />` — rather than on the camera library's
+ * API. It owns the camera-permission gate and the no-device fallback, and hands
+ * the parent a decoded string.
  *
- * Reused by social-recovery distribution/holder-receive (T1.2.3) and later by
- * Send (T1.2.5).
+ * Reused by social-recovery distribution/holder-receive (T1.2.3), vouching,
+ * Send (T1.2.5), and station key recovery (T1.11.3).
  *
- * NOTE (platform): vision-camera v5's object/code scanning is **iOS-only** at
- * this version — its Nitro rewrite has not yet ported barcode scanning to
- * Android. On Android `useCameraDevice`/scanning will not surface QR codes; the
- * permission gate and fallbacks still render. Revisit when the library adds
- * Android object output (or slot in an Android-specific scanner behind this
- * same seam).
+ * NOTE (platform / library split): the actual scanning view is
+ * `react-native-camera-kit`, whose barcode scanner works on **both** Android and
+ * iOS. `react-native-vision-camera` v5's object-output scanner is iOS-only (its
+ * Nitro rewrite hard-throws `CameraObjectOutput is not available on Android!`),
+ * so it can't drive scanning here — but its `useCameraPermission` /
+ * `useCameraDevice` hooks give the cleanest cross-platform permission gate
+ * (including the blocked-vs-can-ask distinction camera-kit's boolean API lacks),
+ * so those two hooks stay. Everything is behind this seam, so callers are
+ * unaffected.
  */
 
 import React, {useCallback, useRef} from 'react';
 import {StyleSheet, View} from 'react-native';
-import {
-  Camera,
-  isScannedCode,
-  useCameraDevice,
-  useCameraPermission,
-  useObjectOutput,
-  type ScannedObject,
-  type ScannedObjectType,
-} from 'react-native-vision-camera';
+import {useCameraDevice, useCameraPermission} from 'react-native-vision-camera';
+import {Camera as CameraKitCamera, CameraType} from 'react-native-camera-kit';
 
 import {useTheme} from '../theme';
 import {Button} from './Button';
 import {Text} from './Text';
 
-// Stable reference: `useObjectOutput` memoizes on `types`, so a new array
-// literal each render would rebuild the native output every time.
-const QR_TYPES: ScannedObjectType[] = ['qr'];
+/**
+ * camera-kit's `onReadCode` event shape. Defined locally because the package
+ * re-exports `Camera`/`CameraType` from its root but not the `OnReadCodeData`
+ * type — and a deep `dist/` import would be brittle.
+ */
+interface ReadCodeEvent {
+  nativeEvent: {codeStringValue?: string};
+}
 
 /** Render-prop state for the permission gate. */
 export interface QRScannerPermissionState {
@@ -81,28 +82,20 @@ export function QRScanner({
     useCameraPermission();
   const device = useCameraDevice('back');
 
-  // De-duplicate: the object output fires continuously while a code is in
-  // frame, so only surface a value when it differs from the last one reported.
+  // De-duplicate: the scanner fires continuously while a code is in frame, so
+  // only surface a value when it differs from the last one reported.
   const lastValue = useRef<string | null>(null);
-  const handleObjectsScanned = useCallback(
-    (objects: ScannedObject[]) => {
-      for (const object of objects) {
-        if (isScannedCode(object) && object.value != null) {
-          if (object.value === lastValue.current) {
-            return;
-          }
-          lastValue.current = object.value;
-          onScan(object.value);
-          return;
-        }
+  const handleReadCode = useCallback(
+    (event: ReadCodeEvent) => {
+      const value = event.nativeEvent.codeStringValue;
+      if (value == null || value === lastValue.current) {
+        return;
       }
+      lastValue.current = value;
+      onScan(value);
     },
     [onScan],
   );
-  const objectOutput = useObjectOutput({
-    types: QR_TYPES,
-    onObjectsScanned: handleObjectsScanned,
-  });
 
   if (!hasPermission) {
     const state: QRScannerPermissionState = {
@@ -122,11 +115,14 @@ export function QRScanner({
 
   return (
     <View style={[styles.fill, style]}>
-      <Camera
+      <CameraKitCamera
         style={StyleSheet.absoluteFill}
-        device={device}
-        isActive={isActive}
-        outputs={[objectOutput]}
+        cameraType={CameraType.Back}
+        // `scanBarcode` gates reading, not the preview: false pauses scanning
+        // (e.g. after a successful read, or when the screen is unfocused).
+        scanBarcode={isActive}
+        onReadCode={handleReadCode}
+        showFrame={false}
       />
     </View>
   );

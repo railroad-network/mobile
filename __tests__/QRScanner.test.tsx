@@ -2,9 +2,10 @@
  * @format
  *
  * The camera seam (T1.2.3 Phase 1). Drives the real `QRScanner` component with
- * a controllable `react-native-vision-camera` mock to cover the permission
- * gate, the no-device fallback, and the scan → `onScan` de-duplication — the
- * behaviours screens depend on. The native camera itself is out of scope.
+ * controllable camera mocks to cover the permission gate (vision-camera hooks),
+ * the no-device fallback, and the scan → `onScan` de-duplication (camera-kit's
+ * `onReadCode`) — the behaviours screens depend on. The native camera itself is
+ * out of scope.
  *
  * Uses `react-test-renderer` directly (as the other screen tests do); the RN
  * testing libraries don't render cleanly against React 19 here.
@@ -15,8 +16,9 @@ import ReactTestRenderer, {act} from 'react-test-renderer';
 import {ThemeProvider} from '../src/theme';
 import {QRScanner} from '../src/components/QRScanner';
 
-// A controllable stand-in for the native camera library. `mock`-prefixed so the
-// jest.mock factory may reference it.
+// A controllable stand-in for the native camera libraries. `mock`-prefixed so
+// the jest.mock factories may reference it. Permission/device come from the
+// vision-camera hooks; the scan callback is camera-kit's `onReadCode`.
 const mockCamera: {
   permission: {
     hasPermission: boolean;
@@ -25,7 +27,7 @@ const mockCamera: {
     status: string;
   };
   device: unknown;
-  onScanned?: (objects: Array<{value?: string}>) => void;
+  onReadCode?: (event: {nativeEvent: {codeStringValue?: string}}) => void;
 } = {
   permission: {
     hasPermission: true,
@@ -34,26 +36,25 @@ const mockCamera: {
     status: 'authorized',
   },
   device: {id: 'mock-back-camera', position: 'back'},
-  onScanned: undefined,
+  onReadCode: undefined,
 };
 
-jest.mock('react-native-vision-camera', () => {
+jest.mock('react-native-vision-camera', () => ({
+  useCameraPermission: () => mockCamera.permission,
+  useCameraDevice: () => mockCamera.device,
+}));
+
+jest.mock('react-native-camera-kit', () => {
   const ReactActual = require('react');
   const {View} = require('react-native');
   return {
-    useCameraPermission: () => mockCamera.permission,
-    useCameraDevice: () => mockCamera.device,
-    useObjectOutput: ({
-      onObjectsScanned,
-    }: {
-      onObjectsScanned: (objects: Array<{value?: string}>) => void;
+    CameraType: {Back: 'back', Front: 'front'},
+    Camera: (props: {
+      onReadCode?: (event: {nativeEvent: {codeStringValue?: string}}) => void;
     }) => {
-      mockCamera.onScanned = onObjectsScanned;
-      return {};
+      mockCamera.onReadCode = props.onReadCode;
+      return ReactActual.createElement(View, {testID: 'qr-camera'});
     },
-    isScannedCode: (object: unknown) =>
-      object != null && typeof object === 'object' && 'value' in object,
-    Camera: () => ReactActual.createElement(View, {testID: 'qr-camera'}),
   };
 });
 
@@ -98,7 +99,7 @@ beforeEach(() => {
     status: 'authorized',
   };
   mockCamera.device = {id: 'mock-back-camera', position: 'back'};
-  mockCamera.onScanned = undefined;
+  mockCamera.onReadCode = undefined;
 });
 
 test('prompts for permission and requests it when not yet granted', async () => {
@@ -143,29 +144,29 @@ test('reports a scanned QR value once, de-duplicating repeats', async () => {
   const onScan = jest.fn();
   await render(<QRScanner onScan={onScan} />);
 
-  // The output fires continuously while a code is in frame.
+  // The scanner fires continuously while a code is in frame.
   await act(async () => {
-    mockCamera.onScanned?.([{value: 'rrn1holder'}]);
+    mockCamera.onReadCode?.({nativeEvent: {codeStringValue: 'rrn1holder'}});
   });
   await act(async () => {
-    mockCamera.onScanned?.([{value: 'rrn1holder'}]);
+    mockCamera.onReadCode?.({nativeEvent: {codeStringValue: 'rrn1holder'}});
   });
   expect(onScan).toHaveBeenCalledTimes(1);
   expect(onScan).toHaveBeenCalledWith('rrn1holder');
 
   // A different value is reported.
   await act(async () => {
-    mockCamera.onScanned?.([{value: 'rrn1other'}]);
+    mockCamera.onReadCode?.({nativeEvent: {codeStringValue: 'rrn1other'}});
   });
   expect(onScan).toHaveBeenCalledTimes(2);
   expect(onScan).toHaveBeenLastCalledWith('rrn1other');
 });
 
-test('ignores scanned objects that carry no decodable value', async () => {
+test('ignores a read that carries no decodable value', async () => {
   const onScan = jest.fn();
   await render(<QRScanner onScan={onScan} />);
   await act(async () => {
-    mockCamera.onScanned?.([{}]);
+    mockCamera.onReadCode?.({nativeEvent: {codeStringValue: undefined}});
   });
   expect(onScan).not.toHaveBeenCalled();
 });
