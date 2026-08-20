@@ -104,6 +104,30 @@ export class Wallet {
       threshold,
     );
   }
+
+  /**
+   * Contributes this device's held shard to someone else's recovery ceremony
+   * (T1.11.3 slice D). `storedShardPayload` is the sealed shard this device is
+   * holding for the identity the request targets (from the held-shard store);
+   * `request` is the operator's recovery request (decoded from a
+   * `rrnrecover-req:` QR). Returns the opaque response bytes to hand back as a
+   * `rrnrecover-resp:` QR — the raw Shamir share inside is re-sealed to the
+   * operator's ephemeral recovery key, so it never travels in the clear, and
+   * this identity's own secret never crosses into JS. Rejects (recovery error)
+   * with `AddressMismatch` if the held shard is for a different identity than
+   * the request targets, or on corrupt input. The unlock of *this* wallet is
+   * what lets Rust open the shard sealed to this device.
+   */
+  async respondToRecovery(
+    storedShardPayload: Uint8Array,
+    request: Uint8Array,
+  ): Promise<Uint8Array> {
+    return getRrnCryptoFfi().respondToRecovery(
+      this.contents,
+      storedShardPayload,
+      request,
+    );
+  }
 }
 
 /** Options for {@link createWallet}. */

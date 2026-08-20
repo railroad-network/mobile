@@ -93,6 +93,8 @@ const fakeFfi: RrnCryptoFfi = {
   EncryptedWallet: {encrypt: unused, fromBytes: unused},
   RecoveryPackage: {create: unused},
   parseShardPayload: unused,
+  parseRecoveryRequest: unused,
+  respondToRecovery: unused,
 };
 
 function fakeWallet(address: string): Wallet {

@@ -68,10 +68,14 @@ class NativeRrnMobileFfi : public jsi::HostObject {
     jsi::Value cpp_uniffi_rrn_mobile_ffi_fn_method_walletcontents_public_key(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_rrn_mobile_ffi_fn_func_canonical_bytes(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_rrn_mobile_ffi_fn_func_is_valid_address(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
+    jsi::Value cpp_uniffi_rrn_mobile_ffi_fn_func_parse_recovery_request(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_rrn_mobile_ffi_fn_func_parse_shard_payload(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
+    jsi::Value cpp_uniffi_rrn_mobile_ffi_fn_func_respond_to_recovery(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_rrn_mobile_ffi_checksum_func_canonical_bytes(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_rrn_mobile_ffi_checksum_func_is_valid_address(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
+    jsi::Value cpp_uniffi_rrn_mobile_ffi_checksum_func_parse_recovery_request(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_rrn_mobile_ffi_checksum_func_parse_shard_payload(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
+    jsi::Value cpp_uniffi_rrn_mobile_ffi_checksum_func_respond_to_recovery(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_rrn_mobile_ffi_checksum_method_encryptedwallet_decrypt(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_rrn_mobile_ffi_checksum_method_encryptedwallet_to_bytes(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_rrn_mobile_ffi_checksum_method_hash_to_bytes(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);

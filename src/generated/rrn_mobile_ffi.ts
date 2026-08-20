@@ -88,6 +88,34 @@ export function isValidAddress(address: string): boolean {
   );
 }
 
+export function parseRecoveryRequest(
+  requestPayload: ArrayBuffer,
+): RecoveryRequestInfo /*throws*/ {
+  return ((__rb: Uint8Array) => {
+    try {
+      return FfiConverterTypeRecoveryRequestInfo.lift(__rb);
+    } finally {
+      nativeModule().rustbuffer_free(__rb);
+    }
+  })(
+    uniffiCaller.rustCallWithError(
+      /*liftError:*/ FfiConverterTypeRecoveryError.lift.bind(
+        FfiConverterTypeRecoveryError,
+      ),
+      /*caller:*/ callStatus => {
+        return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_func_parse_recovery_request(
+          FfiConverterArrayBuffer.lower(
+            requestPayload,
+            nativeModule().rustbuffer_alloc,
+          ),
+          callStatus,
+        );
+      },
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+    ),
+  );
+}
+
 export function parseShardPayload(payload: ArrayBuffer): ShardInfo /*throws*/ {
   return ((__rb: Uint8Array) => {
     try {
@@ -104,6 +132,44 @@ export function parseShardPayload(payload: ArrayBuffer): ShardInfo /*throws*/ {
         return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_func_parse_shard_payload(
           FfiConverterArrayBuffer.lower(
             payload,
+            nativeModule().rustbuffer_alloc,
+          ),
+          callStatus,
+        );
+      },
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+    ),
+  );
+}
+
+export function respondToRecovery(
+  wallet: WalletContentsLike,
+  storedShardPayload: ArrayBuffer,
+  requestPayload: ArrayBuffer,
+): ArrayBuffer /*throws*/ {
+  return ((__rb: Uint8Array) => {
+    try {
+      return FfiConverterArrayBuffer.lift(__rb);
+    } finally {
+      nativeModule().rustbuffer_free(__rb);
+    }
+  })(
+    uniffiCaller.rustCallWithError(
+      /*liftError:*/ FfiConverterTypeRecoveryError.lift.bind(
+        FfiConverterTypeRecoveryError,
+      ),
+      /*caller:*/ callStatus => {
+        return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_func_respond_to_recovery(
+          FfiConverterTypeWalletContents.lower(
+            wallet,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterArrayBuffer.lower(
+            storedShardPayload,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterArrayBuffer.lower(
+            requestPayload,
             nativeModule().rustbuffer_alloc,
           ),
           callStatus,
@@ -175,6 +241,45 @@ const stringConverter = (() => {
   };
 })();
 const FfiConverterString = uniffiCreateFfiConverterString(stringConverter);
+
+export type RecoveryRequestInfo = {
+  targetAddress: string;
+};
+
+/**
+ * Generated factory for {@link RecoveryRequestInfo} record objects.
+ */
+export const RecoveryRequestInfo = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<RecoveryRequestInfo, ReturnType<typeof defaults>>(
+      defaults,
+    );
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<RecoveryRequestInfo>,
+  });
+})();
+
+const FfiConverterTypeRecoveryRequestInfo = (() => {
+  type TypeName = RecoveryRequestInfo;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        targetAddress: FfiConverterString.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterString.write(value.targetAddress, into);
+    }
+    allocationSize(value: TypeName): number {
+      return FfiConverterString.allocationSize(value.targetAddress);
+    }
+  }
+  return new FFIConverter();
+})();
 
 export type ShardInfo = {
   originalAddress: string;
@@ -599,6 +704,7 @@ export enum RecoveryError_Tags {
   ShardIndexOutOfRange = 'ShardIndexOutOfRange',
   Encryption = 'Encryption',
   Corrupt = 'Corrupt',
+  AddressMismatch = 'AddressMismatch',
   Internal = 'Internal',
 }
 export const RecoveryError = (() => {
@@ -734,7 +840,7 @@ export const RecoveryError = (() => {
       return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 6;
     }
   }
-  class Internal extends UniffiError {
+  class AddressMismatch extends UniffiError {
     /**
      * @private
      * This field is private and should not be used.
@@ -746,6 +852,28 @@ export const RecoveryError = (() => {
      */
     readonly [variantOrdinalSymbol] = 7;
 
+    readonly tag = RecoveryError_Tags.AddressMismatch;
+
+    constructor(message: string) {
+      super('RecoveryError', 'AddressMismatch', message);
+    }
+
+    static instanceOf(e: any): e is AddressMismatch {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 7;
+    }
+  }
+  class Internal extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = 'RecoveryError';
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 8;
+
     readonly tag = RecoveryError_Tags.Internal;
 
     constructor(message: string) {
@@ -753,7 +881,7 @@ export const RecoveryError = (() => {
     }
 
     static instanceOf(e: any): e is Internal {
-      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 7;
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 8;
     }
   }
 
@@ -768,6 +896,7 @@ export const RecoveryError = (() => {
     ShardIndexOutOfRange,
     Encryption,
     Corrupt,
+    AddressMismatch,
     Internal,
     instanceOf,
   };
@@ -782,6 +911,7 @@ export type RecoveryError = InstanceType<
     | 'ShardIndexOutOfRange'
     | 'Encryption'
     | 'Corrupt'
+    | 'AddressMismatch'
     | 'Internal']
 >;
 
@@ -818,6 +948,11 @@ const FfiConverterTypeRecoveryError = (() => {
           return new RecoveryError.Corrupt(FfiConverterString.read(from));
 
         case 7:
+          return new RecoveryError.AddressMismatch(
+            FfiConverterString.read(from),
+          );
+
+        case 8:
           return new RecoveryError.Internal(FfiConverterString.read(from));
 
         default:
@@ -2348,11 +2483,27 @@ function uniffiEnsureInitialized() {
     );
   }
   if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_func_parse_recovery_request() !==
+    51987
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_func_parse_recovery_request',
+    );
+  }
+  if (
     nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_func_parse_shard_payload() !==
     16570
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       'uniffi_rrn_mobile_ffi_checksum_func_parse_shard_payload',
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_func_respond_to_recovery() !==
+    44610
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_func_respond_to_recovery',
     );
   }
   if (
@@ -2608,6 +2759,7 @@ export default Object.freeze({
     FfiConverterTypePublicKey,
     FfiConverterTypeRecoveryError,
     FfiConverterTypeRecoveryPackage,
+    FfiConverterTypeRecoveryRequestInfo,
     FfiConverterTypeShardInfo,
     FfiConverterTypeSignature,
     FfiConverterTypeWalletContents,

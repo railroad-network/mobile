@@ -150,6 +150,23 @@ const nativeFfi: RrnCryptoFfi = {
       total: info.total,
     };
   },
+  parseRecoveryRequest: request => {
+    const info = gen.parseRecoveryRequest(toArrayBuffer(request));
+    return {targetAddress: info.targetAddress};
+  },
+  respondToRecovery: (wallet, storedShardPayload, request) => {
+    const native = nativeWallet.get(wallet);
+    if (native === undefined) {
+      throw new Error('respondToRecovery: wallet is not a native FFI handle');
+    }
+    return toU8(
+      gen.respondToRecovery(
+        native,
+        toArrayBuffer(storedShardPayload),
+        toArrayBuffer(request),
+      ),
+    );
+  },
 };
 
 /** Registers the native bindings as the app's crypto FFI. Call once at startup. */
