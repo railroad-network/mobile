@@ -668,7 +668,9 @@ export interface Connectivity {
  * With no station paired (or the wallet locked) there is nothing to be offline
  * *from*, so it reports online; and an `unknown` verdict — before the first
  * round-trip, or right after a teardown — is treated as online too, so warm-up
- * never flashes "offline". Only a confirmed `unreachable` shows offline.
+ * never flashes "offline". Only a confirmed `unreachable` shows offline, and the
+ * store only confirms that after a run of failed passes (not a single reconnect
+ * blip) — see {@link connectivityStore.reportPass}.
  */
 export function useConnectivity(): Connectivity {
   const client = useStationClient();

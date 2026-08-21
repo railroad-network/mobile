@@ -16,7 +16,7 @@ import {useEffect} from 'react';
 import {useQueryClient} from '@tanstack/react-query';
 
 import {ledgerKeys} from '../ledger/useLedger';
-import {resetReachability, setReachability} from './connectivityStore';
+import {reportPass, resetReachability} from './connectivityStore';
 import {runSubscription} from './stationSubscription';
 import {useActiveStation, useStationClient} from './useStation';
 
@@ -46,8 +46,9 @@ export function useStationSubscription(): void {
       },
       // The subscribe loop is the app's live connection to the station, so its
       // round-trips drive the connectivity indicator (no competing probe).
-      onStatus: reachable =>
-        setReachability(reachable ? 'reachable' : 'unreachable'),
+      // `reportPass` debounces failures, so a single reconnect blip doesn't flap
+      // the pill — only a sustained run of failures reads as offline.
+      onStatus: reportPass,
     }).catch(() => {});
     return () => {
       controller.abort();

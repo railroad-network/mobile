@@ -7,9 +7,18 @@
  * a cold connection pool the probe lost that race and timed out, flipping the
  * header to "offline" for ~30–60s after launch even though the app was fine —
  * a visible flap. The subscribe loop is already the app's persistent connection
- * to the station, so its round-trips *are* the reachability signal: if a
- * subscribe pass succeeds we're online; if one fails (not an abort) we're
- * offline. Reusing that signal removes the competing probe and the flap.
+ * to the station, so its round-trips *are* the reachability signal: a good
+ * subscribe pass is online; a failed one (not an abort) is offline. Reusing that
+ * signal removes the competing probe and the flap.
+ *
+ * One nuance the raw signal needs: a long-poll re-opens its connection every
+ * ~30s, and OkHttp readily drops an idle keep-alive socket, so the first
+ * re-subscribe on a stale one can fail *once* and succeed immediately on retry.
+ * Reporting offline on that single blip flapped the pill. So {@link reportPass}
+ * debounces: a good pass is online at once, but it takes
+ * {@link OFFLINE_AFTER_CONSECUTIVE_FAILURES} failures *in a row* — a real outage,
+ * not a blip — to show offline. (This is the tolerance the old `whoami` probe had
+ * via `retry: 2`, restored on the connection-derived path.)
  *
  * The store is a plain subscribe/getState pair (the `useSyncExternalStore`
  * shape, like {@link DiscoverySession}), so it's testable without a renderer.
@@ -22,7 +31,15 @@
  */
 export type Reachability = 'unknown' | 'reachable' | 'unreachable';
 
+/**
+ * How many subscribe passes must fail *in a row* before the verdict goes
+ * `unreachable`. Absorbs the single stale-socket blip on re-subscribe; a genuine
+ * outage fails every pass, so it still shows offline within a pass or two.
+ */
+export const OFFLINE_AFTER_CONSECUTIVE_FAILURES = 2;
+
 let state: Reachability = 'unknown';
+let consecutiveFailures = 0;
 const listeners = new Set<() => void>();
 
 /** The current reachability. */
@@ -42,11 +59,32 @@ export function setReachability(next: Reachability): void {
 }
 
 /**
+ * Reports the outcome of one subscribe pass, debouncing failures so a lone
+ * reconnect blip doesn't flap the pill. A reachable pass is online immediately
+ * and clears the failure run; an unreachable pass only shows offline once
+ * {@link OFFLINE_AFTER_CONSECUTIVE_FAILURES} have failed in a row — until then
+ * the prior verdict stands (optimistically online on a first blip).
+ */
+export function reportPass(reachable: boolean): void {
+  if (reachable) {
+    consecutiveFailures = 0;
+    setReachability('reachable');
+    return;
+  }
+  consecutiveFailures += 1;
+  if (consecutiveFailures >= OFFLINE_AFTER_CONSECUTIVE_FAILURES) {
+    setReachability('unreachable');
+  }
+}
+
+/**
  * Clears the verdict back to `unknown` — call when the subscription tears down
  * (station change, or the wallet locking) so a stale `unreachable` doesn't
- * linger into the next session.
+ * linger into the next session. Also clears the failure run, so the next
+ * session's first blip is judged fresh.
  */
 export function resetReachability(): void {
+  consecutiveFailures = 0;
   setReachability('unknown');
 }
 
