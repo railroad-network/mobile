@@ -647,6 +647,36 @@ export class StationClient {
   }
 
   /**
+   * `governance_pending_charter` — the state of a distributed founding ceremony:
+   * the Charter body being signed, which founders have signed, the threshold, and
+   * whether it has published. A community with no ceremony under way comes back as
+   * `{exists: false}`, normalized here to a fully-shaped, empty object so the UI
+   * can branch on `exists` alone.
+   */
+  async pendingCharter(): Promise<StationPendingCharter> {
+    const result = await this.call('governance_pending_charter', {});
+    return normalizePendingCharter(result);
+  }
+
+  /**
+   * `governance_submit_charter_signature` — a founder's phone submits its
+   * signature over the genesis Charter body (the distributed founding ceremony).
+   * `signature` is the raw 64-byte Ed25519 signature from
+   * `createSignedCharterSignature`; the signer is this authenticated mobile
+   * (which must be a declared founder). The station appends it and publishes the
+   * Charter once the founder threshold is met; the updated ceremony state is
+   * returned.
+   */
+  async submitCharterSignature(
+    signature: Uint8Array,
+  ): Promise<StationPendingCharter> {
+    const result = await this.call('governance_submit_charter_signature', {
+      charter_signature: bytesToHex(signature),
+    });
+    return normalizePendingCharter(result);
+  }
+
+  /**
    * `governance_submit_cosign` — endorse a proposal toward its publication
    * threshold (T1.9.8). `canonicalPayload`/`signature` come from
    * `createSignedCosign`; the station verifies the co-signer is this paired
@@ -1205,6 +1235,44 @@ export interface StationCharter {
   charter_deliberation_window_days: number;
   /** Distinct established co-signers a proposal needs to publish. */
   cosign_threshold: number;
+}
+
+/**
+ * The state of a distributed founding ceremony (founding-charter), from
+ * `governance_pending_charter`. The coordinator fixes the Charter body once
+ * (one `created_at`); each declared founder signs that exact body on their own
+ * device and hands back only their signature, and the Charter publishes once
+ * `signed_founders.length` reaches `threshold` = `ceil(founders × 0.75)`.
+ *
+ * When no ceremony has begun the station returns only `exists: false`; this
+ * client normalizes that to a fully-shaped object with empty fields so callers
+ * can branch on `exists` alone.
+ */
+export interface StationPendingCharter {
+  /** Whether a founding ceremony has begun at all. */
+  exists: boolean;
+  /** Whether the founder threshold is met and the Charter has published. */
+  published: boolean;
+  /** The Charter body's content hash, hex. */
+  charter_hash: string;
+  /** The community identifier the Charter governs. */
+  community_id: string;
+  /** The founding principles, as free-text lines. */
+  founding_principles: string[];
+  /** The rights floor every member is guaranteed, as free-text lines. */
+  rights_floor: string[];
+  /** The declared founders' bech32m `rrn1…` addresses. */
+  founders: string[];
+  /** The founders who have contributed a valid signature so far, bech32m. */
+  signed_founders: string[];
+  /** Signatures needed to publish: `ceil(founders × 0.75)`. */
+  threshold: number;
+  /** The single `created_at` fixed at ceremony start, Unix seconds. */
+  created_at: number;
+  /** The Charter version (1 at genesis). */
+  version: number;
+  /** The Charter body's canonical bytes, hex — what each founder signs. */
+  body_hex: string;
 }
 
 /** What a proposal would do (T1.9.8) — the station's `kind` discriminant. */
@@ -1813,6 +1881,35 @@ function writeU32BE(buf: Uint8Array, offset: number, value: number): void {
 
 function readU32BE(buf: Uint8Array, offset: number): number {
   return new DataView(buf.buffer, buf.byteOffset, buf.byteLength).getUint32(offset, false);
+}
+
+/**
+ * Normalizes a `governance_pending_charter` / ceremony reply into a fully-shaped
+ * {@link StationPendingCharter}. A station with no ceremony under way returns
+ * only `{exists: false}`, so every field is defaulted rather than trusted to be
+ * present.
+ */
+function normalizePendingCharter(
+  result: Record<string, unknown>,
+): StationPendingCharter {
+  const strings = (v: unknown): string[] =>
+    Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+  const str = (v: unknown): string => (typeof v === 'string' ? v : '');
+  const num = (v: unknown): number => (typeof v === 'number' ? v : 0);
+  return {
+    exists: result.exists === true,
+    published: result.published === true,
+    charter_hash: str(result.charter_hash),
+    community_id: str(result.community_id),
+    founding_principles: strings(result.founding_principles),
+    rights_floor: strings(result.rights_floor),
+    founders: strings(result.founders),
+    signed_founders: strings(result.signed_founders),
+    threshold: num(result.threshold),
+    created_at: num(result.created_at),
+    version: num(result.version),
+    body_hex: str(result.body_hex),
+  };
 }
 
 /** Reads a response body as text, never throwing. */

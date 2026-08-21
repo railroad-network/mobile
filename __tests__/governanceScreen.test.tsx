@@ -14,6 +14,7 @@ import {ThemeProvider} from '../src/theme';
 import {Governance} from '../src/screens/main/Governance';
 import type {
   StationCharter,
+  StationPendingCharter,
   StationProposalSummary,
 } from '../src/network/StationClient';
 
@@ -21,6 +22,8 @@ type Query<T> = {data?: T; isLoading: boolean; isError: boolean};
 const mockCharter: Query<StationCharter> = {isLoading: false, isError: false};
 const mockProposals: Query<StationProposalSummary[]> = {isLoading: false, isError: false};
 const mockStatutes: Query<unknown[]> = {isLoading: false, isError: false, data: []};
+// The founding ceremony state; default to none (no charter nudge), per test.
+let mockPendingCharter: Query<StationPendingCharter> = {isLoading: false, isError: false};
 // Identity carries the bootstrap-grace flag the hub's grace note reads; default
 // to no bootstrap (note hidden), overridden per test.
 let mockIdentity: Query<{
@@ -40,6 +43,7 @@ jest.mock('../src/ledger', () => ({
   useStatutes: () => mockStatutes,
   useIdentity: () => mockIdentity,
   useReputation: () => mockReputation,
+  usePendingCharter: () => mockPendingCharter,
 }));
 
 const metrics = {
@@ -135,7 +139,28 @@ beforeEach(() => {
   mockStatutes.data = [];
   mockIdentity = {isLoading: false, isError: false, data: {address: 'rrn1self'}};
   mockReputation = {isLoading: false, isError: false, data: {band: 'Member'}};
+  mockPendingCharter = {isLoading: false, isError: false, data: pendingCharter({exists: false})};
 });
+
+function pendingCharter(
+  overrides: Partial<StationPendingCharter> = {},
+): StationPendingCharter {
+  return {
+    exists: true,
+    published: false,
+    charter_hash: 'ab'.repeat(32),
+    community_id: 'rrn-phase0',
+    founding_principles: ['Be kind to each other'],
+    rights_floor: ['Everyone has a voice'],
+    founders: ['rrn1self', 'rrn1b', 'rrn1c'],
+    signed_founders: ['rrn1b'],
+    threshold: 3,
+    created_at: Math.floor(Date.now() / 1000) - 600,
+    version: 1,
+    body_hex: 'cd'.repeat(8),
+    ...overrides,
+  };
+}
 
 test('a bootstrapping community says its Charter is not ratified yet', async () => {
   mockCharter.data = charter({published: false, community_id: '', founders: []});
@@ -221,6 +246,37 @@ test('an empty proposals list explains where proposals come from', async () => {
   mockProposals.data = [];
   const r = await renderHub();
   expect(hasText(r, 'No proposals yet')).toBe(true);
+});
+
+test('nudges an unsigned founder to sign the founding charter', async () => {
+  mockPendingCharter = {
+    isLoading: false,
+    isError: false,
+    // This phone is a declared founder who has not signed the pending charter.
+    data: pendingCharter({founders: ['rrn1self', 'rrn1b', 'rrn1c'], signed_founders: []}),
+  };
+  const r = await renderHub();
+  expect(hasText(r, 'Sign the founding charter')).toBe(true);
+});
+
+test('does not nudge a founder who has already signed the charter', async () => {
+  mockPendingCharter = {
+    isLoading: false,
+    isError: false,
+    data: pendingCharter({signed_founders: ['rrn1self']}),
+  };
+  const r = await renderHub();
+  expect(hasText(r, 'Sign the founding charter')).toBe(false);
+});
+
+test('does not nudge a non-founder about the founding charter', async () => {
+  mockPendingCharter = {
+    isLoading: false,
+    isError: false,
+    data: pendingCharter({founders: ['rrn1b', 'rrn1c', 'rrn1d'], signed_founders: []}),
+  };
+  const r = await renderHub();
+  expect(hasText(r, 'Sign the founding charter')).toBe(false);
 });
 
 test('an unpaired member gets an explanation, not an empty screen', async () => {
