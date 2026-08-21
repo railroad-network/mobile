@@ -123,8 +123,8 @@ export function Home({navigation}: MainTabScreenProps<'Home'>) {
           )}
         </View>
         <ConnectivityStatus
-          level={connectivity.isOffline ? 'offline' : connectivity.level}
-          showLabel={connectivity.isOffline}
+          level={connectivity.level}
+          showLabel={connectivity.isOffline || connectivity.isConnecting}
         />
       </View>
 

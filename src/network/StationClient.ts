@@ -36,6 +36,7 @@ import {bytesToUtf8} from '../crypto/utf8';
 import {getSecureStore, type SecureStore} from '../crypto/SecureStore';
 import {isResolveError, resolveEndpoint} from './resolveEndpoint';
 import {nextNonce} from './stationNonce';
+import {noteReachable} from './connectivityStore';
 import {updatePairedStationHost} from './pairedStation';
 
 /** The envelope version, mirrored from the station's `ENVELOPE_VERSION`. */
@@ -842,6 +843,16 @@ export class StationClient {
       opts.signal,
     );
     const reply = await this.openReply(replyBytes, nonce);
+
+    // A verified reply — even a method-error below — means we reached the
+    // station. Mark the connection reachable so the "connecting" indicator
+    // resolves on the first fast read, not only when the ~30s subscribe long-poll
+    // returns. Subscribe owns the *offline* transition itself (its loop debounces
+    // failures — see connectivityStore), so a poll pass reports through that path
+    // rather than here.
+    if ((opts.path ?? RPC_PATH) !== SUBSCRIBE_PATH) {
+      noteReachable();
+    }
 
     // A successful round-trip confirms the host hint is good; keep it fresh (a
     // no-op if unchanged). Best-effort — a persistence hiccup must not fail the

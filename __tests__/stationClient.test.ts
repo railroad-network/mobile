@@ -17,6 +17,10 @@ import {bytesToHex, hexToBytes} from '../src/crypto/hex';
 import {bytesToUtf8, utf8ToBytes} from '../src/crypto/utf8';
 import type {SecureStore} from '../src/crypto/SecureStore';
 import {addPairedStation} from '../src/network/pairedStation';
+import {
+  getReachability,
+  resetReachability,
+} from '../src/network/connectivityStore';
 import {StationClient, StationClientError} from '../src/network/StationClient';
 import type {Wallet} from '../src/wallet/Wallet';
 
@@ -242,6 +246,32 @@ describe('StationClient', () => {
     const client = clientWith(store, fetchImpl);
     const result = await client.balance();
     expect(result.balance_centi).toBe(2400);
+  });
+
+  test('a successful read marks the connection reachable (resolves "connecting")', async () => {
+    resetReachability(); // start from unknown (the "connecting" state)
+    const store = await pairedStore();
+    const fetchImpl = (async (_url: string, init: {body: Uint8Array}) =>
+      okResponse(
+        stationReply(init.body, () => ({result: JSON.stringify({balance_centi: 0})})),
+      )) as unknown as typeof fetch;
+
+    await clientWith(store, fetchImpl).balance();
+    expect(getReachability()).toBe('reachable');
+  });
+
+  test('a method-error reply still marks reachable — the station answered', async () => {
+    resetReachability();
+    const store = await pairedStore();
+    const fetchImpl = (async (_url: string, init: {body: Uint8Array}) =>
+      okResponse(
+        stationReply(init.body, () => ({
+          error: {code: -32601, message: 'no such method'},
+        })),
+      )) as unknown as typeof fetch;
+
+    await clientWith(store, fetchImpl).whoami().catch(() => {});
+    expect(getReachability()).toBe('reachable');
   });
 
   test('posts to /rpc on the resolved endpoint', async () => {

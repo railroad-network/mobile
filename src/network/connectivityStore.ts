@@ -59,16 +59,32 @@ export function setReachability(next: Reachability): void {
 }
 
 /**
+ * Records a confirmed round-trip to the station — a good subscribe pass, or any
+ * verified read/write reply (even a method-error: the station still answered).
+ * Online at once, and clears any failure run.
+ *
+ * This is what resolves the initial `unknown` → online quickly: the subscribe
+ * long-poll can park up to ~30s before its first result, but a fast read
+ * ({@link StationClient}) confirms reachability in milliseconds, so the
+ * "connecting" indicator doesn't linger while data is already on screen.
+ */
+export function noteReachable(): void {
+  consecutiveFailures = 0;
+  setReachability('reachable');
+}
+
+/**
  * Reports the outcome of one subscribe pass, debouncing failures so a lone
  * reconnect blip doesn't flap the pill. A reachable pass is online immediately
- * and clears the failure run; an unreachable pass only shows offline once
+ * (via {@link noteReachable}); an unreachable pass only shows offline once
  * {@link OFFLINE_AFTER_CONSECUTIVE_FAILURES} have failed in a row — until then
- * the prior verdict stands (optimistically online on a first blip).
+ * the prior verdict stands (optimistically online on a first blip). Offline is
+ * owned here: only the subscribe loop's sustained failures flip to offline, never
+ * a one-off failed read.
  */
 export function reportPass(reachable: boolean): void {
   if (reachable) {
-    consecutiveFailures = 0;
-    setReachability('reachable');
+    noteReachable();
     return;
   }
   consecutiveFailures += 1;

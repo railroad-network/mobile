@@ -13,7 +13,13 @@ import {StyleSheet, View} from 'react-native';
 import {useTheme, type ColorTokens} from '../theme';
 import {Text} from './Text';
 
-export type ConnectivityLevel = 'internet' | 'mesh' | 'lora' | 'paper' | 'offline';
+export type ConnectivityLevel =
+  | 'internet'
+  | 'mesh'
+  | 'lora'
+  | 'paper'
+  | 'connecting'
+  | 'offline';
 
 interface LevelConfig {
   label: string;
@@ -26,6 +32,9 @@ const LEVELS: Record<ConnectivityLevel, LevelConfig> = {
   mesh: {label: 'Local mesh', bars: 3},
   lora: {label: 'LoRa radio', bars: 2},
   paper: {label: 'Paper relay', bars: 1},
+  // Establishing the first connection — not yet confirmed, not offline. All bars
+  // dim (indeterminate "searching"), a calm neutral, never the danger red.
+  connecting: {label: 'Connecting…', bars: 0},
   offline: {label: 'Offline', bars: 0},
 };
 
@@ -42,6 +51,9 @@ function palette(level: ConnectivityLevel, c: ColorTokens): {bg: string; fg: str
       return {bg: c.warningTint, fg: c.warning};
     case 'paper':
       return {bg: c.surfaceSunken, fg: c.textSecondary};
+    case 'connecting':
+      // Calm and provisional — a muted neutral, deliberately not the offline red.
+      return {bg: c.surfaceSunken, fg: c.textMuted};
     case 'offline':
     default:
       return {bg: c.dangerTint, fg: c.danger};

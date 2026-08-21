@@ -29,7 +29,7 @@ const mockIdentity: Query<{address: string; nickname?: string; community?: strin
 const mockBalance: Query<{centi: number}> = {} as any;
 const mockActivity: Query<Transaction[]> = {} as any;
 const mockInbox: Query<Transaction[]> = {} as any;
-let mockConnectivity: {level: string; isOffline: boolean};
+let mockConnectivity: {level: string; isOffline: boolean; isConnecting: boolean};
 const mockRefresh = jest.fn(async () => {});
 
 jest.mock('../src/ledger', () => ({
@@ -145,7 +145,7 @@ beforeEach(() => {
   Object.assign(mockBalance, {data: {centi: 2400}, isLoading: false});
   Object.assign(mockActivity, {data: txns(), isLoading: false});
   Object.assign(mockInbox, {data: [], isLoading: false});
-  mockConnectivity = {level: 'mesh', isOffline: false};
+  mockConnectivity = {level: 'mesh', isOffline: false, isConnecting: false};
   mockActiveStation = {
     station: {address: 'rrn1station', host: 'h', port: 7500, pairedAt: 1},
     isLoading: false,
@@ -229,10 +229,18 @@ test('shows a loading state while activity is fetching', async () => {
 });
 
 test('shows the offline banner and indicator when the station is unreachable', async () => {
-  mockConnectivity = {level: 'offline', isOffline: true};
+  mockConnectivity = {level: 'offline', isOffline: true, isConnecting: false};
   const r = await renderHome();
   expect(hasText(r, 'You’re offline')).toBe(true);
   expect(hasText(r, 'Offline')).toBe(true); // connectivity pill label
+});
+
+test('shows the connecting pill (not offline) while establishing the connection', async () => {
+  mockConnectivity = {level: 'connecting', isOffline: false, isConnecting: true};
+  const r = await renderHome();
+  expect(hasText(r, 'Connecting…')).toBe(true); // connectivity pill label
+  // Connecting is not offline — the offline banner must not show.
+  expect(hasText(r, 'You’re offline')).toBe(false);
 });
 
 test('prompts to pair a station when none is paired', async () => {
