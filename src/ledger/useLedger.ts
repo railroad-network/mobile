@@ -21,6 +21,7 @@ import {useWalletSession} from '../wallet/WalletSession';
 import {
   getReachability,
   subscribeReachability,
+  type Reachability,
 } from '../network/connectivityStore';
 import {
   useActiveStation,
@@ -655,22 +656,56 @@ export interface Connectivity {
   level: ConnectivityLevel;
   /** Whether the station is unreachable — drives the offline banner/indicator. */
   isOffline: boolean;
+  /**
+   * Whether the app is still *establishing* the connection — paired and unlocked
+   * but with no confirmed round-trip yet. A distinct in-between: neither a
+   * confident "online" nor a settled "offline". Drives the "Connecting…" pill.
+   */
+  isConnecting: boolean;
 }
 
 /**
- * Station reachability, driving the offline banner. The verdict comes from the
- * subscribe long-poll — the app's live connection to the station — rather than a
- * separate `whoami` probe: {@link useStationSubscription} reports each pass's
- * outcome into {@link connectivityStore}, and this hook reflects it. That avoids
- * the probe-vs-subscribe contention that used to flap the indicator on a cold
- * connection pool (~30–60s after launch).
+ * Maps station presence + the reachability verdict to the connectivity a screen
+ * shows. Pure (no hooks), so the three-way mapping is unit-testable without a
+ * renderer; {@link useConnectivity} is the thin hook that feeds it live values.
  *
- * With no station paired (or the wallet locked) there is nothing to be offline
- * *from*, so it reports online; and an `unknown` verdict — before the first
- * round-trip, or right after a teardown — is treated as online too, so warm-up
- * never flashes "offline". Only a confirmed `unreachable` shows offline, and the
- * store only confirms that after a run of failed passes (not a single reconnect
- * blip) — see {@link connectivityStore.reportPass}.
+ * - No active station (locked, or none paired) → online-optimistic `mesh`: there
+ *   is nothing to be offline *from* or connecting *to* (the "pair a station"
+ *   empty state is a separate concern the screens handle).
+ * - `unknown` while active → **connecting**: no confirmed round-trip yet (or just
+ *   after a teardown), the connection is being established — shown as its own
+ *   state rather than a premature "online". It resolves fast: the first
+ *   successful read marks reachable in milliseconds (see
+ *   {@link connectivityStore.noteReachable}), so this shows only during a genuine
+ *   establishing window, not for the ~30s a caught-up subscribe long-poll parks.
+ * - `unreachable` → **offline**. The store only reaches this after a *run* of
+ *   failed passes, not a single reconnect blip — see
+ *   {@link connectivityStore.reportPass} — so this never flaps on a lone blip.
+ * - `reachable` → `mesh` (online).
+ */
+export function connectivityFrom(
+  hasActiveStation: boolean,
+  reachability: Reachability,
+): Connectivity {
+  if (!hasActiveStation) {
+    return {level: 'mesh', isOffline: false, isConnecting: false};
+  }
+  if (reachability === 'unreachable') {
+    return {level: 'offline', isOffline: true, isConnecting: false};
+  }
+  if (reachability === 'unknown') {
+    return {level: 'connecting', isOffline: false, isConnecting: true};
+  }
+  return {level: 'mesh', isOffline: false, isConnecting: false};
+}
+
+/**
+ * Station connectivity, driving the header pill and offline banner. The verdict
+ * comes from the subscribe long-poll — the app's live connection to the station —
+ * rather than a separate `whoami` probe: {@link useStationSubscription} reports
+ * each pass's outcome into {@link connectivityStore}, and this hook reflects it.
+ * That avoids the probe-vs-subscribe contention that used to flap the indicator
+ * on a cold connection pool. See {@link connectivityFrom} for the state mapping.
  */
 export function useConnectivity(): Connectivity {
   const client = useStationClient();
@@ -679,9 +714,7 @@ export function useConnectivity(): Connectivity {
     subscribeReachability,
     getReachability,
   );
-  const isOffline =
-    client !== null && station !== null && reachability === 'unreachable';
-  return {level: isOffline ? 'offline' : 'mesh', isOffline};
+  return connectivityFrom(client !== null && station !== null, reachability);
 }
 
 /**

@@ -8,6 +8,7 @@
  */
 import {
   getReachability,
+  noteReachable,
   OFFLINE_AFTER_CONSECUTIVE_FAILURES,
   reportPass,
   resetReachability,
@@ -112,6 +113,21 @@ describe('reportPass (failure debounce)', () => {
   test('reset clears the failure run so the next blip is judged fresh', () => {
     reportPass(false); // 1 failure toward the threshold
     resetReachability(); // teardown
+    reportPass(false); // a fresh lone failure, not the second of a run
+    expect(getReachability()).not.toBe('unreachable');
+  });
+});
+
+describe('noteReachable (a read confirms reachability)', () => {
+  test('resolves the initial unknown (connecting) straight to reachable', () => {
+    expect(getReachability()).toBe('unknown');
+    noteReachable();
+    expect(getReachability()).toBe('reachable');
+  });
+
+  test('clears a failure run, so a pending subscribe blip cannot then flip offline', () => {
+    reportPass(false); // 1 subscribe failure toward the threshold
+    noteReachable(); // a read got through — we are reachable
     reportPass(false); // a fresh lone failure, not the second of a run
     expect(getReachability()).not.toBe('unreachable');
   });
