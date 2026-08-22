@@ -82,9 +82,18 @@ android {
         applicationId "org.railroadnetwork.mobile"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
+        // Sideload updates install over the old app only if versionCode strictly
+        // increases — bump it by 1 for every release build you hand out.
+        // versionName is the human label shown in Settings (bump on real changes).
         versionCode 1
         versionName "1.0"
     }
+    // The release keystore is provided through Gradle properties, kept OUT of
+    // the repo (put them in ~/.gradle/gradle.properties, not here) so neither the
+    // keystore path nor its passwords ever enter git. Present only on a machine
+    // configured to sign — CI and dev checkouts leave them unset. See SIDELOAD.md.
+    def hasReleaseSigning = project.hasProperty('RRN_UPLOAD_STORE_FILE')
+
     signingConfigs {
         debug {
             storeFile file('debug.keystore')
@@ -92,15 +101,24 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        release {
+            if (hasReleaseSigning) {
+                storeFile file(RRN_UPLOAD_STORE_FILE)
+                storePassword RRN_UPLOAD_STORE_PASSWORD
+                keyAlias RRN_UPLOAD_KEY_ALIAS
+                keyPassword RRN_UPLOAD_KEY_PASSWORD
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            // Sign with the real release key when it is configured; otherwise fall
+            // back to the debug key so `assembleRelease` still compiles (that APK
+            // is for local testing only, never for distribution).
+            signingConfig hasReleaseSigning ? signingConfigs.release : signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
