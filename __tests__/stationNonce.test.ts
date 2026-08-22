@@ -56,6 +56,28 @@ describe('stationNonce', () => {
     expect(await nextNonce('rrn1a', store)).toBe(1);
   });
 
+  test('overlapping reservations never hand out the same value', async () => {
+    // A store whose reads and writes genuinely yield, so two unserialized
+    // read-modify-writes would interleave and both burn the same nonce — the
+    // real "stale or replayed nonce" race. The lock must keep them distinct.
+    const yielding = new (class extends MemStore {
+      async load(key: string): Promise<Uint8Array | null> {
+        await new Promise(r => setTimeout(r, 0));
+        return super.load(key);
+      }
+      async save(key: string, value: Uint8Array): Promise<void> {
+        await new Promise(r => setTimeout(r, 0));
+        return super.save(key, value);
+      }
+    })();
+    const results = await Promise.all(
+      Array.from({length: 25}, () => nextNonce('rrn1a', yielding)),
+    );
+    expect([...results].sort((a, b) => a - b)).toEqual(
+      Array.from({length: 25}, (_, i) => i + 1),
+    );
+  });
+
   test('a corrupt stored blob does not wedge sending', async () => {
     const store = new MemStore();
     await store.save('rrn.station.nonces', Uint8Array.from([0x7b, 0x00, 0x7d])); // not valid JSON

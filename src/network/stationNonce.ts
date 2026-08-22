@@ -17,6 +17,14 @@
  * step. To stay safe under races, {@link nextNonce} reads, increments, and
  * writes before the request is sent — a nonce is burned even if the request then
  * fails, which only ever *skips* a value (allowed), never reuses one.
+ *
+ * The read-modify-write is over a genuinely async store, so two overlapping
+ * callers (e.g. a background poll firing while the user sends) could otherwise
+ * both load the same high-water mark, both compute the same `+1`, and both send
+ * it — the station accepts the first and rejects the second as a replay. Every
+ * mutation therefore runs through {@link withLock}, a single in-process promise
+ * chain, so reservations can never interleave and no value is ever handed out
+ * twice.
  */
 import {SecureStoreKeys} from '../crypto/constants';
 import {getSecureStore, type SecureStore} from '../crypto/SecureStore';
@@ -56,34 +64,57 @@ async function persist(map: NonceMap, store: SecureStore): Promise<void> {
 }
 
 /**
+ * The tail of the serialization chain. Every nonce mutation appends to it, so an
+ * operation's load→modify→persist runs to completion before the next one starts,
+ * even when callers overlap. A rejected op does not poison the chain: the `catch`
+ * keeps the tail resolved so later reservations still proceed.
+ */
+let queue: Promise<unknown> = Promise.resolve();
+
+function withLock<T>(op: () => Promise<T>): Promise<T> {
+  const run = queue.then(op, op);
+  // Keep the chain alive regardless of this op's outcome; the caller still sees
+  // the real result/rejection through `run`.
+  queue = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  return run;
+}
+
+/**
  * Reserves and returns the next nonce for the station at `address` (the previous
  * high-water mark + 1, starting at 1), persisting it **before** the caller sends
  * the request. Burning it up front means a failed send skips a nonce rather than
  * risking reuse of one the station may already have accepted.
  */
-export async function nextNonce(
+export function nextNonce(
   address: string,
   store: SecureStore = getSecureStore(),
 ): Promise<number> {
-  const map = await load(store);
-  const next = (map[address] ?? 0) + 1;
-  map[address] = next;
-  await persist(map, store);
-  return next;
+  return withLock(async () => {
+    const map = await load(store);
+    const next = (map[address] ?? 0) + 1;
+    map[address] = next;
+    await persist(map, store);
+    return next;
+  });
 }
 
 /**
  * Forgets the nonce counter for `address` — called when unpairing, so a later
  * re-pair starts the window cleanly from 1 (matching the station's reset).
  */
-export async function clearNonce(
+export function clearNonce(
   address: string,
   store: SecureStore = getSecureStore(),
 ): Promise<void> {
-  const map = await load(store);
-  if (!(address in map)) {
-    return;
-  }
-  delete map[address];
-  await persist(map, store);
+  return withLock(async () => {
+    const map = await load(store);
+    if (!(address in map)) {
+      return;
+    }
+    delete map[address];
+    await persist(map, store);
+  });
 }
