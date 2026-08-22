@@ -647,4 +647,94 @@ describe('StationClient', () => {
     );
     expect(seenMethod).toBe('governance_submit_vote');
   });
+
+  test('pendingCharter reads a ceremony in progress (founding-charter)', async () => {
+    const store = await pairedStore();
+    let seen: {method: string; params: string} | null = null;
+    const fetchImpl = (async (_url: string, init: {body: Uint8Array}) => {
+      const {method, params} = readRequest(init.body);
+      seen = {method, params};
+      return okResponse(
+        stationReply(init.body, () => ({
+          result: JSON.stringify({
+            exists: true,
+            published: false,
+            charter_hash: 'ab'.repeat(32),
+            community_id: 'northern-forest',
+            founding_principles: ['Mutual aid'],
+            rights_floor: ['Right to leave'],
+            founders: ['rrn1a', 'rrn1b', 'rrn1c'],
+            signed_founders: ['rrn1a'],
+            threshold: 3,
+            created_at: 1_754_000_000,
+            version: 1,
+            body_hex: 'cd'.repeat(8),
+          }),
+        })),
+      );
+    }) as unknown as typeof fetch;
+
+    const pending = await clientWith(store, fetchImpl).pendingCharter();
+    expect(seen).toEqual({method: 'governance_pending_charter', params: '{}'});
+    expect(pending.exists).toBe(true);
+    expect(pending.published).toBe(false);
+    expect(pending.founders).toEqual(['rrn1a', 'rrn1b', 'rrn1c']);
+    expect(pending.signed_founders).toEqual(['rrn1a']);
+    expect(pending.threshold).toBe(3);
+    expect(pending.body_hex).toBe('cd'.repeat(8));
+  });
+
+  test('pendingCharter normalizes a no-ceremony {exists:false} reply', async () => {
+    const store = await pairedStore();
+    const fetchImpl = (async (_url: string, init: {body: Uint8Array}) =>
+      okResponse(
+        stationReply(init.body, () => ({result: JSON.stringify({exists: false})})),
+      )) as unknown as typeof fetch;
+
+    const pending = await clientWith(store, fetchImpl).pendingCharter();
+    expect(pending.exists).toBe(false);
+    // Every field is safely defaulted, so callers can branch on `exists` alone.
+    expect(pending.founders).toEqual([]);
+    expect(pending.signed_founders).toEqual([]);
+    expect(pending.threshold).toBe(0);
+    expect(pending.body_hex).toBe('');
+  });
+
+  test('submitCharterSignature posts the raw signature hex (founding-charter)', async () => {
+    const store = await pairedStore();
+    let seen: {method: string; params: string} | null = null;
+    const fetchImpl = (async (_url: string, init: {body: Uint8Array}) => {
+      const {method, params} = readRequest(init.body);
+      seen = {method, params};
+      return okResponse(
+        stationReply(init.body, () => ({
+          result: JSON.stringify({
+            exists: true,
+            published: true,
+            charter_hash: 'ab'.repeat(32),
+            community_id: 'northern-forest',
+            founding_principles: [],
+            rights_floor: [],
+            founders: ['rrn1a', 'rrn1b'],
+            signed_founders: ['rrn1a', 'rrn1b'],
+            threshold: 2,
+            created_at: 1_754_000_000,
+            version: 1,
+            body_hex: 'cd'.repeat(8),
+          }),
+        })),
+      );
+    }) as unknown as typeof fetch;
+
+    const sig = Uint8Array.from({length: 64}, (_v, i) => i);
+    const updated = await clientWith(store, fetchImpl).submitCharterSignature(sig);
+    expect(seen!.method).toBe('governance_submit_charter_signature');
+    // The param is the raw 64-byte signature hex under `charter_signature` — not
+    // a framed signed-record (the signer is the authenticated envelope).
+    const expectedHex = Array.from(sig)
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+    expect(JSON.parse(seen!.params)).toEqual({charter_signature: expectedHex});
+    expect(updated.published).toBe(true);
+  });
 });

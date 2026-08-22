@@ -26,6 +26,7 @@ import {Vouch} from '../screens/main/Vouch';
 import {VouchList} from '../screens/main/VouchList';
 import {VouchDetail} from '../screens/main/VouchDetail';
 import {Governance} from '../screens/main/Governance';
+import {SignCharter} from '../screens/main/SignCharter';
 import {DisputeDetail} from '../screens/main/DisputeDetail';
 import {GovProposalDetail} from '../screens/main/GovProposalDetail';
 import {History} from '../screens/main/History';
@@ -175,6 +176,7 @@ function MainNavigator() {
       <MainStack.Screen name="VouchList" component={VouchList} />
       <MainStack.Screen name="VouchDetail" component={VouchDetail} />
       <MainStack.Screen name="Governance" component={Governance} />
+      <MainStack.Screen name="SignCharter" component={SignCharter} />
       <MainStack.Screen name="GovProposalDetail" component={GovProposalDetail} />
       <MainStack.Screen name="DisputeDetail" component={DisputeDetail} />
     </MainStack.Navigator>

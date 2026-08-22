@@ -127,6 +127,11 @@ export type MainStackParamList = {
   Contract: {contractId: string};
   /** The governance hub (T1.9.8): the Charter, proposals, and statutes in force. */
   Governance: undefined;
+  /**
+   * Sign the founding charter as a founder in a distributed founding ceremony —
+   * read the charter body being ratified and add this device's signature.
+   */
+  SignCharter: undefined;
   /** One proposal in full (T1.9.8): body, tally, and co-sign / vote actions. */
   GovProposalDetail: {proposalId: string};
   /**

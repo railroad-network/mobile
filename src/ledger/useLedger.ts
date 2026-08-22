@@ -33,6 +33,7 @@ import {
   type DisputeSummary,
   type StationCharter,
   type StationErrorKind,
+  type StationPendingCharter,
   type StationProposalDetail,
   type StationProposalSummary,
   type StationReputation,
@@ -50,7 +51,12 @@ import {
   createSignedVerdict,
   type EscalationReason,
 } from '../wallet/dispute';
-import {createSignedCosign, createSignedVote, type VoteChoice} from '../wallet/governance';
+import {
+  createSignedCharterSignature,
+  createSignedCosign,
+  createSignedVote,
+  type VoteChoice,
+} from '../wallet/governance';
 import {createSendProposal} from '../wallet/proposal';
 import {createSignedVouch} from '../wallet/vouch';
 import {saveVouchNickname} from '../wallet/vouchNicknames';
@@ -129,6 +135,7 @@ export const ledgerKeys = {
   vouches: ['ledger', 'vouches'] as const,
   reputation: ['ledger', 'reputation'] as const,
   charter: ['ledger', 'charter'] as const,
+  pendingCharter: ['ledger', 'pendingCharter'] as const,
   proposals: ['ledger', 'proposals'] as const,
   proposal: ['ledger', 'proposal'] as const,
   statutes: ['ledger', 'statutes'] as const,
@@ -316,6 +323,30 @@ export function useCharter(): UseQueryResult<StationCharter> {
 }
 
 /**
+ * The state of a distributed founding ceremony (founding-charter) — the genesis
+ * Charter body being signed, which founders have signed, and whether it has
+ * published. A community with no ceremony under way comes back with
+ * `exists: false`. Fetched fresh (no stale window) so a founder's own just-
+ * submitted signature, and others' signatures, show on next open, and polled
+ * while a ceremony is under way but not yet published so the progress advances
+ * without re-opening the screen.
+ */
+export function usePendingCharter(): UseQueryResult<StationPendingCharter> {
+  const client = useStationClient();
+  const {wallet} = useWalletSession();
+  return useQuery({
+    queryKey: [...ledgerKeys.pendingCharter, wallet?.address, client !== null],
+    enabled: client !== null && wallet !== null,
+    queryFn: (): Promise<StationPendingCharter> => client!.pendingCharter(),
+    staleTime: 0,
+    refetchInterval: query =>
+      query.state.data?.exists && !query.state.data.published
+        ? PROPOSAL_POLL_MS
+        : false,
+  });
+}
+
+/**
  * Every governance proposal the station knows (T1.9.8), newest activity first,
  * for the hub list. Fetched fresh (no stale window) so a just-cast vote or a
  * just-published proposal shows on next open. Disabled when locked / unpaired.
@@ -437,6 +468,42 @@ export function useCastVote(): (
     },
     [client, wallet, queryClient],
   );
+}
+
+/**
+ * Returns a function that signs the genesis Charter as a founder in a
+ * distributed founding ceremony: it reads the ceremony's current body fresh,
+ * rebuilds and signs that exact body on-device
+ * ({@link createSignedCharterSignature}, which fails safe if the reconstructed
+ * body drifts from the station's `body_hex`), and submits only the signature. On
+ * success it returns the updated ceremony state (so the caller can show progress
+ * or the just-published Charter) and refreshes the ceremony and Charter reads.
+ * Online-only — the signature is made at submit time against the live body.
+ */
+export function useSignFoundingCharter(): () => Promise<
+  WriteResult<{pending: StationPendingCharter}>
+> {
+  const client = useStationClient();
+  const {wallet} = useWalletSession();
+  const queryClient = useQueryClient();
+  return useCallback(async () => {
+    if (client === null || wallet === null) {
+      return {ok: false, error: 'locked', message: 'Unlock your wallet and pair a station.'};
+    }
+    try {
+      // Sign the freshest body the station holds, not a possibly-stale one from
+      // the screen — the body is fixed at ceremony start, but re-reading keeps
+      // the drift check honest against exactly what will be verified server-side.
+      const pending = await client.pendingCharter();
+      const signed = await createSignedCharterSignature(wallet, pending);
+      const updated = await client.submitCharterSignature(signed.signature);
+      await queryClient.invalidateQueries({queryKey: ledgerKeys.pendingCharter});
+      await queryClient.invalidateQueries({queryKey: ledgerKeys.charter});
+      return {ok: true, pending: updated};
+    } catch (e) {
+      return asWriteError(e);
+    }
+  }, [client, wallet, queryClient]);
 }
 
 /**

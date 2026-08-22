@@ -23,8 +23,10 @@
  * there is nothing to hash back. Transmitting them is
  * `StationClient.submitCosign` / `submitVote`.
  */
-import {bytes, canonicalBytes, int, map, text, type CborValue} from '../crypto/cbor';
-import {hexToBytes} from '../crypto/hex';
+import {bytes, canonicalBytes, int, list, map, text, type CborValue} from '../crypto/cbor';
+import {bytesToHex, hexToBytes} from '../crypto/hex';
+import {parseAddress} from '../crypto/address';
+import type {StationPendingCharter} from '../network/StationClient';
 import type {Wallet} from './Wallet';
 
 /** The `kind` discriminant the station stamps on a co-signature's canonical CBOR. */
@@ -133,6 +135,124 @@ export async function createSignedVote(
     voterAddress: wallet.address,
     choice,
     castAt,
+    payloadBytes: canonical,
+    signature: signature.toBytes(),
+  };
+}
+
+/**
+ * The `governance_structure` block of a genesis Charter, mirroring
+ * `GovernanceStructure::default()` in `rrn-governance/charter.rs`. The station's
+ * `governance_charter_begin` always fixes the body with these defaults, and the
+ * ceremony's read surface (`governance_pending_charter`) does **not** echo them
+ * back — only the body's canonical `body_hex` does. We reproduce them here and
+ * rely on the {@link createSignedCharterSignature} `body_hex` equality check to
+ * catch any drift rather than trusting these constants blindly.
+ */
+const GOVERNANCE_STRUCTURE_DEFAULTS: CborValue = map([
+  ['voting_mechanism', text('direct')],
+  ['statute_quorum_pct', int(30)],
+  ['statute_approval_pct', int(50)],
+  ['deliberation_window_days', int(7)],
+  ['implementation_delay_days', int(7)],
+  ['emergency_threshold_pct', int(67)],
+]);
+
+/**
+ * The `amendment_rules` block of a genesis Charter, mirroring
+ * `AmendmentRules::default()` in `rrn-governance/charter.rs`. See
+ * {@link GOVERNANCE_STRUCTURE_DEFAULTS} for why these live here.
+ */
+const AMENDMENT_RULES_DEFAULTS: CborValue = map([
+  ['charter_quorum_pct', int(50)],
+  ['charter_approval_pct', int(75)],
+  ['charter_deliberation_window_days', int(30)],
+]);
+
+/** A founder's Ed25519 signature over a genesis Charter body, ready to submit. */
+export interface SignedCharterSignature {
+  /** The signer's (this wallet's) bech32m `rrn1…` address. */
+  signerAddress: string;
+  /**
+   * The canonical dCBOR Charter body that was signed — byte-identical to the
+   * station's, asserted equal to the ceremony's `body_hex`.
+   */
+  payloadBytes: Uint8Array;
+  /** The 64-byte Ed25519 signature over {@link payloadBytes}. */
+  signature: Uint8Array;
+}
+
+/**
+ * Raised when the Charter body reconstructed on-device does not match the
+ * ceremony's `body_hex` — a fail-safe against signing a body that differs from
+ * the one the coordinator fixed (a governance-default drift, an unexpected
+ * field, or a malformed founder address).
+ */
+export class CharterBodyMismatchError extends Error {
+  constructor(expectedHex: string, actualHex: string) {
+    super(
+      `reconstructed charter body does not match the station (expected ${expectedHex}, got ${actualHex}); refusing to sign`,
+    );
+    this.name = 'CharterBodyMismatchError';
+  }
+}
+
+/**
+ * Reconstructs the genesis Charter body the founding ceremony fixed
+ * ({@link StationPendingCharter}) as canonical dCBOR, signs it with `wallet`,
+ * and returns the raw signature to submit (`StationClient.submitCharterSignature`).
+ *
+ * The body is rebuilt here — not trusted from a server blob — and mirrors
+ * `From<Charter> for CBOR` in `rrn-governance/charter.rs` field-for-field:
+ * `version`, `community_id`, the two string lists, the two rule blocks (their
+ * defaults reproduced above), `created_at`, and `founders` as byte strings of
+ * each founder's raw 32-byte public key (decoded from its `rrn1…` address).
+ * `previous_hash` is omitted at genesis. Because the station's read surface does
+ * not echo the rule blocks, we **assert** the reconstructed bytes hash to the
+ * ceremony's `body_hex` and throw {@link CharterBodyMismatchError} on any drift,
+ * so a founder never signs a body that differs from the one being ratified.
+ *
+ * The wallet's secret never leaves Rust — signing goes through {@link Wallet.sign}.
+ */
+export async function createSignedCharterSignature(
+  wallet: Wallet,
+  pending: StationPendingCharter,
+): Promise<SignedCharterSignature> {
+  const founders: CborValue[] = pending.founders.map(address => {
+    const parsed = parseAddress(address);
+    if ('error' in parsed) {
+      throw new CharterBodyMismatchError(
+        pending.body_hex,
+        `invalid founder address ${address}`,
+      );
+    }
+    return bytes(parsed.toBytes());
+  });
+
+  // Field set, types, and encodings must match the station's `From<Charter> for
+  // CBOR` exactly. Map key order is irrelevant — dCBOR sorts canonically.
+  const payload: CborValue = map([
+    ['version', int(pending.version)],
+    ['community_id', text(pending.community_id)],
+    ['founding_principles', list(pending.founding_principles.map(text))],
+    ['rights_floor', list(pending.rights_floor.map(text))],
+    ['governance_structure', GOVERNANCE_STRUCTURE_DEFAULTS],
+    ['amendment_rules', AMENDMENT_RULES_DEFAULTS],
+    ['created_at', int(pending.created_at)],
+    ['founders', list(founders)],
+    // `previous_hash` is omitted at genesis, matching the log's optional-field
+    // convention on the station.
+  ]);
+
+  const canonical = canonicalBytes(payload);
+  const actualHex = bytesToHex(canonical);
+  if (actualHex !== pending.body_hex) {
+    throw new CharterBodyMismatchError(pending.body_hex, actualHex);
+  }
+
+  const signature = await wallet.sign(canonical);
+  return {
+    signerAddress: wallet.address,
     payloadBytes: canonical,
     signature: signature.toBytes(),
   };

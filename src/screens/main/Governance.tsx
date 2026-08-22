@@ -25,11 +25,12 @@ import {useState} from 'react';
 import {Pressable, ScrollView, StyleSheet, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
-import {Badge, Banner, Card, Countdown, ScreenHeader, Text} from '../../components';
+import {Badge, Banner, Button, Card, Countdown, ScreenHeader, Text} from '../../components';
 import {
   relativeTime,
   useCharter,
   useIdentity,
+  usePendingCharter,
   useProposals,
   useReputation,
   useStatutes,
@@ -57,7 +58,19 @@ export function Governance({navigation}: MainStackScreenProps<'Governance'>) {
   const statutes = useStatutes();
   const identity = useIdentity();
   const reputation = useReputation();
+  const pendingCharter = usePendingCharter();
   const bootstrap = identity.data?.bootstrap;
+
+  // A founding ceremony is under way, it hasn't published, and *this* phone is a
+  // declared founder who hasn't signed yet — the one case where the member has an
+  // action to take on the charter itself (the distributed founding ceremony).
+  const ownAddress = identity.data?.address;
+  const needsToSignCharter =
+    pendingCharter.data?.exists === true &&
+    !pendingCharter.data.published &&
+    ownAddress !== undefined &&
+    pendingCharter.data.founders.includes(ownAddress) &&
+    !pendingCharter.data.signed_founders.includes(ownAddress);
 
   // Whether *this* member may co-sign / vote at all, so the "needs you" hint
   // never fires for someone the electorate excludes (ADR-0015): New non-founders
@@ -88,6 +101,26 @@ export function Governance({navigation}: MainStackScreenProps<'Governance'>) {
         gap: theme.spacing.lg,
       }}>
       <ScreenHeader title="Governance" onBack={() => navigation.goBack()} />
+
+      {needsToSignCharter && (
+        <Card style={{gap: theme.spacing.sm}}>
+          <Text variant="label" color={theme.colors.text}>
+            Sign the founding charter
+          </Text>
+          <Text variant="body" color={theme.colors.textSecondary}>
+            You’re a founder of this community. It publishes its charter once{' '}
+            {pendingCharter.data?.threshold} founders sign — add your signature to
+            help found it.
+          </Text>
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            onPress={() => navigation.navigate('SignCharter')}>
+            Review &amp; sign
+          </Button>
+        </Card>
+      )}
 
       {isLoading && (
         <Card>
