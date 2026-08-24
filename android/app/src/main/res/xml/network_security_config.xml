@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Cleartext (plain-HTTP) traffic is permitted BY DESIGN.
+
+  The mobile <-> station transport (ADR-0008) is sealed-envelope-over-plain-HTTP:
+  every request/response body is end-to-end encrypted and authenticated in the
+  app and at the station, and the station is reached at a bare LAN address
+  (e.g. http://192.168.1.x:7500) with no TLS certificate. TLS would add nothing
+  the sealed envelope does not already provide, and there is no CA for a
+  self-hosted station on a local network.
+
+  Android blocks cleartext in release builds by default (debug allows it), so
+  WITHOUT this config release APKs silently fail to pair or sync while debug
+  builds work — the transport is HTTP either way. This config makes the policy
+  explicit and identical across build types; it takes precedence over the
+  android:usesCleartextTraffic manifest attribute.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>
