@@ -60,6 +60,15 @@ export function GenerateWallet({
         const wallet = await createWallet(passphrase, undefined, {
           requireBiometric: biometricEnabled,
         });
+        // When biometric is enabled, createWallet's keychain write puts up an OS
+        // prompt that covers this screen, so the seconds the user spent
+        // authenticating were not spent looking at the progress UI. Measure the
+        // minimum-visible window from *after* that work (and its prompt) finishes
+        // so the screen is legible once they're back — otherwise the budget is
+        // consumed while the screen is hidden and it flashes past on return.
+        // Without biometric, createWallet runs on-screen (a slow keygen is
+        // already visible), so keep timing from mount.
+        const visibleSince = biometricEnabled ? Date.now() : startedAt;
         setCreatedAddress(wallet.address);
         // Keep the unlocked handle so the last onboarding screen can hand it to
         // the session — a new user should not have to re-unlock what they just
@@ -67,7 +76,7 @@ export function GenerateWallet({
         setCreatedWallet(wallet);
         clearSecrets();
         // Only the success path is padded; an error should surface immediately.
-        await delay(MIN_VISIBLE_MS - (Date.now() - startedAt));
+        await delay(MIN_VISIBLE_MS - (Date.now() - visibleSince));
         navigation.replace('WalletReady');
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Could not create your wallet.');

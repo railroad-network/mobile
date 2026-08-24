@@ -295,6 +295,49 @@ describe('GenerateWallet', () => {
     expect(navigation.replace).toHaveBeenCalledWith('WalletReady');
   });
 
+  test('does not flash past when a biometric prompt ate the visible budget', async () => {
+    // With biometric on, createWallet's keychain write shows an OS prompt that
+    // hides this screen. Simulate the user taking longer to authenticate than
+    // the whole minimum-visible window: the screen must still hold once the
+    // prompt clears, not flash straight to WalletReady.
+    mockOnboarding.passphrase = 'correcthorsebattery';
+    mockOnboarding.biometricEnabled = true;
+
+    let resolveCreate!: (w: {address: string}) => void;
+    mockCreateWallet.mockReturnValue(
+      new Promise<{address: string}>(res => {
+        resolveCreate = res;
+      }),
+    );
+
+    const navigation = nav();
+    const r = await renderScreen(
+      <GenerateWallet navigation={navigation} route={{} as any} />,
+    );
+
+    // 3s pass behind the prompt — longer than the 2200ms budget — before
+    // creation resolves.
+    await act(async () => {
+      jest.advanceTimersByTime(3000);
+    });
+    await act(async () => {
+      resolveCreate({address: 'rrn1exampleaddress'});
+      await Promise.resolve();
+    });
+
+    // The prompt consumed the wall clock, but the screen has not been seen yet,
+    // so it must not have advanced.
+    expect(navigation.replace).not.toHaveBeenCalled();
+    expect(hasText(r, 'Creating your identity')).toBe(true);
+
+    // It holds for the minimum-visible window measured from when the prompt
+    // cleared, then advances.
+    await act(async () => {
+      jest.advanceTimersByTime(2200);
+    });
+    expect(navigation.replace).toHaveBeenCalledWith('WalletReady');
+  });
+
   test('shows an error with retry when creation fails', async () => {
     mockOnboarding.passphrase = 'correcthorsebattery';
     mockCreateWallet.mockRejectedValue(new Error('keystore unavailable'));
