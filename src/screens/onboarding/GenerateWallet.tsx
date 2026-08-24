@@ -24,11 +24,27 @@ const STEPS = [
 ];
 
 /**
- * Wallet creation can finish in well under a second, which reads as a flicker
- * rather than as the app having done something consequential. Hold this screen
- * for at least this long so the progress state is legible.
+ * Wallet creation's fast parts (keygen, keychain write) can finish in well under
+ * a second, which reads as a flicker rather than as the app having done something
+ * consequential. Hold this screen for at least this long so the progress state is
+ * legible. (The passphrase seal — Argon2id — takes a few seconds on its own, so on
+ * the non-biometric path the screen is already shown at least that long; this
+ * floor mainly governs the biometric path, where the seal happens behind the OS
+ * prompt, and any future fast-KDF build.)
  */
-const MIN_VISIBLE_MS = 2200;
+const MIN_VISIBLE_MS = 3500;
+
+/**
+ * How long to wait after this screen mounts before kicking off wallet creation.
+ * The passphrase seal (Argon2id) is a *synchronous* FFI call that ties up the JS
+ * thread for a few seconds; if we start it immediately, the navigation transition
+ * into this screen has not finished painting, so the JS thread freezes with the
+ * *previous* screen still on-screen and "Creating your identity" only appears for
+ * a blink afterward. This pause lets the transition complete and this screen paint
+ * first, so it's the one frozen in place while the seal runs. It must comfortably
+ * exceed the stack transition (~350ms on Android).
+ */
+const PRE_PAINT_MS = 700;
 
 function delay(ms: number): Promise<void> {
   if (ms <= 0) return Promise.resolve();
@@ -55,8 +71,12 @@ export function GenerateWallet({
     startedRef.current = true;
 
     (async () => {
-      const startedAt = Date.now();
       try {
+        // Let the navigation transition finish and this screen paint before the
+        // (JS-thread-blocking) seal starts — see PRE_PAINT_MS. Otherwise the seal
+        // freezes the previous screen in place and this one flashes by afterward.
+        await delay(PRE_PAINT_MS);
+        const startedAt = Date.now();
         const wallet = await createWallet(passphrase, undefined, {
           requireBiometric: biometricEnabled,
         });
@@ -66,8 +86,9 @@ export function GenerateWallet({
         // minimum-visible window from *after* that work (and its prompt) finishes
         // so the screen is legible once they're back — otherwise the budget is
         // consumed while the screen is hidden and it flashes past on return.
-        // Without biometric, createWallet runs on-screen (a slow keygen is
-        // already visible), so keep timing from mount.
+        // Without biometric there is no prompt: the pre-paint above put this screen
+        // on-screen and the seal then freezes *it* in place, so it is genuinely
+        // visible throughout — time it from mount and top up to the floor.
         const visibleSince = biometricEnabled ? Date.now() : startedAt;
         setCreatedAddress(wallet.address);
         // Keep the unlocked handle so the last onboarding screen can hand it to
