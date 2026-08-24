@@ -41,9 +41,11 @@ RRN_UPLOAD_KEY_PASSWORD=<the key password you chose>
 
 ```sh
 # From the repo root. Build the Rust FFI for arm64 (jniLibs are gitignored),
-# then assemble the signed release APK.
+# then assemble the signed release APK. The -P flag restricts the packaged
+# native libs to arm64-v8a (a ~85 MB APK instead of the ~176 MB universal one);
+# the React Native gradle plugin owns ABI selection via this property.
 yarn ubrn:android
-cd android && ./gradlew assembleRelease
+cd android && ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a
 ```
 
 The APK lands at:
