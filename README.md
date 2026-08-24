@@ -2,7 +2,8 @@
 
 [![CI](https://github.com/railroad-network/mobile/actions/workflows/ci.yml/badge.svg)](https://github.com/railroad-network/mobile/actions/workflows/ci.yml)
 
-> **Status:** Phase 1 — in progress (M1.1–M1.6 complete, M1.7 underway).
+> **Status:** Phase 1 — in progress (M1.1–M1.10 complete; M1.11 pilot
+> readiness underway, with a signed sideloadable Android release available).
 > Pre-audit. **Do not use with real value.**
 
 **Railroad Network** is a federated platform for self-organizing communities: a
@@ -45,13 +46,38 @@ wired up. What's implemented so far:
   device-local nicknames.
 - **Reputation (M1.5).** A Standing screen backed by the station's reputation
   read path.
-- **Marketplace (M1.6 → M1.7, in progress).** Browse and create listings,
-  make and respond to inquiries, and pay for an agreed inquiry, with the
-  transaction linked to the listing it settles.
+- **Marketplace (M1.6–M1.7).** Browse and create listings, announce needs,
+  open inquiries with counter-offers, sign recurring service contracts, and
+  pay for an agreed inquiry, with the transaction linked to the listing it
+  settles.
+- **Oracle tiers (M1.8).** Tiered settlement surfaced in the transaction
+  flows, plus a banner while the community is in bootstrap grace.
+- **Governance (M1.9).** A Governance hub: read the Charter and statutes,
+  author and co-sign proposals, and vote — plus signing the *founding*
+  Charter on-device, so a phone-held founder can take part in the genesis
+  ceremony without their key leaving the phone.
+- **Disputes (M1.10).** Contest a confirmed transaction, respond as the
+  other party, and rule as a seated juror, with escalation and appeal.
+- **Pilot readiness (M1.11, in progress).** Guided join-your-community
+  onboarding (mDNS discovery → in-person pairing-code ceremony), station
+  backup participation ("Shards you hold" / "Help someone recover" for
+  ADR-0016 station key recovery), a crash-safe error boundary with a
+  Diagnostics screen, and a signed arm64 release APK for sideloading.
 
 The app pairs with a local [`station`](https://github.com/railroad-network/station)
-daemon as its backend, and has been exercised end-to-end on a physical Android
-device. The cryptography is still **pre-audit** — do not use with real value.
+daemon as its backend, and every milestone above has been exercised end-to-end
+on a physical Android device. The cryptography is still **pre-audit** — do not
+use with real value.
+
+## Installing (sideload)
+
+There is no app-store distribution: pilot users install a signed release APK
+directly. [`SIDELOAD.md`](SIDELOAD.md) covers both halves — building and
+signing the APK as a maintainer, and installing/updating it as a user
+(including the battery-optimization exemption some phones need for background
+sync). For standing up a whole community around it — station, pairing,
+founding Charter, backups — see the steward's runbook in the station repo:
+[`docs/community-setup.md`](https://github.com/railroad-network/station/blob/main/docs/community-setup.md).
 
 ## Building
 
