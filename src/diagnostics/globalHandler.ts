@@ -14,7 +14,15 @@
  *    still runs exactly as before. We record *in addition*, never *instead*.
  *  - Recording is fire-and-forget: we kick off the async keychain write and then
  *    hand straight to the previous handler, so a fatal's native teardown is not
- *    delayed waiting on us.
+ *    delayed waiting on us. The trade-off, confirmed on-device: for a *fatal*
+ *    error (React Native terminates the process) the async {@link crypto/SecureStore}
+ *    write usually loses the race against teardown, so fatal crashes are NOT
+ *    reliably persisted here — the app simply closing is their signal, and the
+ *    error boundary (which persists synchronously enough to survive a restart)
+ *    is the durable path. Non-fatal errors and rejections, where the app keeps
+ *    running, do persist. Guaranteeing fatal-crash capture would need a
+ *    synchronous on-device write (a file/MMKV), which the SecureStore-only
+ *    persistence choice deliberately forgoes.
  *  - Rejection tracking is best-effort. Hooking unhandled rejections is
  *    engine-specific (Hermes vs. the JSC promise polyfill), so it is wrapped in
  *    a try/catch and simply skipped where unavailable — the exception handler,
