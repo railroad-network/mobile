@@ -240,19 +240,24 @@ describe('BiometricSetup', () => {
 // --- GenerateWallet ---------------------------------------------------------
 
 describe('GenerateWallet', () => {
-  // The screen holds for a minimum duration after creation succeeds, so these
-  // tests drive the clock rather than waiting it out.
+  // The screen pauses to paint before creation (PRE_PAINT_MS) and then holds for a
+  // minimum duration after creation succeeds, so these tests drive the clock
+  // rather than waiting it out.
   beforeEach(() => jest.useFakeTimers());
   afterEach(() => jest.useRealTimers());
 
-  /** Settles pending promises and runs out the minimum-visible hold. */
+  // The pre-paint pause GenerateWallet waits before starting the blocking seal.
+  const PRE_PAINT_MS = 700;
+
+  /** Runs out every pending timer (pre-paint pause + min-visible hold), flushing
+   * the promise chain scheduled between them. */
   async function settle() {
-    await act(async () => {
-      await Promise.resolve();
-    });
-    await act(async () => {
-      jest.runAllTimers();
-    });
+    for (let i = 0; i < 5; i++) {
+      await act(async () => {
+        jest.runOnlyPendingTimers();
+        await Promise.resolve();
+      });
+    }
   }
 
   test('creates the wallet with the chosen biometric setting and advances', async () => {
@@ -280,7 +285,9 @@ describe('GenerateWallet', () => {
     const r = await renderScreen(
       <GenerateWallet navigation={navigation} route={{} as any} />,
     );
+    // Run out the pre-paint pause so creation starts and resolves.
     await act(async () => {
+      jest.advanceTimersByTime(PRE_PAINT_MS);
       await Promise.resolve();
     });
 
@@ -290,9 +297,33 @@ describe('GenerateWallet', () => {
     expect(hasText(r, 'Creating your identity')).toBe(true);
 
     await act(async () => {
-      jest.advanceTimersByTime(2200);
+      jest.advanceTimersByTime(3500);
     });
     expect(navigation.replace).toHaveBeenCalledWith('WalletReady');
+  });
+
+  test('paints this screen before the blocking seal starts, so it cannot flash by', async () => {
+    // createWallet's passphrase seal is a synchronous FFI call that freezes the
+    // JS thread. Starting it before this screen paints would freeze the *previous*
+    // screen for the seal's duration and let "Creating your identity" flash past
+    // afterward (the non-biometric-path bug). Creation must wait out the pre-paint
+    // pause — long enough for the transition to finish and this screen to paint —
+    // before it begins.
+    mockOnboarding.passphrase = 'correcthorsebattery';
+    mockOnboarding.biometricEnabled = false;
+    mockCreateWallet.mockResolvedValue({address: 'rrn1exampleaddress'});
+
+    const navigation = nav();
+    await renderScreen(<GenerateWallet navigation={navigation} route={{} as any} />);
+
+    // The pre-paint pause has not elapsed: the blocking seal must not have started.
+    expect(mockCreateWallet).not.toHaveBeenCalled();
+
+    await act(async () => {
+      jest.advanceTimersByTime(PRE_PAINT_MS);
+      await Promise.resolve();
+    });
+    expect(mockCreateWallet).toHaveBeenCalledTimes(1);
   });
 
   test('does not flash past when a biometric prompt ate the visible budget', async () => {
@@ -315,7 +346,14 @@ describe('GenerateWallet', () => {
       <GenerateWallet navigation={navigation} route={{} as any} />,
     );
 
-    // 3s pass behind the prompt — longer than the 2200ms budget — before
+    // Run out the pre-paint pause so creation starts (and the prompt goes up).
+    await act(async () => {
+      jest.advanceTimersByTime(PRE_PAINT_MS);
+      await Promise.resolve();
+    });
+    expect(mockCreateWallet).toHaveBeenCalledTimes(1);
+
+    // 3s pass behind the prompt — longer than the min-visible budget — before
     // creation resolves.
     await act(async () => {
       jest.advanceTimersByTime(3000);
@@ -333,7 +371,7 @@ describe('GenerateWallet', () => {
     // It holds for the minimum-visible window measured from when the prompt
     // cleared, then advances.
     await act(async () => {
-      jest.advanceTimersByTime(2200);
+      jest.advanceTimersByTime(3500);
     });
     expect(navigation.replace).toHaveBeenCalledWith('WalletReady');
   });
@@ -368,6 +406,11 @@ describe('GenerateWallet', () => {
           </ThemeProvider>
         </SafeAreaProvider>,
       );
+      await Promise.resolve();
+    });
+    // Run out the pre-paint pause; creation still fires exactly once.
+    await act(async () => {
+      jest.advanceTimersByTime(PRE_PAINT_MS);
       await Promise.resolve();
     });
     expect(mockCreateWallet).toHaveBeenCalledTimes(1);
