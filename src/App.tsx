@@ -8,6 +8,7 @@ import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {NavigationContainer} from '@react-navigation/native';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 
+import {ErrorBoundary} from './components';
 import {RootNavigator} from './navigation/RootNavigator';
 import {StationSubscription} from './network/useStationSubscription';
 import {ThemeProvider, useTheme} from './theme';
@@ -21,7 +22,13 @@ function App() {
       <ThemeProvider>
         <QueryClientProvider client={queryClient}>
           <WalletSessionProvider>
-            <AppContent />
+            {/* Top-level catch for uncaught render errors: without it, a single
+                throw unmounts the whole app to a blank screen on a release build.
+                Sits under ThemeProvider + SafeAreaProvider so its fallback can
+                render themed and inset-aware. */}
+            <ErrorBoundary>
+              <AppContent />
+            </ErrorBoundary>
           </WalletSessionProvider>
         </QueryClientProvider>
       </ThemeProvider>

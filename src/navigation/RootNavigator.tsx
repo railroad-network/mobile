@@ -39,6 +39,7 @@ import {Receive} from '../screens/main/Receive';
 import {ChangePassphrase} from '../screens/main/ChangePassphrase';
 import {ExportWallet} from '../screens/main/ExportWallet';
 import {FactoryReset} from '../screens/main/FactoryReset';
+import {Diagnostics} from '../screens/main/Diagnostics';
 import {JoinNavigator} from '../screens/join/JoinNavigator';
 import {PairedStations} from '../screens/main/PairedStations';
 import {NotificationSettings} from '../screens/main/NotificationSettings';
@@ -160,6 +161,7 @@ function MainNavigator() {
       <MainStack.Screen name="ChangePassphrase" component={ChangePassphrase} />
       <MainStack.Screen name="ExportWallet" component={ExportWallet} />
       <MainStack.Screen name="FactoryReset" component={FactoryReset} />
+      <MainStack.Screen name="Diagnostics" component={Diagnostics} />
       <MainStack.Screen name="Join" component={JoinNavigator} />
       <MainStack.Screen name="PairedStations" component={PairedStations} />
       <MainStack.Screen name="NotificationSettings" component={NotificationSettings} />

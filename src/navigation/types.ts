@@ -97,6 +97,8 @@ export type MainStackParamList = {
   ExportWallet: undefined;
   /** Factory reset, confirmed by typing the given nickname (T1.2.8). */
   FactoryReset: {nickname: string};
+  /** Recent captured crashes/errors, to view and copy for a report (crash surfacing). */
+  Diagnostics: undefined;
   /** Join a community: discover + pair with its station (T1.3.2/T1.3.3). */
   Join: {origin: JoinOrigin};
   /** The stations this device is paired with, and unpairing them (T1.3.3). */

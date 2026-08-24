@@ -11,6 +11,13 @@ import { registerStationDiscovery } from './src/network/Discovery';
 import { registerNotifier } from './src/notifications/Notifications';
 import { createNotifeeNotifier } from './src/notifications/notifeeNotifier';
 import { registerBackgroundFetch } from './src/network/registerBackgroundFetch';
+import { installGlobalErrorHandler } from './src/diagnostics/globalHandler';
+
+// Crash surfacing: install the global JS exception + unhandled-rejection hooks
+// before anything else runs, so failures during startup are captured too. It
+// chains RN's own handler (dev redbox / native fatal path stay intact) and only
+// adds a persisted crash-log record for a pilot user to hand back.
+installGlobalErrorHandler();
 
 // Wire the real Rust crypto bindings into the seam before anything renders, so
 // wallet/crypto code (which reaches the FFI through getRrnCryptoFfi) works

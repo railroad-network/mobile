@@ -73,6 +73,14 @@ export const SecureStoreKeys = {
    * Stored alongside it at device-unlock accessibility; the pair together is a
    * background-usable signing wallet. Cleared with the blob. */
   BG_SYNC_SECRET: 'rrn.bgsync.secret',
+  /** Recent crash/error reports (crash surfacing): a JSON array holding the last
+   * few captured failures — uncaught render errors and global JS exceptions —
+   * so a pilot user can retrieve and hand back a report after a crash, even
+   * across a restart. Non-secret diagnostics (never key material); saved without
+   * a biometric gate, and capped to a small ring in {@link diagnostics/crashLog}
+   * so it can never grow unbounded. Cleared on factory reset or by the user from
+   * the Diagnostics screen. */
+  CRASH_LOG: 'rrn.diagnostics.crashlog',
 } as const;
 
 /** A value from {@link SecureStoreKeys}. */

@@ -25,11 +25,12 @@ import {loadPairedStations, type PairedStation} from '../../network/pairedStatio
 import {loadProfile, saveProfile} from '../../wallet/profile';
 import {loadRecoveryConfig, type RecoveryConfig} from '../../wallet/recoveryConfig';
 import {getPrefs, type NotificationPrefs} from '../../notifications/notificationPrefs';
+import {loadCrashLog} from '../../diagnostics/crashLog';
+import {APP_VERSION} from '../../diagnostics/crashReport';
 import {setBiometricUnlock} from '../../wallet/Wallet';
 import {useTheme, useThemeMode, type Theme, type ThemeMode} from '../../theme';
 import type {MainStackParamList} from '../../navigation/types';
 
-const APP_VERSION = '0.0.1';
 const STATION_COMPAT = 'Station 0.9 (Phase 1)';
 const REPO_URL = 'https://github.com/railroad-network/mobile';
 
@@ -54,6 +55,7 @@ export function Settings() {
   const [nickname, setNickname] = useState('');
   const [savedNickname, setSavedNickname] = useState('');
   const [notifPrefs, setNotifPrefs] = useState<NotificationPrefs | null>(null);
+  const [crashCount, setCrashCount] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
@@ -70,6 +72,9 @@ export function Settings() {
       getPrefs()
         .then(p => active && setNotifPrefs(p))
         .catch(() => {});
+      loadCrashLog()
+        .then(l => active && setCrashCount(l.length))
+        .catch(() => active && setCrashCount(0));
       loadProfile()
         .then(p => {
           if (!active) return;
@@ -279,6 +284,16 @@ export function Settings() {
 
       <Group theme={theme} label="Advanced">
         <NavRow theme={theme} title="Export wallet" onPress={() => navigation.navigate('ExportWallet')} />
+        <NavRow
+          theme={theme}
+          title="Diagnostics"
+          subtitle={
+            crashCount === 0
+              ? 'No recent errors'
+              : `${crashCount} recent error${crashCount === 1 ? '' : 's'} · tap to view or copy`
+          }
+          onPress={() => navigation.navigate('Diagnostics')}
+        />
         <NavRow
           theme={theme}
           title="Factory reset"
