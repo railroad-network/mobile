@@ -2,9 +2,9 @@
 
 [![CI](https://github.com/railroad-network/mobile/actions/workflows/ci.yml/badge.svg)](https://github.com/railroad-network/mobile/actions/workflows/ci.yml)
 
-> **Status:** Phase 1 — in progress (M1.1–M1.10 complete; M1.11 pilot
-> readiness underway, with a signed sideloadable Android release available).
-> Pre-audit. **Do not use with real value.**
+> **Status:** Phase 1 — M1.1–M1.11 complete: the full client is in place and a
+> signed, sideloadable Android release is available for pilots. Pre-audit.
+> **Do not use with real value.**
 
 **Railroad Network** is a federated platform for self-organizing communities: a
 mutual-credit economy denominated in a single unit (the "Common"),
@@ -58,11 +58,11 @@ wired up. What's implemented so far:
   ceremony without their key leaving the phone.
 - **Disputes (M1.10).** Contest a confirmed transaction, respond as the
   other party, and rule as a seated juror, with escalation and appeal.
-- **Pilot readiness (M1.11, in progress).** Guided join-your-community
-  onboarding (mDNS discovery → in-person pairing-code ceremony), station
-  backup participation ("Shards you hold" / "Help someone recover" for
-  ADR-0016 station key recovery), a crash-safe error boundary with a
-  Diagnostics screen, and a signed arm64 release APK for sideloading.
+- **Pilot readiness (M1.11).** Guided join-your-community onboarding (mDNS
+  discovery → in-person pairing-code ceremony), station backup participation
+  ("Shards you hold" / "Help someone recover" for ADR-0016 station key
+  recovery), a crash-safe error boundary with a Diagnostics screen, and a
+  signed arm64 release APK for sideloading.
 
 The app pairs with a local [`station`](https://github.com/railroad-network/station)
 daemon as its backend, and every milestone above has been exercised end-to-end
@@ -78,6 +78,9 @@ signing the APK as a maintainer, and installing/updating it as a user
 sync). For standing up a whole community around it — station, pairing,
 founding Charter, backups — see the steward's runbook in the station repo:
 [`docs/community-setup.md`](https://github.com/railroad-network/station/blob/main/docs/community-setup.md).
+Keeping members' phones syncing reliably in the background (the per-vendor
+battery quirks, and a verification drill) has its own runbook:
+[`docs/background-reliability.md`](https://github.com/railroad-network/station/blob/main/docs/background-reliability.md).
 
 ## Building
 
