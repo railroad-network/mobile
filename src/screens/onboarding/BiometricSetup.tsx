@@ -28,13 +28,13 @@ function biometryLabel(type: Keychain.BIOMETRY_TYPE | null): string {
     case Keychain.BIOMETRY_TYPE.OPTIC_ID:
       return 'Optic ID';
     case Keychain.BIOMETRY_TYPE.FACE:
-      return 'face unlock';
+      return 'face recognition';
     case Keychain.BIOMETRY_TYPE.IRIS:
-      return 'iris unlock';
+      return 'iris scanning';
     case Keychain.BIOMETRY_TYPE.FINGERPRINT:
-      return 'fingerprint unlock';
+      return 'fingerprint';
     default:
-      return 'biometric unlock';
+      return 'biometrics';
   }
 }
 
@@ -111,14 +111,14 @@ export function BiometricSetup({
         <Heading
           level="headingMedium"
           style={[styles.centerText, {marginBottom: theme.spacing.sm}]}>
-          {supported ? `Unlock with ${label}` : 'Passphrase unlock'}
+          {supported ? 'Add a second lock' : 'Passphrase unlock'}
         </Heading>
         <Text
           variant="body"
           color={theme.colors.textSecondary}
           style={styles.centerText}>
           {supported
-            ? `Skip typing your passphrase every time. Your passphrase still works as a backup, and is always required for sensitive actions.`
+            ? `Add ${label} on top of your passphrase. You'll still enter your passphrase to unlock — this just puts a second lock in front of your wallet, so a stolen passphrase alone can't open it.`
             : `This device has no biometrics set up, so you'll use your passphrase to unlock. You can enable biometrics later from Settings.`}
         </Text>
       </View>

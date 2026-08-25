@@ -204,6 +204,13 @@ describe('BiometricSetup', () => {
       <BiometricSetup navigation={navigation} route={{} as any} />,
     );
 
+    // Biometrics are a second lock on top of the passphrase, not a replacement:
+    // the wallet is sealed under the passphrase, so it is always required. The
+    // copy must not promise passphrase-free unlock.
+    expect(hasText(r, 'Add a second lock')).toBe(true);
+    expect(hasText(r, 'still enter your passphrase to unlock')).toBe(true);
+    expect(hasText(r, 'Skip typing your passphrase')).toBe(false);
+
     await press(button(r, 'Enable Face ID'));
     expect(mockOnboarding.setBiometricEnabled).toHaveBeenCalledWith(true);
     expect(navigation.navigate).toHaveBeenCalledWith('GenerateWallet');
