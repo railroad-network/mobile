@@ -189,13 +189,13 @@ export function Settings() {
         <NavRow theme={theme} title="Change passphrase" onPress={() => navigation.navigate('ChangePassphrase')} />
         <View style={styles.toggleRow}>
           <Text variant="label" color={theme.colors.text}>
-            Unlock with biometrics
+            Require biometrics to unlock
           </Text>
           <Switch
             value={biometric}
             onValueChange={toggleBiometric}
             trackColor={{true: theme.colors.primary, false: theme.colors.borderStrong}}
-            accessibilityLabel="Unlock with biometrics"
+            accessibilityLabel="Require biometrics to unlock"
           />
         </View>
         <NavRow

@@ -132,7 +132,7 @@ test('editing and saving the nickname persists it', async () => {
 test('toggling biometrics calls through', async () => {
   const r = await renderSettings();
   const toggle = r.root.find(
-    n => n.props.accessibilityLabel === 'Unlock with biometrics' && typeof n.props.onValueChange === 'function',
+    n => n.props.accessibilityLabel === 'Require biometrics to unlock' && typeof n.props.onValueChange === 'function',
   );
   await act(async () => {
     toggle.props.onValueChange(false);
