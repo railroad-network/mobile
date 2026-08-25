@@ -3,8 +3,10 @@
 [![CI](https://github.com/railroad-network/mobile/actions/workflows/ci.yml/badge.svg)](https://github.com/railroad-network/mobile/actions/workflows/ci.yml)
 
 > **Status:** Phase 1 — M1.1–M1.11 complete: the full client is in place and a
-> signed, sideloadable Android release is available for pilots. Pre-audit.
-> **Do not use with real value.**
+> signed, sideloadable Android release is available for pilots. An internal
+> AI-assisted security review has been completed (no High-severity findings; see
+> [Audit status](#audit-status)); an independent professional audit is still
+> pending. **Do not use with real value.**
 
 **Railroad Network** is a federated platform for self-organizing communities: a
 mutual-credit economy denominated in a single unit (the "Common"),
@@ -25,9 +27,10 @@ replication, peer gossip, and remote-of-record state. Rust crypto
 (`rrn-crypto`, `rrn-identity`) runs on-device via [uniffi-rs bindings](https://github.com/railroad-network/station/blob/main/docs/adr/0007-rust-mobile-ffi-uniffi.md)
 (see ADR-0007).
 
-> This is research-stage software. The cryptography has **not** yet been
-> independently audited. Do not use it to hold, transfer, or represent anything
-> of real value.
+> This is research-stage software. It has had an internal AI-assisted security
+> review, but the cryptography has **not** yet been independently audited by a
+> professional security firm (see [Audit status](#audit-status)). Do not use it
+> to hold, transfer, or represent anything of real value.
 
 ## Phase 1 status
 
@@ -66,8 +69,9 @@ wired up. What's implemented so far:
 
 The app pairs with a local [`station`](https://github.com/railroad-network/station)
 daemon as its backend, and every milestone above has been exercised end-to-end
-on a physical Android device. The cryptography is still **pre-audit** — do not
-use with real value.
+on a physical Android device. An internal AI-assisted security review is
+complete; an independent professional audit is still pending (see
+[Audit status](#audit-status)) — do not use with real value.
 
 ## Installing (sideload)
 
@@ -117,6 +121,34 @@ yarn tsc --noEmit   # typecheck
 yarn lint           # eslint
 yarn test           # unit tests
 ```
+
+## Audit status
+
+**Internal AI-assisted review complete; independent professional audit
+pending.** A security review of the mobile client was performed on 2026-08-25 at
+commit [`b32f2ca`](https://github.com/railroad-network/mobile/commit/b32f2ca),
+covering on-device key custody, the transport and pairing envelope as the phone
+builds them, the QR ceremony surfaces, background execution, and the Android/iOS
+platform configuration. (The Rust cryptographic core is reviewed in the
+[`station` audit](https://github.com/railroad-network/station/blob/main/docs/security/audit-2026-08.md).)
+It reported **no High-severity findings** — the client keeps the wallet secret
+inside the Rust core, holds the unlocked wallet only in memory and drops it on
+background, binds the sealed envelope's recipient inside the signed bytes,
+serializes monotonic transport nonces, and domain-separates every signed record
+— with **2 Medium, 4 Low, and 4 Info** findings concentrated at the pairing and
+recovery ceremony surfaces and at platform exposure (clipboard, screen capture,
+keychain accessibility). The full report, with each finding's failure scenario
+and a remediation order, is at
+[`docs/security/audit-2026-08.md`](docs/security/audit-2026-08.md).
+
+Important: this was a **code review performed by an AI model** operated by the
+maintainer, **not** a penetration test or an attestation by a professional
+security firm. It is intended to raise the floor, not to clear the stack for
+production. Absence of a finding is not evidence of absence, and an independent
+professional audit remains warranted before any deployment where real people
+depend on this software's guarantees. The client stays experimental until that
+review lands. Per the project's open-source posture, all audit reports are
+public.
 
 ## Design documents
 
