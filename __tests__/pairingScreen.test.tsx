@@ -118,7 +118,7 @@ async function pressLabelled(
 
 /** Enter the passphrase and run the handshake to the confirm step. */
 async function unlock(tree: ReactTestRenderer.ReactTestRenderer) {
-  setText(tree, 'Passphrase', 'correct horse');
+  setText(tree, 'Your wallet passphrase', 'correct horse');
   await pressLabelled(tree, 'Contact station');
 }
 
@@ -134,6 +134,14 @@ describe('Pairing screen', () => {
         node.props.accessibilityRole === 'image',
     );
     expect(avatar).toBeTruthy();
+  });
+
+  it('names which passphrase to enter, not the station’s', () => {
+    // A tester entered the station's passphrase here; the field and its hint
+    // now say plainly it wants the wallet passphrase.
+    const text = textOf(render());
+    expect(text).toContain('Your wallet passphrase');
+    expect(text).toContain('The one you unlock this app with — not the station’s.');
   });
 
   it('runs the handshake and shows the confirmation code', async () => {
@@ -227,7 +235,7 @@ describe('Pairing screen', () => {
     await unlock(tree);
 
     const text = textOf(tree);
-    expect(text).toContain('Could not unlock');
+    expect(text).toContain('That didn’t unlock your wallet');
     expect(text).not.toContain('biometric cancelled');
   });
 });
