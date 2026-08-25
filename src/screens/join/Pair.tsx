@@ -110,8 +110,11 @@ export function Pair({navigation, route}: JoinScreenProps<'Pair'>) {
       setStep('confirm');
     } catch {
       // A wrong passphrase or a cancelled biometric prompt both land here; we
-      // never say which, and never leak the exception text.
-      setError('Could not unlock. Check your passphrase and try again.');
+      // never say which, and never leak the exception text. Name which
+      // passphrase, since entering the station's here is a common mix-up.
+      setError(
+        'That didn’t unlock your wallet. Enter your wallet passphrase — the one you unlock this app with, not the station’s.',
+      );
     } finally {
       setBusy(false);
     }
@@ -193,7 +196,8 @@ export function Pair({navigation, route}: JoinScreenProps<'Pair'>) {
           </Banner>
         ) : null}
         <Field
-          label="Passphrase"
+          label="Your wallet passphrase"
+          hint="The one you unlock this app with — not the station’s."
           value={passphrase}
           onChangeText={t => {
             setPassphrase(t);
