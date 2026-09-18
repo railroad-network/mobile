@@ -62,10 +62,17 @@ wired up. What's implemented so far:
 - **Disputes (M1.10).** Contest a confirmed transaction, respond as the
   other party, and rule as a seated juror, with escalation and appeal.
 - **Pilot readiness (M1.11).** Guided join-your-community onboarding (mDNS
-  discovery → in-person pairing-code ceremony), station backup participation
-  ("Shards you hold" / "Help someone recover" for ADR-0016 station key
-  recovery), a crash-safe error boundary with a Diagnostics screen, and a
-  signed arm64 release APK for sideloading.
+  discovery → in-person pairing-code ceremony), social-recovery participation
+  ("Shards you hold" / "Help someone recover" for ADR-0016), a crash-safe error
+  boundary with a Diagnostics screen, and a signed arm64 release APK for
+  sideloading.
+- **Member key recovery (ADR-0016).** Recover an existing identity onto a new
+  phone from onboarding — rebuild the key from your recovery circle (show the
+  request QR and ceremony fingerprint, scan holder responses until enough
+  rebuild it) or restore from a saved wallet export — then set a fresh device
+  passphrase and re-pair. Reconstruction runs entirely on the member's own
+  device; the station never sees the key. Every holder's confirm card shows the
+  ceremony fingerprint to read aloud and match in person.
 
 The app pairs with a local [`station`](https://github.com/railroad-network/station)
 daemon as its backend, and every milestone above has been exercised end-to-end

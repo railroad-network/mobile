@@ -25,6 +25,11 @@ function throwUnused(): never {
 }
 
 const fakeFfi: RrnCryptoFfi = {
+  RecoverySession: {
+    create: () => {
+      throw new Error('recovery ceremony not exercised by these tests');
+    },
+  },
   RecoveryPackage: {create: () => throwUnused()},
   parseShardPayload: () => throwUnused(),
   parseRecoveryRequest: () => throwUnused(),

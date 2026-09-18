@@ -26,7 +26,7 @@ import {
   type Signature,
   type WalletContents,
 } from '../crypto/ffi';
-import {bytesToBase64} from '../crypto/base64';
+import {base64ToBytes, bytesToBase64} from '../crypto/base64';
 import {SecureStoreKeys} from '../crypto/constants';
 import {getSecureStore, type SecureStore} from '../crypto/SecureStore';
 import {loadProfile, saveProfile} from './profile';
@@ -153,11 +153,43 @@ export async function createWallet(
   options: CreateWalletOptions = {},
 ): Promise<Wallet> {
   const wallet = Wallet.fromContents(getRrnCryptoFfi().WalletContents.createNew());
+  await persistWallet(wallet, passphrase, store, options);
+  return wallet;
+}
+
+/**
+ * Seals `wallet` under `passphrase` and stores it as this device's wallet in the
+ * OS secure store — the write shared by first-time creation ({@link createWallet})
+ * and adopting a recovered or imported identity onto a device (ADR-0016). Any
+ * existing wallet at that slot is overwritten; the caller decides whether that is
+ * allowed.
+ */
+export async function persistWallet(
+  wallet: Wallet,
+  passphrase: string,
+  store: SecureStore = getSecureStore(),
+  options: CreateWalletOptions = {},
+): Promise<void> {
   const bytes = await saveWalletToBytes(wallet, passphrase);
   await store.save(SecureStoreKeys.WALLET_FILE, bytes, {
     requireBiometric: options.requireBiometric,
   });
-  return wallet;
+}
+
+/**
+ * Opens a wallet from the base64 of an exported `.rrnwallet` (what
+ * {@link exportWalletBytes} / the Export wallet screen produce), verifying it
+ * with the passphrase it was exported under. This does *not* store anything —
+ * the caller re-seals it under a new device passphrase (via {@link persistWallet})
+ * so the export's passphrase is not carried onto the new device. Rejects if the
+ * text is not valid base64, or the passphrase is wrong / the bytes are tampered.
+ */
+export async function importWalletFromExport(
+  exportText: string,
+  passphrase: string,
+): Promise<Wallet> {
+  const bytes = base64ToBytes(exportText.trim());
+  return loadWalletFromBytes(bytes, passphrase);
 }
 
 /**

@@ -74,6 +74,7 @@ export function BiometricSetup({
   return (
     <OnboardingScaffold
       center
+      onBack={() => navigation.goBack()}
       footer={
         supported ? (
           <>

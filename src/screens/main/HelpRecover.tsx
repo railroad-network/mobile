@@ -59,6 +59,7 @@ interface Notice {
 /** What we scanned and the shard we hold for it, carried into the confirm step. */
 interface Target {
   address: string;
+  fingerprint: string;
   shard: HeldShard;
   request: Uint8Array;
 }
@@ -94,7 +95,7 @@ export function HelpRecover({navigation}: MainStackScreenProps<'HelpRecover'>) {
       setNotice({
         variant: 'warning',
         title: "That isn't a recovery request",
-        body: 'Scan the request your friend’s station is showing — a shard or plain address QR won’t work here.',
+        body: 'Scan the request your friend’s device is showing — a shard or plain address QR won’t work here.',
       });
       return;
     }
@@ -123,7 +124,12 @@ export function HelpRecover({navigation}: MainStackScreenProps<'HelpRecover'>) {
     }
 
     setNotice(null);
-    setTarget({address: info.targetAddress, shard, request: bytes});
+    setTarget({
+      address: info.targetAddress,
+      fingerprint: info.fingerprint,
+      shard,
+      request: bytes,
+    });
     setMode('confirm');
   }
 
@@ -168,7 +174,7 @@ export function HelpRecover({navigation}: MainStackScreenProps<'HelpRecover'>) {
         title="Help someone recover"
         subtitle={
           'When a friend you hold a shard for loses their key, scan the request ' +
-          'their station shows to contribute your piece.'
+          'their device shows to contribute your piece.'
         }
         onBack={() => navigation.goBack()}
       />
@@ -201,6 +207,26 @@ export function HelpRecover({navigation}: MainStackScreenProps<'HelpRecover'>) {
             <Text variant="caption" color={theme.colors.textSecondary}>
               You hold a {target.shard.threshold}-of-{target.shard.total} piece
               for them. Any {target.shard.threshold} holders can bring them back.
+            </Text>
+          </Card>
+
+          <Card style={{gap: theme.spacing.xs}}>
+            <Text variant="caption" color={theme.colors.textSecondary}>
+              Ceremony fingerprint
+            </Text>
+            <Text
+              variant="mono"
+              color={theme.colors.text}
+              selectable
+              style={styles.fingerprint}
+              accessibilityLabel={`Ceremony fingerprint: ${target.fingerprint}`}>
+              {target.fingerprint}
+            </Text>
+            <Text variant="caption" color={theme.colors.textSecondary}>
+              Only contribute if you've confirmed — in person, or on a channel you
+              already trust — that this is really them recovering their own key.
+              Read this code aloud together; it must match their screen exactly. A
+              recovery request is only as trustworthy as the person showing it.
             </Text>
           </Card>
 
@@ -270,7 +296,7 @@ export function HelpRecover({navigation}: MainStackScreenProps<'HelpRecover'>) {
             variant="body"
             color={theme.colors.textSecondary}
             style={styles.centerText}>
-            Have their station scan this. It only works for them — your piece is
+            Have their device scan this. It only works for them — your piece is
             sealed to this one recovery.
           </Text>
           <Button variant="primary" size="lg" fullWidth onPress={() => navigation.goBack()}>
@@ -284,6 +310,7 @@ export function HelpRecover({navigation}: MainStackScreenProps<'HelpRecover'>) {
 
 const styles = StyleSheet.create({
   scanner: {height: 320, overflow: 'hidden'},
+  fingerprint: {fontSize: 24, letterSpacing: 2},
   centerCol: {alignItems: 'center'},
   centerText: {textAlign: 'center'},
   qrCard: {padding: 14},

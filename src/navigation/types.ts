@@ -28,6 +28,12 @@ export type OnboardingStackParamList = {
   GenerateWallet: undefined;
   WalletReady: undefined;
   Recovery: {origin: RecoveryOrigin};
+  /** Recover an existing identity onto this device: pick a source (ADR-0016). */
+  RecoverChoice: undefined;
+  /** Rebuild the key from the recovery circle: request QR, scan holder responses. */
+  RecoverFromCircle: undefined;
+  /** Restore from an exported wallet: paste the export and its passphrase. */
+  RecoverFromExport: undefined;
   /** Join a community: discover + pair with its station, then enter the app. */
   Join: {origin: JoinOrigin};
 };

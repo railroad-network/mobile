@@ -11,21 +11,36 @@ import {StyleSheet, View} from 'react-native';
 import {Button, Heading, StarMark, Text} from '../../components';
 import {darkColors} from '../../theme';
 import type {OnboardingScreenProps} from '../../navigation/types';
+import {useOnboarding} from './OnboardingContext';
 import {OnboardingScaffold} from './OnboardingScaffold';
 
 export function Welcome({navigation}: OnboardingScreenProps<'Welcome'>) {
+  const {setRecoveredWallet} = useOnboarding();
+
+  // Minting a fresh identity: drop any identity a previous, abandoned recovery
+  // attempt left in the flow, so the generate step never seals *that* one under
+  // this new wallet's passphrase instead of a new keypair.
+  function createNew() {
+    setRecoveredWallet(null);
+    navigation.navigate('Passphrase');
+  }
+
   return (
     <OnboardingScaffold
       dark
       footer={
         <>
-          <Button
-            variant="accent"
-            size="lg"
-            fullWidth
-            onPress={() => navigation.navigate('Passphrase')}>
+          <Button variant="accent" size="lg" fullWidth onPress={createNew}>
             Create my wallet
           </Button>
+          <Text
+            variant="label"
+            color={darkColors.text}
+            onPress={() => navigation.navigate('RecoverChoice')}
+            accessibilityRole="button"
+            style={styles.recoverLink}>
+            Recover an existing identity
+          </Text>
           <Text
             variant="caption"
             color={darkColors.textMuted}
@@ -58,5 +73,9 @@ const styles = StyleSheet.create({
   footNote: {
     textAlign: 'center',
     marginTop: 4,
+  },
+  recoverLink: {
+    textAlign: 'center',
+    paddingVertical: 12,
   },
 });

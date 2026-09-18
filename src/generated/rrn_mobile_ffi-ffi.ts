@@ -204,6 +204,14 @@ interface NativeModuleInterface {
     ptr: bigint,
     uniffi_out_err: UniffiRustCallStatus,
   ): void;
+  ubrn_uniffi_rrn_mobile_ffi_fn_clone_recoverysession(
+    ptr: bigint,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): bigint;
+  ubrn_uniffi_rrn_mobile_ffi_fn_free_recoverysession(
+    ptr: bigint,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): void;
   ubrn_uniffi_rrn_mobile_ffi_fn_clone_signature(
     ptr: bigint,
     uniffi_out_err: UniffiRustCallStatus,
@@ -220,20 +228,73 @@ interface NativeModuleInterface {
     ptr: bigint,
     uniffi_out_err: UniffiRustCallStatus,
   ): void;
+  ubrn_uniffi_rrn_mobile_ffi_fn_func_bundle_assemble(
+    entryEnvelopes: Uint8Array,
+    assembledAt: bigint,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): Uint8Array;
+  ubrn_uniffi_rrn_mobile_ffi_fn_func_bundle_parse(
+    bundleBytes: Uint8Array,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): Uint8Array;
   ubrn_uniffi_rrn_mobile_ffi_fn_func_canonical_bytes(
     payloadJson: Uint8Array,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): Uint8Array;
+  ubrn_uniffi_rrn_mobile_ffi_fn_func_certificate_parse(
+    certEnvelopeBytes: Uint8Array,
+    expectedStationPubkey: Uint8Array,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): Uint8Array;
+  ubrn_uniffi_rrn_mobile_ffi_fn_func_certificate_request_sign(
+    member: bigint,
+    capCenti: bigint,
+    nonce: bigint,
+    requestedAt: bigint,
     uniffi_out_err: UniffiRustCallStatus,
   ): Uint8Array;
   ubrn_uniffi_rrn_mobile_ffi_fn_func_is_valid_address(
     address: Uint8Array,
     uniffi_out_err: UniffiRustCallStatus,
   ): number;
+  ubrn_uniffi_rrn_mobile_ffi_fn_func_offline_spend_verify(
+    certEnvelope: Uint8Array,
+    proposalEnvelope: Uint8Array,
+    presentedHistory: Uint8Array,
+    receiverAddress: Uint8Array,
+    stationPubkey: Uint8Array,
+    now: bigint,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): Uint8Array;
+  ubrn_uniffi_rrn_mobile_ffi_fn_func_outbox_next_entry(
+    author: bigint,
+    prevEntry: Uint8Array,
+    recordEnvelope: Uint8Array,
+    authoredAt: bigint,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): Uint8Array;
   ubrn_uniffi_rrn_mobile_ffi_fn_func_parse_recovery_request(
     requestPayload: Uint8Array,
     uniffi_out_err: UniffiRustCallStatus,
   ): Uint8Array;
   ubrn_uniffi_rrn_mobile_ffi_fn_func_parse_shard_payload(
     payload: Uint8Array,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): Uint8Array;
+  ubrn_uniffi_rrn_mobile_ffi_fn_func_proposal_sign_with_certificate(
+    sender: bigint,
+    receiverAddress: Uint8Array,
+    amountCenti: bigint,
+    memo: Uint8Array,
+    certId: Uint8Array,
+    nonce: bigint,
+    proposedAt: bigint,
+    expiresAt: bigint,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): Uint8Array;
+  ubrn_uniffi_rrn_mobile_ffi_fn_func_receipt_parse(
+    receiptBytes: Uint8Array,
+    expectedStationPubkey: Uint8Array,
     uniffi_out_err: UniffiRustCallStatus,
   ): Uint8Array;
   ubrn_uniffi_rrn_mobile_ffi_fn_func_respond_to_recovery(
@@ -339,6 +400,31 @@ interface NativeModuleInterface {
     uniffiSelf: bigint,
     uniffi_out_err: UniffiRustCallStatus,
   ): number;
+  ubrn_uniffi_rrn_mobile_ffi_fn_constructor_recoverysession_new(
+    targetAddress: Uint8Array,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): bigint;
+  ubrn_uniffi_rrn_mobile_ffi_fn_method_recoverysession_add_response(
+    uniffiSelf: bigint,
+    responsePayload: Uint8Array,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): number;
+  ubrn_uniffi_rrn_mobile_ffi_fn_method_recoverysession_fingerprint(
+    uniffiSelf: bigint,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): Uint8Array;
+  ubrn_uniffi_rrn_mobile_ffi_fn_method_recoverysession_reconstruct(
+    uniffiSelf: bigint,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): bigint;
+  ubrn_uniffi_rrn_mobile_ffi_fn_method_recoverysession_request_payload(
+    uniffiSelf: bigint,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): Uint8Array;
+  ubrn_uniffi_rrn_mobile_ffi_fn_method_recoverysession_responses(
+    uniffiSelf: bigint,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): number;
   ubrn_uniffi_rrn_mobile_ffi_fn_constructor_signature_from_bytes(
     data: Uint8Array,
     uniffi_out_err: UniffiRustCallStatus,
@@ -371,10 +457,18 @@ interface NativeModuleInterface {
     uniffi_out_err: UniffiRustCallStatus,
   ): bigint;
   ubrn_ffi_rrn_mobile_ffi_uniffi_contract_version(): number;
+  ubrn_uniffi_rrn_mobile_ffi_checksum_func_bundle_assemble(): number;
+  ubrn_uniffi_rrn_mobile_ffi_checksum_func_bundle_parse(): number;
   ubrn_uniffi_rrn_mobile_ffi_checksum_func_canonical_bytes(): number;
+  ubrn_uniffi_rrn_mobile_ffi_checksum_func_certificate_parse(): number;
+  ubrn_uniffi_rrn_mobile_ffi_checksum_func_certificate_request_sign(): number;
   ubrn_uniffi_rrn_mobile_ffi_checksum_func_is_valid_address(): number;
+  ubrn_uniffi_rrn_mobile_ffi_checksum_func_offline_spend_verify(): number;
+  ubrn_uniffi_rrn_mobile_ffi_checksum_func_outbox_next_entry(): number;
   ubrn_uniffi_rrn_mobile_ffi_checksum_func_parse_recovery_request(): number;
   ubrn_uniffi_rrn_mobile_ffi_checksum_func_parse_shard_payload(): number;
+  ubrn_uniffi_rrn_mobile_ffi_checksum_func_proposal_sign_with_certificate(): number;
+  ubrn_uniffi_rrn_mobile_ffi_checksum_func_receipt_parse(): number;
   ubrn_uniffi_rrn_mobile_ffi_checksum_func_respond_to_recovery(): number;
   ubrn_uniffi_rrn_mobile_ffi_checksum_constructor_encryptedwallet_encrypt(): number;
   ubrn_uniffi_rrn_mobile_ffi_checksum_constructor_encryptedwallet_from_bytes(): number;
@@ -398,6 +492,12 @@ interface NativeModuleInterface {
   ubrn_uniffi_rrn_mobile_ffi_checksum_method_recoverypackage_shard_payload(): number;
   ubrn_uniffi_rrn_mobile_ffi_checksum_method_recoverypackage_threshold(): number;
   ubrn_uniffi_rrn_mobile_ffi_checksum_method_recoverypackage_total(): number;
+  ubrn_uniffi_rrn_mobile_ffi_checksum_constructor_recoverysession_new(): number;
+  ubrn_uniffi_rrn_mobile_ffi_checksum_method_recoverysession_add_response(): number;
+  ubrn_uniffi_rrn_mobile_ffi_checksum_method_recoverysession_fingerprint(): number;
+  ubrn_uniffi_rrn_mobile_ffi_checksum_method_recoverysession_reconstruct(): number;
+  ubrn_uniffi_rrn_mobile_ffi_checksum_method_recoverysession_request_payload(): number;
+  ubrn_uniffi_rrn_mobile_ffi_checksum_method_recoverysession_responses(): number;
   ubrn_uniffi_rrn_mobile_ffi_checksum_constructor_signature_from_bytes(): number;
   ubrn_uniffi_rrn_mobile_ffi_checksum_method_signature_to_bytes(): number;
   ubrn_uniffi_rrn_mobile_ffi_checksum_constructor_walletcontents_create_new(): number;
@@ -431,6 +531,10 @@ interface NativeModuleInterface {
     uniffi_out_err: UniffiRustCallStatus,
   ): UniffiGcObject;
   ubrn_uniffi_internal_fn_method_recoverypackage_ffi__bless_pointer(
+    pointer: bigint,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): UniffiGcObject;
+  ubrn_uniffi_internal_fn_method_recoverysession_ffi__bless_pointer(
     pointer: bigint,
     uniffi_out_err: UniffiRustCallStatus,
   ): UniffiGcObject;

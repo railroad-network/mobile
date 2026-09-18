@@ -67,6 +67,7 @@ export function Passphrase({navigation}: OnboardingScreenProps<'Passphrase'>) {
 
   return (
     <OnboardingScaffold
+      onBack={() => navigation.goBack()}
       footer={
         <Button
           variant="primary"

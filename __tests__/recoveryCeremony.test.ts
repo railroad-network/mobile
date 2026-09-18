@@ -12,6 +12,8 @@ import {
   REQUEST_QR_PREFIX,
   RESPONSE_QR_PREFIX,
   decodeRequestQr,
+  decodeResponseQr,
+  encodeRequestQr,
   encodeResponseQr,
   parseRecoveryRequest,
 } from '../src/wallet/recoveryCeremony';
@@ -50,17 +52,40 @@ describe('recovery ceremony QR codecs', () => {
     expect(decodeRequestQr(REQUEST_QR_PREFIX + 'not valid base64 %%%')).toBeNull();
   });
 
-  test('parseRecoveryRequest delegates to the FFI', () => {
+  // The recovering device's half: it renders its own request and scans holder
+  // responses back, the mirror of the holder codecs above.
+  test('encodeRequestQr round-trips through decodeRequestQr', () => {
+    const qr = encodeRequestQr(bytes);
+    expect(qr.startsWith(REQUEST_QR_PREFIX)).toBe(true);
+    expect(Array.from(decodeRequestQr(qr)!)).toEqual(Array.from(bytes));
+  });
+
+  test('decodeResponseQr recovers the response bytes', () => {
+    const decoded = decodeResponseQr(encodeResponseQr(bytes));
+    expect(decoded).not.toBeNull();
+    expect(Array.from(decoded!)).toEqual(Array.from(bytes));
+  });
+
+  test('decodeResponseQr rejects a request QR (wrong prefix)', () => {
+    expect(decodeResponseQr(encodeRequestQr(bytes))).toBeNull();
+  });
+
+  test('decodeResponseQr rejects a corrupt payload', () => {
+    expect(decodeResponseQr(RESPONSE_QR_PREFIX + 'not valid base64 %%%')).toBeNull();
+  });
+
+  test('parseRecoveryRequest delegates to the FFI and surfaces the fingerprint', () => {
     const seen: Uint8Array[] = [];
     registerRrnCryptoFfi({
       parseRecoveryRequest: (request: Uint8Array) => {
         seen.push(request);
-        return {targetAddress: 'rrn1target'};
+        return {targetAddress: 'rrn1target', fingerprint: '3dffd-e60ea'};
       },
     } as unknown as RrnCryptoFfi);
 
     const info = parseRecoveryRequest(bytes);
     expect(info.targetAddress).toBe('rrn1target');
+    expect(info.fingerprint).toBe('3dffd-e60ea');
     expect(Array.from(seen[0])).toEqual(Array.from(bytes));
   });
 });

@@ -33,6 +33,16 @@ export interface OnboardingState {
   createdWallet: Wallet | null;
   setCreatedWallet: (value: Wallet) => void;
 
+  /**
+   * An identity being *recovered* onto this device rather than freshly generated
+   * — reconstructed from a recovery circle or opened from an exported wallet
+   * (ADR-0016). When set, the generate step seals *this* identity under the new
+   * device passphrase instead of minting a new keypair, so the same passphrase →
+   * biometrics → ready tail is reused. `null` on the ordinary create path.
+   */
+  recoveredWallet: Wallet | null;
+  setRecoveredWallet: (value: Wallet | null) => void;
+
   /** Forgets the passphrase once it is no longer needed. */
   clearSecrets: () => void;
 }
@@ -44,6 +54,7 @@ export function OnboardingProvider({children}: {children: ReactNode}) {
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [createdAddress, setCreatedAddress] = useState<string | null>(null);
   const [createdWallet, setCreatedWallet] = useState<Wallet | null>(null);
+  const [recoveredWallet, setRecoveredWallet] = useState<Wallet | null>(null);
 
   const value = useMemo<OnboardingState>(
     () => ({
@@ -55,9 +66,11 @@ export function OnboardingProvider({children}: {children: ReactNode}) {
       setCreatedAddress,
       createdWallet,
       setCreatedWallet,
+      recoveredWallet,
+      setRecoveredWallet,
       clearSecrets: () => setPassphrase(''),
     }),
-    [passphrase, biometricEnabled, createdAddress, createdWallet],
+    [passphrase, biometricEnabled, createdAddress, createdWallet, recoveredWallet],
   );
 
   return (

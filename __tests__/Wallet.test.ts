@@ -23,6 +23,7 @@ import {
   exportWalletBytes,
   factoryReset,
   hasWallet,
+  importWalletFromExport,
   loadWallet,
   loadWalletFromBytes,
   saveWalletToBytes,
@@ -199,6 +200,11 @@ class FakeEncryptedWallet implements EncryptedWallet {
 }
 
 const fakeFfi: RrnCryptoFfi = {
+  RecoverySession: {
+    create: () => {
+      throw new Error('recovery ceremony not exercised by these tests');
+    },
+  },
   RecoveryPackage: {
     create: () => {
       throw new Error('recovery not exercised by these tests');
@@ -411,6 +417,26 @@ describe('Wallet settings ops (T1.2.8)', () => {
     const store = new MemoryStore();
     await createWallet('pw', store);
     await expect(exportWalletBytes('nope', store)).rejects.toBeInstanceOf(WalletError);
+  });
+
+  test('importWalletFromExport opens an export back to the same identity', async () => {
+    const store = new MemoryStore();
+    const wallet = await createWallet('pw', store);
+    const b64 = await exportWalletBytes('pw', store);
+    // Surrounding whitespace (from a paste) is tolerated.
+    const opened = await importWalletFromExport(`\n  ${b64}\n`, 'pw');
+    expect(opened.address).toBe(wallet.address);
+  });
+
+  test('importWalletFromExport rejects a wrong passphrase', async () => {
+    const store = new MemoryStore();
+    await createWallet('pw', store);
+    const b64 = await exportWalletBytes('pw', store);
+    await expect(importWalletFromExport(b64, 'nope')).rejects.toBeInstanceOf(WalletError);
+  });
+
+  test('importWalletFromExport rejects unreadable (non-base64) text', async () => {
+    await expect(importWalletFromExport('not base64 %%%', 'pw')).rejects.toBeTruthy();
   });
 
   test('setBiometricUnlock records the preference and keeps the wallet loadable', async () => {

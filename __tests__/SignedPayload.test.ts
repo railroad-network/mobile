@@ -145,6 +145,11 @@ const unused = (): never => {
   throw new Error('not exercised by SignedPayload tests');
 };
 const fakeFfi: RrnCryptoFfi = {
+  RecoverySession: {
+    create: () => {
+      throw new Error('recovery ceremony not exercised by these tests');
+    },
+  },
   RecoveryPackage: {
     create: () => {
       throw new Error('recovery not exercised by these tests');

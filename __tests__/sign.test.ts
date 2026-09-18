@@ -113,6 +113,11 @@ class FakeKeypair implements Keypair {
 const keypairForRow = (v: Vector): FakeKeypair => new FakeKeypair(v.pubkey);
 
 const fakeFfi: RrnCryptoFfi = {
+  RecoverySession: {
+    create: () => {
+      throw new Error('recovery ceremony not exercised by these tests');
+    },
+  },
   RecoveryPackage: {
     create: () => {
       throw new Error('recovery not exercised by these tests');

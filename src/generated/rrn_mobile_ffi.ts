@@ -23,10 +23,13 @@ import {
   FfiConverterInt64,
   FfiConverterMap,
   FfiConverterObject,
+  FfiConverterOptional,
   FfiConverterUInt32,
+  FfiConverterUInt64,
   FfiConverterUInt8,
   RustBuffer,
   UniffiAbstractObject,
+  UniffiEnum,
   UniffiError,
   UniffiInternalError,
   UniffiRustCaller,
@@ -47,6 +50,62 @@ const uniffiIsDebug =
   false;
 
 // Public interface members begin here.
+
+export function bundleAssemble(
+  entryEnvelopes: Array<ArrayBuffer>,
+  assembledAt: bigint,
+): ArrayBuffer /*throws*/ {
+  return ((__rb: Uint8Array) => {
+    try {
+      return FfiConverterArrayBuffer.lift(__rb);
+    } finally {
+      nativeModule().rustbuffer_free(__rb);
+    }
+  })(
+    uniffiCaller.rustCallWithError(
+      /*liftError:*/ FfiConverterTypeDtnError.lift.bind(
+        FfiConverterTypeDtnError,
+      ),
+      /*caller:*/ callStatus => {
+        return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_func_bundle_assemble(
+          FfiConverterSequenceBytes.lower(
+            entryEnvelopes,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterInt64.lower(assembledAt, nativeModule().rustbuffer_alloc),
+          callStatus,
+        );
+      },
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+    ),
+  );
+}
+
+export function bundleParse(bundleBytes: ArrayBuffer): BundleInfo /*throws*/ {
+  return ((__rb: Uint8Array) => {
+    try {
+      return FfiConverterTypeBundleInfo.lift(__rb);
+    } finally {
+      nativeModule().rustbuffer_free(__rb);
+    }
+  })(
+    uniffiCaller.rustCallWithError(
+      /*liftError:*/ FfiConverterTypeDtnError.lift.bind(
+        FfiConverterTypeDtnError,
+      ),
+      /*caller:*/ callStatus => {
+        return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_func_bundle_parse(
+          FfiConverterArrayBuffer.lower(
+            bundleBytes,
+            nativeModule().rustbuffer_alloc,
+          ),
+          callStatus,
+        );
+      },
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+    ),
+  );
+}
 
 export function canonicalBytes(payloadJson: string): ArrayBuffer /*throws*/ {
   return ((__rb: Uint8Array) => {
@@ -74,12 +133,163 @@ export function canonicalBytes(payloadJson: string): ArrayBuffer /*throws*/ {
   );
 }
 
+export function certificateParse(
+  certEnvelopeBytes: ArrayBuffer,
+  expectedStationPubkey: ArrayBuffer,
+): CertificateInfo /*throws*/ {
+  return ((__rb: Uint8Array) => {
+    try {
+      return FfiConverterTypeCertificateInfo.lift(__rb);
+    } finally {
+      nativeModule().rustbuffer_free(__rb);
+    }
+  })(
+    uniffiCaller.rustCallWithError(
+      /*liftError:*/ FfiConverterTypeCertError.lift.bind(
+        FfiConverterTypeCertError,
+      ),
+      /*caller:*/ callStatus => {
+        return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_func_certificate_parse(
+          FfiConverterArrayBuffer.lower(
+            certEnvelopeBytes,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterArrayBuffer.lower(
+            expectedStationPubkey,
+            nativeModule().rustbuffer_alloc,
+          ),
+          callStatus,
+        );
+      },
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+    ),
+  );
+}
+
+export function certificateRequestSign(
+  member: KeypairLike,
+  capCenti: bigint,
+  nonce: bigint,
+  requestedAt: bigint,
+): ArrayBuffer {
+  return ((__rb: Uint8Array) => {
+    try {
+      return FfiConverterArrayBuffer.lift(__rb);
+    } finally {
+      nativeModule().rustbuffer_free(__rb);
+    }
+  })(
+    uniffiCaller.rustCall(
+      /*caller:*/ callStatus => {
+        return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_func_certificate_request_sign(
+          FfiConverterTypeKeypair.lower(
+            member,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterInt64.lower(capCenti, nativeModule().rustbuffer_alloc),
+          FfiConverterUInt64.lower(nonce, nativeModule().rustbuffer_alloc),
+          FfiConverterInt64.lower(requestedAt, nativeModule().rustbuffer_alloc),
+          callStatus,
+        );
+      },
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+    ),
+  );
+}
+
 export function isValidAddress(address: string): boolean {
   return FfiConverterBool.lift(
     uniffiCaller.rustCall(
       /*caller:*/ callStatus => {
         return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_func_is_valid_address(
           FfiConverterString.lower(address, nativeModule().rustbuffer_alloc),
+          callStatus,
+        );
+      },
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+    ),
+  );
+}
+
+export function offlineSpendVerify(
+  certEnvelope: ArrayBuffer,
+  proposalEnvelope: ArrayBuffer,
+  presentedHistory: Array<ArrayBuffer>,
+  receiverAddress: string,
+  stationPubkey: ArrayBuffer,
+  now: bigint,
+): OfflineSpendVerdict {
+  return ((__rb: Uint8Array) => {
+    try {
+      return FfiConverterTypeOfflineSpendVerdict.lift(__rb);
+    } finally {
+      nativeModule().rustbuffer_free(__rb);
+    }
+  })(
+    uniffiCaller.rustCall(
+      /*caller:*/ callStatus => {
+        return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_func_offline_spend_verify(
+          FfiConverterArrayBuffer.lower(
+            certEnvelope,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterArrayBuffer.lower(
+            proposalEnvelope,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterSequenceBytes.lower(
+            presentedHistory,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(
+            receiverAddress,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterArrayBuffer.lower(
+            stationPubkey,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterInt64.lower(now, nativeModule().rustbuffer_alloc),
+          callStatus,
+        );
+      },
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+    ),
+  );
+}
+
+export function outboxNextEntry(
+  author: KeypairLike,
+  prevEntry: ArrayBuffer | undefined,
+  recordEnvelope: ArrayBuffer,
+  authoredAt: bigint,
+): ArrayBuffer /*throws*/ {
+  return ((__rb: Uint8Array) => {
+    try {
+      return FfiConverterArrayBuffer.lift(__rb);
+    } finally {
+      nativeModule().rustbuffer_free(__rb);
+    }
+  })(
+    uniffiCaller.rustCallWithError(
+      /*liftError:*/ FfiConverterTypeDtnError.lift.bind(
+        FfiConverterTypeDtnError,
+      ),
+      /*caller:*/ callStatus => {
+        return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_func_outbox_next_entry(
+          FfiConverterTypeKeypair.lower(
+            author,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterOptionalBytes.lower(
+            prevEntry,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterArrayBuffer.lower(
+            recordEnvelope,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterInt64.lower(authoredAt, nativeModule().rustbuffer_alloc),
           callStatus,
         );
       },
@@ -132,6 +342,90 @@ export function parseShardPayload(payload: ArrayBuffer): ShardInfo /*throws*/ {
         return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_func_parse_shard_payload(
           FfiConverterArrayBuffer.lower(
             payload,
+            nativeModule().rustbuffer_alloc,
+          ),
+          callStatus,
+        );
+      },
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+    ),
+  );
+}
+
+export function proposalSignWithCertificate(
+  sender: KeypairLike,
+  receiverAddress: string,
+  amountCenti: bigint,
+  memo: string | undefined,
+  certId: ArrayBuffer,
+  nonce: bigint,
+  proposedAt: bigint,
+  expiresAt: bigint,
+): ArrayBuffer /*throws*/ {
+  return ((__rb: Uint8Array) => {
+    try {
+      return FfiConverterArrayBuffer.lift(__rb);
+    } finally {
+      nativeModule().rustbuffer_free(__rb);
+    }
+  })(
+    uniffiCaller.rustCallWithError(
+      /*liftError:*/ FfiConverterTypeCertError.lift.bind(
+        FfiConverterTypeCertError,
+      ),
+      /*caller:*/ callStatus => {
+        return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_func_proposal_sign_with_certificate(
+          FfiConverterTypeKeypair.lower(
+            sender,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterString.lower(
+            receiverAddress,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterInt64.lower(amountCenti, nativeModule().rustbuffer_alloc),
+          FfiConverterOptionalString.lower(
+            memo,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterArrayBuffer.lower(
+            certId,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterUInt64.lower(nonce, nativeModule().rustbuffer_alloc),
+          FfiConverterInt64.lower(proposedAt, nativeModule().rustbuffer_alloc),
+          FfiConverterInt64.lower(expiresAt, nativeModule().rustbuffer_alloc),
+          callStatus,
+        );
+      },
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+    ),
+  );
+}
+
+export function receiptParse(
+  receiptBytes: ArrayBuffer,
+  expectedStationPubkey: ArrayBuffer,
+): Array<ReceiptOutcome> /*throws*/ {
+  return ((__rb: Uint8Array) => {
+    try {
+      return FfiConverterSequenceTypeReceiptOutcome.lift(__rb);
+    } finally {
+      nativeModule().rustbuffer_free(__rb);
+    }
+  })(
+    uniffiCaller.rustCallWithError(
+      /*liftError:*/ FfiConverterTypeDtnError.lift.bind(
+        FfiConverterTypeDtnError,
+      ),
+      /*caller:*/ callStatus => {
+        return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_func_receipt_parse(
+          FfiConverterArrayBuffer.lower(
+            receiptBytes,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterArrayBuffer.lower(
+            expectedStationPubkey,
             nativeModule().rustbuffer_alloc,
           ),
           callStatus,
@@ -242,8 +536,225 @@ const stringConverter = (() => {
 })();
 const FfiConverterString = uniffiCreateFfiConverterString(stringConverter);
 
+export type BundleEntryInfo = {
+  author: string;
+  position: bigint;
+  recordHash: string;
+  recordKind: string;
+  valid: boolean;
+};
+
+/**
+ * Generated factory for {@link BundleEntryInfo} record objects.
+ */
+export const BundleEntryInfo = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<BundleEntryInfo, ReturnType<typeof defaults>>(
+      defaults,
+    );
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<BundleEntryInfo>,
+  });
+})();
+
+const FfiConverterTypeBundleEntryInfo = (() => {
+  type TypeName = BundleEntryInfo;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        author: FfiConverterString.read(from),
+        position: FfiConverterUInt64.read(from),
+        recordHash: FfiConverterString.read(from),
+        recordKind: FfiConverterString.read(from),
+        valid: FfiConverterBool.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterString.write(value.author, into);
+      FfiConverterUInt64.write(value.position, into);
+      FfiConverterString.write(value.recordHash, into);
+      FfiConverterString.write(value.recordKind, into);
+      FfiConverterBool.write(value.valid, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterString.allocationSize(value.author) +
+        FfiConverterUInt64.allocationSize(value.position) +
+        FfiConverterString.allocationSize(value.recordHash) +
+        FfiConverterString.allocationSize(value.recordKind) +
+        FfiConverterBool.allocationSize(value.valid)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
+export type BundleInfo = {
+  entryCount: number;
+  assembledAt: bigint;
+  entries: Array<BundleEntryInfo>;
+};
+
+/**
+ * Generated factory for {@link BundleInfo} record objects.
+ */
+export const BundleInfo = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<BundleInfo, ReturnType<typeof defaults>>(
+      defaults,
+    );
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<BundleInfo>,
+  });
+})();
+
+const FfiConverterTypeBundleInfo = (() => {
+  type TypeName = BundleInfo;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        entryCount: FfiConverterUInt32.read(from),
+        assembledAt: FfiConverterInt64.read(from),
+        entries: FfiConverterSequenceTypeBundleEntryInfo.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterUInt32.write(value.entryCount, into);
+      FfiConverterInt64.write(value.assembledAt, into);
+      FfiConverterSequenceTypeBundleEntryInfo.write(value.entries, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterUInt32.allocationSize(value.entryCount) +
+        FfiConverterInt64.allocationSize(value.assembledAt) +
+        FfiConverterSequenceTypeBundleEntryInfo.allocationSize(value.entries)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
+export type CertificateInfo = {
+  member: string;
+  capCenti: bigint;
+  issuedAt: bigint;
+  expiresAt: bigint;
+  certId: string;
+};
+
+/**
+ * Generated factory for {@link CertificateInfo} record objects.
+ */
+export const CertificateInfo = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<CertificateInfo, ReturnType<typeof defaults>>(
+      defaults,
+    );
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<CertificateInfo>,
+  });
+})();
+
+const FfiConverterTypeCertificateInfo = (() => {
+  type TypeName = CertificateInfo;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        member: FfiConverterString.read(from),
+        capCenti: FfiConverterInt64.read(from),
+        issuedAt: FfiConverterInt64.read(from),
+        expiresAt: FfiConverterInt64.read(from),
+        certId: FfiConverterString.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterString.write(value.member, into);
+      FfiConverterInt64.write(value.capCenti, into);
+      FfiConverterInt64.write(value.issuedAt, into);
+      FfiConverterInt64.write(value.expiresAt, into);
+      FfiConverterString.write(value.certId, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterString.allocationSize(value.member) +
+        FfiConverterInt64.allocationSize(value.capCenti) +
+        FfiConverterInt64.allocationSize(value.issuedAt) +
+        FfiConverterInt64.allocationSize(value.expiresAt) +
+        FfiConverterString.allocationSize(value.certId)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
+export type ReceiptOutcome = {
+  recordHash: string;
+  outcome: string;
+  seq?: bigint;
+  reason?: string;
+};
+
+/**
+ * Generated factory for {@link ReceiptOutcome} record objects.
+ */
+export const ReceiptOutcome = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<ReceiptOutcome, ReturnType<typeof defaults>>(
+      defaults,
+    );
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<ReceiptOutcome>,
+  });
+})();
+
+const FfiConverterTypeReceiptOutcome = (() => {
+  type TypeName = ReceiptOutcome;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        recordHash: FfiConverterString.read(from),
+        outcome: FfiConverterString.read(from),
+        seq: FfiConverterOptionalUInt64.read(from),
+        reason: FfiConverterOptionalString.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterString.write(value.recordHash, into);
+      FfiConverterString.write(value.outcome, into);
+      FfiConverterOptionalUInt64.write(value.seq, into);
+      FfiConverterOptionalString.write(value.reason, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterString.allocationSize(value.recordHash) +
+        FfiConverterString.allocationSize(value.outcome) +
+        FfiConverterOptionalUInt64.allocationSize(value.seq) +
+        FfiConverterOptionalString.allocationSize(value.reason)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
 export type RecoveryRequestInfo = {
   targetAddress: string;
+  fingerprint: string;
 };
 
 /**
@@ -269,13 +780,18 @@ const FfiConverterTypeRecoveryRequestInfo = (() => {
     read(from: RustBuffer): TypeName {
       return {
         targetAddress: FfiConverterString.read(from),
+        fingerprint: FfiConverterString.read(from),
       };
     }
     write(value: TypeName, into: RustBuffer): void {
       FfiConverterString.write(value.targetAddress, into);
+      FfiConverterString.write(value.fingerprint, into);
     }
     allocationSize(value: TypeName): number {
-      return FfiConverterString.allocationSize(value.targetAddress);
+      return (
+        FfiConverterString.allocationSize(value.targetAddress) +
+        FfiConverterString.allocationSize(value.fingerprint)
+      );
     }
   }
   return new FFIConverter();
@@ -330,6 +846,191 @@ const FfiConverterTypeShardInfo = (() => {
     }
   }
   return new FFIConverter();
+})();
+
+// Flat error type: CertError
+export enum CertError_Tags {
+  InvalidAddress = 'InvalidAddress',
+  InvalidCertId = 'InvalidCertId',
+  InvalidKey = 'InvalidKey',
+  MalformedCertificate = 'MalformedCertificate',
+  StationSignatureInvalid = 'StationSignatureInvalid',
+}
+export const CertError = (() => {
+  class InvalidAddress extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = 'CertError';
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 1;
+
+    readonly tag = CertError_Tags.InvalidAddress;
+
+    constructor(message: string) {
+      super('CertError', 'InvalidAddress', message);
+    }
+
+    static instanceOf(e: any): e is InvalidAddress {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 1;
+    }
+  }
+  class InvalidCertId extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = 'CertError';
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 2;
+
+    readonly tag = CertError_Tags.InvalidCertId;
+
+    constructor(message: string) {
+      super('CertError', 'InvalidCertId', message);
+    }
+
+    static instanceOf(e: any): e is InvalidCertId {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 2;
+    }
+  }
+  class InvalidKey extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = 'CertError';
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 3;
+
+    readonly tag = CertError_Tags.InvalidKey;
+
+    constructor(message: string) {
+      super('CertError', 'InvalidKey', message);
+    }
+
+    static instanceOf(e: any): e is InvalidKey {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 3;
+    }
+  }
+  class MalformedCertificate extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = 'CertError';
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 4;
+
+    readonly tag = CertError_Tags.MalformedCertificate;
+
+    constructor(message: string) {
+      super('CertError', 'MalformedCertificate', message);
+    }
+
+    static instanceOf(e: any): e is MalformedCertificate {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 4;
+    }
+  }
+  class StationSignatureInvalid extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = 'CertError';
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 5;
+
+    readonly tag = CertError_Tags.StationSignatureInvalid;
+
+    constructor(message: string) {
+      super('CertError', 'StationSignatureInvalid', message);
+    }
+
+    static instanceOf(e: any): e is StationSignatureInvalid {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 5;
+    }
+  }
+
+  // Utility function which does not rely on instanceof.
+  function instanceOf(e: any): e is CertError {
+    return (e as any)[uniffiTypeNameSymbol] === 'CertError';
+  }
+  return {
+    InvalidAddress,
+    InvalidCertId,
+    InvalidKey,
+    MalformedCertificate,
+    StationSignatureInvalid,
+    instanceOf,
+  };
+})();
+
+// Union type for CertError error type.
+export type CertError = InstanceType<
+  (typeof CertError)[
+    | 'InvalidAddress'
+    | 'InvalidCertId'
+    | 'InvalidKey'
+    | 'MalformedCertificate'
+    | 'StationSignatureInvalid']
+>;
+
+const FfiConverterTypeCertError = (() => {
+  const intConverter = FfiConverterInt32;
+  type TypeName = CertError;
+  class FfiConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      switch (intConverter.read(from)) {
+        case 1:
+          return new CertError.InvalidAddress(FfiConverterString.read(from));
+
+        case 2:
+          return new CertError.InvalidCertId(FfiConverterString.read(from));
+
+        case 3:
+          return new CertError.InvalidKey(FfiConverterString.read(from));
+
+        case 4:
+          return new CertError.MalformedCertificate(
+            FfiConverterString.read(from),
+          );
+
+        case 5:
+          return new CertError.StationSignatureInvalid(
+            FfiConverterString.read(from),
+          );
+
+        default:
+          throw new UniffiInternalError.UnexpectedEnumCase();
+      }
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      const obj = value as any;
+      const index = obj[variantOrdinalSymbol] as number;
+      intConverter.write(index, into);
+    }
+    allocationSize(value: TypeName): number {
+      return intConverter.allocationSize(0);
+    }
+  }
+  return new FfiConverter();
 })();
 
 // Flat error type: CryptoError
@@ -513,6 +1214,868 @@ const FfiConverterTypeCryptoError = (() => {
     }
   }
   return new FfiConverter();
+})();
+
+// Flat error type: DtnError
+export enum DtnError_Tags {
+  MalformedEnvelope = 'MalformedEnvelope',
+  RecordSignatureInvalid = 'RecordSignatureInvalid',
+  InvalidChain = 'InvalidChain',
+  BundleTooLarge = 'BundleTooLarge',
+  TooManyEntries = 'TooManyEntries',
+  EntriesOutOfOrder = 'EntriesOutOfOrder',
+  StationSignatureInvalid = 'StationSignatureInvalid',
+  InvalidKey = 'InvalidKey',
+}
+export const DtnError = (() => {
+  class MalformedEnvelope extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = 'DtnError';
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 1;
+
+    readonly tag = DtnError_Tags.MalformedEnvelope;
+
+    constructor(message: string) {
+      super('DtnError', 'MalformedEnvelope', message);
+    }
+
+    static instanceOf(e: any): e is MalformedEnvelope {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 1;
+    }
+  }
+  class RecordSignatureInvalid extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = 'DtnError';
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 2;
+
+    readonly tag = DtnError_Tags.RecordSignatureInvalid;
+
+    constructor(message: string) {
+      super('DtnError', 'RecordSignatureInvalid', message);
+    }
+
+    static instanceOf(e: any): e is RecordSignatureInvalid {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 2;
+    }
+  }
+  class InvalidChain extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = 'DtnError';
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 3;
+
+    readonly tag = DtnError_Tags.InvalidChain;
+
+    constructor(message: string) {
+      super('DtnError', 'InvalidChain', message);
+    }
+
+    static instanceOf(e: any): e is InvalidChain {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 3;
+    }
+  }
+  class BundleTooLarge extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = 'DtnError';
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 4;
+
+    readonly tag = DtnError_Tags.BundleTooLarge;
+
+    constructor(message: string) {
+      super('DtnError', 'BundleTooLarge', message);
+    }
+
+    static instanceOf(e: any): e is BundleTooLarge {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 4;
+    }
+  }
+  class TooManyEntries extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = 'DtnError';
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 5;
+
+    readonly tag = DtnError_Tags.TooManyEntries;
+
+    constructor(message: string) {
+      super('DtnError', 'TooManyEntries', message);
+    }
+
+    static instanceOf(e: any): e is TooManyEntries {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 5;
+    }
+  }
+  class EntriesOutOfOrder extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = 'DtnError';
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 6;
+
+    readonly tag = DtnError_Tags.EntriesOutOfOrder;
+
+    constructor(message: string) {
+      super('DtnError', 'EntriesOutOfOrder', message);
+    }
+
+    static instanceOf(e: any): e is EntriesOutOfOrder {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 6;
+    }
+  }
+  class StationSignatureInvalid extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = 'DtnError';
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 7;
+
+    readonly tag = DtnError_Tags.StationSignatureInvalid;
+
+    constructor(message: string) {
+      super('DtnError', 'StationSignatureInvalid', message);
+    }
+
+    static instanceOf(e: any): e is StationSignatureInvalid {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 7;
+    }
+  }
+  class InvalidKey extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = 'DtnError';
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 8;
+
+    readonly tag = DtnError_Tags.InvalidKey;
+
+    constructor(message: string) {
+      super('DtnError', 'InvalidKey', message);
+    }
+
+    static instanceOf(e: any): e is InvalidKey {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 8;
+    }
+  }
+
+  // Utility function which does not rely on instanceof.
+  function instanceOf(e: any): e is DtnError {
+    return (e as any)[uniffiTypeNameSymbol] === 'DtnError';
+  }
+  return {
+    MalformedEnvelope,
+    RecordSignatureInvalid,
+    InvalidChain,
+    BundleTooLarge,
+    TooManyEntries,
+    EntriesOutOfOrder,
+    StationSignatureInvalid,
+    InvalidKey,
+    instanceOf,
+  };
+})();
+
+// Union type for DtnError error type.
+export type DtnError = InstanceType<
+  (typeof DtnError)[
+    | 'MalformedEnvelope'
+    | 'RecordSignatureInvalid'
+    | 'InvalidChain'
+    | 'BundleTooLarge'
+    | 'TooManyEntries'
+    | 'EntriesOutOfOrder'
+    | 'StationSignatureInvalid'
+    | 'InvalidKey']
+>;
+
+const FfiConverterTypeDtnError = (() => {
+  const intConverter = FfiConverterInt32;
+  type TypeName = DtnError;
+  class FfiConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      switch (intConverter.read(from)) {
+        case 1:
+          return new DtnError.MalformedEnvelope(FfiConverterString.read(from));
+
+        case 2:
+          return new DtnError.RecordSignatureInvalid(
+            FfiConverterString.read(from),
+          );
+
+        case 3:
+          return new DtnError.InvalidChain(FfiConverterString.read(from));
+
+        case 4:
+          return new DtnError.BundleTooLarge(FfiConverterString.read(from));
+
+        case 5:
+          return new DtnError.TooManyEntries(FfiConverterString.read(from));
+
+        case 6:
+          return new DtnError.EntriesOutOfOrder(FfiConverterString.read(from));
+
+        case 7:
+          return new DtnError.StationSignatureInvalid(
+            FfiConverterString.read(from),
+          );
+
+        case 8:
+          return new DtnError.InvalidKey(FfiConverterString.read(from));
+
+        default:
+          throw new UniffiInternalError.UnexpectedEnumCase();
+      }
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      const obj = value as any;
+      const index = obj[variantOrdinalSymbol] as number;
+      intConverter.write(index, into);
+    }
+    allocationSize(value: TypeName): number {
+      return intConverter.allocationSize(0);
+    }
+  }
+  return new FfiConverter();
+})();
+
+// Enum: OfflineSpendVerdict
+export enum OfflineSpendVerdict_Tags {
+  Ok = 'Ok',
+  MalformedCertificate = 'MalformedCertificate',
+  BadCertificateSignature = 'BadCertificateSignature',
+  MalformedProposal = 'MalformedProposal',
+  BadProposalSignature = 'BadProposalSignature',
+  CertMemberMismatch = 'CertMemberMismatch',
+  CertNotReferenced = 'CertNotReferenced',
+  WrongReceiver = 'WrongReceiver',
+  NotADebit = 'NotADebit',
+  CertExpired = 'CertExpired',
+  ProposalExpired = 'ProposalExpired',
+  ProposalInadmissible = 'ProposalInadmissible',
+  Overspent = 'Overspent',
+  MalformedHistory = 'MalformedHistory',
+}
+export const OfflineSpendVerdict = (() => {
+  type Ok__interface = {
+    tag: OfflineSpendVerdict_Tags.Ok;
+    inner: Readonly<{ amountCenti: bigint; remainingCenti: bigint }>;
+  };
+  class Ok_ extends UniffiEnum implements Ok__interface {
+    /**
+     * @private
+     * This field is private and should not be used, use `tag` instead.
+     */
+    readonly [uniffiTypeNameSymbol] = 'OfflineSpendVerdict';
+    readonly tag = OfflineSpendVerdict_Tags.Ok;
+    readonly inner: Readonly<{ amountCenti: bigint; remainingCenti: bigint }>;
+    constructor(inner: { amountCenti: bigint; remainingCenti: bigint }) {
+      super('OfflineSpendVerdict', 'Ok');
+
+      this.inner = Object.freeze(inner);
+    }
+    static new(inner: { amountCenti: bigint; remainingCenti: bigint }): Ok_ {
+      return new Ok_(inner);
+    }
+
+    static instanceOf(obj: any): obj is Ok_ {
+      return obj.tag === OfflineSpendVerdict_Tags.Ok;
+    }
+  }
+
+  type MalformedCertificate__interface = {
+    tag: OfflineSpendVerdict_Tags.MalformedCertificate;
+  };
+  class MalformedCertificate_
+    extends UniffiEnum
+    implements MalformedCertificate__interface
+  {
+    /**
+     * @private
+     * This field is private and should not be used, use `tag` instead.
+     */
+    readonly [uniffiTypeNameSymbol] = 'OfflineSpendVerdict';
+    readonly tag = OfflineSpendVerdict_Tags.MalformedCertificate;
+    constructor() {
+      super('OfflineSpendVerdict', 'MalformedCertificate');
+    }
+
+    static new(): MalformedCertificate_ {
+      return new MalformedCertificate_();
+    }
+
+    static instanceOf(obj: any): obj is MalformedCertificate_ {
+      return obj.tag === OfflineSpendVerdict_Tags.MalformedCertificate;
+    }
+  }
+
+  type BadCertificateSignature__interface = {
+    tag: OfflineSpendVerdict_Tags.BadCertificateSignature;
+  };
+  class BadCertificateSignature_
+    extends UniffiEnum
+    implements BadCertificateSignature__interface
+  {
+    /**
+     * @private
+     * This field is private and should not be used, use `tag` instead.
+     */
+    readonly [uniffiTypeNameSymbol] = 'OfflineSpendVerdict';
+    readonly tag = OfflineSpendVerdict_Tags.BadCertificateSignature;
+    constructor() {
+      super('OfflineSpendVerdict', 'BadCertificateSignature');
+    }
+
+    static new(): BadCertificateSignature_ {
+      return new BadCertificateSignature_();
+    }
+
+    static instanceOf(obj: any): obj is BadCertificateSignature_ {
+      return obj.tag === OfflineSpendVerdict_Tags.BadCertificateSignature;
+    }
+  }
+
+  type MalformedProposal__interface = {
+    tag: OfflineSpendVerdict_Tags.MalformedProposal;
+  };
+  class MalformedProposal_
+    extends UniffiEnum
+    implements MalformedProposal__interface
+  {
+    /**
+     * @private
+     * This field is private and should not be used, use `tag` instead.
+     */
+    readonly [uniffiTypeNameSymbol] = 'OfflineSpendVerdict';
+    readonly tag = OfflineSpendVerdict_Tags.MalformedProposal;
+    constructor() {
+      super('OfflineSpendVerdict', 'MalformedProposal');
+    }
+
+    static new(): MalformedProposal_ {
+      return new MalformedProposal_();
+    }
+
+    static instanceOf(obj: any): obj is MalformedProposal_ {
+      return obj.tag === OfflineSpendVerdict_Tags.MalformedProposal;
+    }
+  }
+
+  type BadProposalSignature__interface = {
+    tag: OfflineSpendVerdict_Tags.BadProposalSignature;
+  };
+  class BadProposalSignature_
+    extends UniffiEnum
+    implements BadProposalSignature__interface
+  {
+    /**
+     * @private
+     * This field is private and should not be used, use `tag` instead.
+     */
+    readonly [uniffiTypeNameSymbol] = 'OfflineSpendVerdict';
+    readonly tag = OfflineSpendVerdict_Tags.BadProposalSignature;
+    constructor() {
+      super('OfflineSpendVerdict', 'BadProposalSignature');
+    }
+
+    static new(): BadProposalSignature_ {
+      return new BadProposalSignature_();
+    }
+
+    static instanceOf(obj: any): obj is BadProposalSignature_ {
+      return obj.tag === OfflineSpendVerdict_Tags.BadProposalSignature;
+    }
+  }
+
+  type CertMemberMismatch__interface = {
+    tag: OfflineSpendVerdict_Tags.CertMemberMismatch;
+  };
+  class CertMemberMismatch_
+    extends UniffiEnum
+    implements CertMemberMismatch__interface
+  {
+    /**
+     * @private
+     * This field is private and should not be used, use `tag` instead.
+     */
+    readonly [uniffiTypeNameSymbol] = 'OfflineSpendVerdict';
+    readonly tag = OfflineSpendVerdict_Tags.CertMemberMismatch;
+    constructor() {
+      super('OfflineSpendVerdict', 'CertMemberMismatch');
+    }
+
+    static new(): CertMemberMismatch_ {
+      return new CertMemberMismatch_();
+    }
+
+    static instanceOf(obj: any): obj is CertMemberMismatch_ {
+      return obj.tag === OfflineSpendVerdict_Tags.CertMemberMismatch;
+    }
+  }
+
+  type CertNotReferenced__interface = {
+    tag: OfflineSpendVerdict_Tags.CertNotReferenced;
+  };
+  class CertNotReferenced_
+    extends UniffiEnum
+    implements CertNotReferenced__interface
+  {
+    /**
+     * @private
+     * This field is private and should not be used, use `tag` instead.
+     */
+    readonly [uniffiTypeNameSymbol] = 'OfflineSpendVerdict';
+    readonly tag = OfflineSpendVerdict_Tags.CertNotReferenced;
+    constructor() {
+      super('OfflineSpendVerdict', 'CertNotReferenced');
+    }
+
+    static new(): CertNotReferenced_ {
+      return new CertNotReferenced_();
+    }
+
+    static instanceOf(obj: any): obj is CertNotReferenced_ {
+      return obj.tag === OfflineSpendVerdict_Tags.CertNotReferenced;
+    }
+  }
+
+  type WrongReceiver__interface = {
+    tag: OfflineSpendVerdict_Tags.WrongReceiver;
+  };
+  class WrongReceiver_ extends UniffiEnum implements WrongReceiver__interface {
+    /**
+     * @private
+     * This field is private and should not be used, use `tag` instead.
+     */
+    readonly [uniffiTypeNameSymbol] = 'OfflineSpendVerdict';
+    readonly tag = OfflineSpendVerdict_Tags.WrongReceiver;
+    constructor() {
+      super('OfflineSpendVerdict', 'WrongReceiver');
+    }
+
+    static new(): WrongReceiver_ {
+      return new WrongReceiver_();
+    }
+
+    static instanceOf(obj: any): obj is WrongReceiver_ {
+      return obj.tag === OfflineSpendVerdict_Tags.WrongReceiver;
+    }
+  }
+
+  type NotADebit__interface = {
+    tag: OfflineSpendVerdict_Tags.NotADebit;
+  };
+  class NotADebit_ extends UniffiEnum implements NotADebit__interface {
+    /**
+     * @private
+     * This field is private and should not be used, use `tag` instead.
+     */
+    readonly [uniffiTypeNameSymbol] = 'OfflineSpendVerdict';
+    readonly tag = OfflineSpendVerdict_Tags.NotADebit;
+    constructor() {
+      super('OfflineSpendVerdict', 'NotADebit');
+    }
+
+    static new(): NotADebit_ {
+      return new NotADebit_();
+    }
+
+    static instanceOf(obj: any): obj is NotADebit_ {
+      return obj.tag === OfflineSpendVerdict_Tags.NotADebit;
+    }
+  }
+
+  type CertExpired__interface = {
+    tag: OfflineSpendVerdict_Tags.CertExpired;
+  };
+  class CertExpired_ extends UniffiEnum implements CertExpired__interface {
+    /**
+     * @private
+     * This field is private and should not be used, use `tag` instead.
+     */
+    readonly [uniffiTypeNameSymbol] = 'OfflineSpendVerdict';
+    readonly tag = OfflineSpendVerdict_Tags.CertExpired;
+    constructor() {
+      super('OfflineSpendVerdict', 'CertExpired');
+    }
+
+    static new(): CertExpired_ {
+      return new CertExpired_();
+    }
+
+    static instanceOf(obj: any): obj is CertExpired_ {
+      return obj.tag === OfflineSpendVerdict_Tags.CertExpired;
+    }
+  }
+
+  type ProposalExpired__interface = {
+    tag: OfflineSpendVerdict_Tags.ProposalExpired;
+  };
+  class ProposalExpired_
+    extends UniffiEnum
+    implements ProposalExpired__interface
+  {
+    /**
+     * @private
+     * This field is private and should not be used, use `tag` instead.
+     */
+    readonly [uniffiTypeNameSymbol] = 'OfflineSpendVerdict';
+    readonly tag = OfflineSpendVerdict_Tags.ProposalExpired;
+    constructor() {
+      super('OfflineSpendVerdict', 'ProposalExpired');
+    }
+
+    static new(): ProposalExpired_ {
+      return new ProposalExpired_();
+    }
+
+    static instanceOf(obj: any): obj is ProposalExpired_ {
+      return obj.tag === OfflineSpendVerdict_Tags.ProposalExpired;
+    }
+  }
+
+  type ProposalInadmissible__interface = {
+    tag: OfflineSpendVerdict_Tags.ProposalInadmissible;
+  };
+  class ProposalInadmissible_
+    extends UniffiEnum
+    implements ProposalInadmissible__interface
+  {
+    /**
+     * @private
+     * This field is private and should not be used, use `tag` instead.
+     */
+    readonly [uniffiTypeNameSymbol] = 'OfflineSpendVerdict';
+    readonly tag = OfflineSpendVerdict_Tags.ProposalInadmissible;
+    constructor() {
+      super('OfflineSpendVerdict', 'ProposalInadmissible');
+    }
+
+    static new(): ProposalInadmissible_ {
+      return new ProposalInadmissible_();
+    }
+
+    static instanceOf(obj: any): obj is ProposalInadmissible_ {
+      return obj.tag === OfflineSpendVerdict_Tags.ProposalInadmissible;
+    }
+  }
+
+  type Overspent__interface = {
+    tag: OfflineSpendVerdict_Tags.Overspent;
+    inner: Readonly<{ availableCenti: bigint; attemptedCenti: bigint }>;
+  };
+  class Overspent_ extends UniffiEnum implements Overspent__interface {
+    /**
+     * @private
+     * This field is private and should not be used, use `tag` instead.
+     */
+    readonly [uniffiTypeNameSymbol] = 'OfflineSpendVerdict';
+    readonly tag = OfflineSpendVerdict_Tags.Overspent;
+    readonly inner: Readonly<{
+      availableCenti: bigint;
+      attemptedCenti: bigint;
+    }>;
+    constructor(inner: { availableCenti: bigint; attemptedCenti: bigint }) {
+      super('OfflineSpendVerdict', 'Overspent');
+
+      this.inner = Object.freeze(inner);
+    }
+    static new(inner: {
+      availableCenti: bigint;
+      attemptedCenti: bigint;
+    }): Overspent_ {
+      return new Overspent_(inner);
+    }
+
+    static instanceOf(obj: any): obj is Overspent_ {
+      return obj.tag === OfflineSpendVerdict_Tags.Overspent;
+    }
+  }
+
+  type MalformedHistory__interface = {
+    tag: OfflineSpendVerdict_Tags.MalformedHistory;
+  };
+  class MalformedHistory_
+    extends UniffiEnum
+    implements MalformedHistory__interface
+  {
+    /**
+     * @private
+     * This field is private and should not be used, use `tag` instead.
+     */
+    readonly [uniffiTypeNameSymbol] = 'OfflineSpendVerdict';
+    readonly tag = OfflineSpendVerdict_Tags.MalformedHistory;
+    constructor() {
+      super('OfflineSpendVerdict', 'MalformedHistory');
+    }
+
+    static new(): MalformedHistory_ {
+      return new MalformedHistory_();
+    }
+
+    static instanceOf(obj: any): obj is MalformedHistory_ {
+      return obj.tag === OfflineSpendVerdict_Tags.MalformedHistory;
+    }
+  }
+
+  function instanceOf(obj: any): obj is OfflineSpendVerdict {
+    return obj[uniffiTypeNameSymbol] === 'OfflineSpendVerdict';
+  }
+
+  return Object.freeze({
+    instanceOf,
+    Ok: Ok_,
+    MalformedCertificate: MalformedCertificate_,
+    BadCertificateSignature: BadCertificateSignature_,
+    MalformedProposal: MalformedProposal_,
+    BadProposalSignature: BadProposalSignature_,
+    CertMemberMismatch: CertMemberMismatch_,
+    CertNotReferenced: CertNotReferenced_,
+    WrongReceiver: WrongReceiver_,
+    NotADebit: NotADebit_,
+    CertExpired: CertExpired_,
+    ProposalExpired: ProposalExpired_,
+    ProposalInadmissible: ProposalInadmissible_,
+    Overspent: Overspent_,
+    MalformedHistory: MalformedHistory_,
+  });
+})();
+export type OfflineSpendVerdict = InstanceType<
+  (typeof OfflineSpendVerdict)[
+    | 'Ok'
+    | 'MalformedCertificate'
+    | 'BadCertificateSignature'
+    | 'MalformedProposal'
+    | 'BadProposalSignature'
+    | 'CertMemberMismatch'
+    | 'CertNotReferenced'
+    | 'WrongReceiver'
+    | 'NotADebit'
+    | 'CertExpired'
+    | 'ProposalExpired'
+    | 'ProposalInadmissible'
+    | 'Overspent'
+    | 'MalformedHistory']
+>;
+
+// FfiConverter for enum OfflineSpendVerdict
+const FfiConverterTypeOfflineSpendVerdict = (() => {
+  const ordinalConverter = FfiConverterInt32;
+  type TypeName = OfflineSpendVerdict;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      switch (ordinalConverter.read(from)) {
+        case 1:
+          return new OfflineSpendVerdict.Ok({
+            amountCenti: FfiConverterInt64.read(from),
+            remainingCenti: FfiConverterInt64.read(from),
+          });
+        case 2:
+          return new OfflineSpendVerdict.MalformedCertificate();
+        case 3:
+          return new OfflineSpendVerdict.BadCertificateSignature();
+        case 4:
+          return new OfflineSpendVerdict.MalformedProposal();
+        case 5:
+          return new OfflineSpendVerdict.BadProposalSignature();
+        case 6:
+          return new OfflineSpendVerdict.CertMemberMismatch();
+        case 7:
+          return new OfflineSpendVerdict.CertNotReferenced();
+        case 8:
+          return new OfflineSpendVerdict.WrongReceiver();
+        case 9:
+          return new OfflineSpendVerdict.NotADebit();
+        case 10:
+          return new OfflineSpendVerdict.CertExpired();
+        case 11:
+          return new OfflineSpendVerdict.ProposalExpired();
+        case 12:
+          return new OfflineSpendVerdict.ProposalInadmissible();
+        case 13:
+          return new OfflineSpendVerdict.Overspent({
+            availableCenti: FfiConverterInt64.read(from),
+            attemptedCenti: FfiConverterInt64.read(from),
+          });
+        case 14:
+          return new OfflineSpendVerdict.MalformedHistory();
+        default:
+          throw new UniffiInternalError.UnexpectedEnumCase();
+      }
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      switch (value.tag) {
+        case OfflineSpendVerdict_Tags.Ok: {
+          ordinalConverter.write(1, into);
+          const inner = value.inner;
+          FfiConverterInt64.write(inner.amountCenti, into);
+          FfiConverterInt64.write(inner.remainingCenti, into);
+          return;
+        }
+        case OfflineSpendVerdict_Tags.MalformedCertificate: {
+          ordinalConverter.write(2, into);
+          return;
+        }
+        case OfflineSpendVerdict_Tags.BadCertificateSignature: {
+          ordinalConverter.write(3, into);
+          return;
+        }
+        case OfflineSpendVerdict_Tags.MalformedProposal: {
+          ordinalConverter.write(4, into);
+          return;
+        }
+        case OfflineSpendVerdict_Tags.BadProposalSignature: {
+          ordinalConverter.write(5, into);
+          return;
+        }
+        case OfflineSpendVerdict_Tags.CertMemberMismatch: {
+          ordinalConverter.write(6, into);
+          return;
+        }
+        case OfflineSpendVerdict_Tags.CertNotReferenced: {
+          ordinalConverter.write(7, into);
+          return;
+        }
+        case OfflineSpendVerdict_Tags.WrongReceiver: {
+          ordinalConverter.write(8, into);
+          return;
+        }
+        case OfflineSpendVerdict_Tags.NotADebit: {
+          ordinalConverter.write(9, into);
+          return;
+        }
+        case OfflineSpendVerdict_Tags.CertExpired: {
+          ordinalConverter.write(10, into);
+          return;
+        }
+        case OfflineSpendVerdict_Tags.ProposalExpired: {
+          ordinalConverter.write(11, into);
+          return;
+        }
+        case OfflineSpendVerdict_Tags.ProposalInadmissible: {
+          ordinalConverter.write(12, into);
+          return;
+        }
+        case OfflineSpendVerdict_Tags.Overspent: {
+          ordinalConverter.write(13, into);
+          const inner = value.inner;
+          FfiConverterInt64.write(inner.availableCenti, into);
+          FfiConverterInt64.write(inner.attemptedCenti, into);
+          return;
+        }
+        case OfflineSpendVerdict_Tags.MalformedHistory: {
+          ordinalConverter.write(14, into);
+          return;
+        }
+        default:
+          // Throwing from here means that OfflineSpendVerdict_Tags hasn't matched an ordinal.
+          throw new UniffiInternalError.UnexpectedEnumCase();
+      }
+    }
+    allocationSize(value: TypeName): number {
+      switch (value.tag) {
+        case OfflineSpendVerdict_Tags.Ok: {
+          const inner = value.inner;
+          let size = ordinalConverter.allocationSize(1);
+          size += FfiConverterInt64.allocationSize(inner.amountCenti);
+          size += FfiConverterInt64.allocationSize(inner.remainingCenti);
+          return size;
+        }
+        case OfflineSpendVerdict_Tags.MalformedCertificate: {
+          return ordinalConverter.allocationSize(2);
+        }
+        case OfflineSpendVerdict_Tags.BadCertificateSignature: {
+          return ordinalConverter.allocationSize(3);
+        }
+        case OfflineSpendVerdict_Tags.MalformedProposal: {
+          return ordinalConverter.allocationSize(4);
+        }
+        case OfflineSpendVerdict_Tags.BadProposalSignature: {
+          return ordinalConverter.allocationSize(5);
+        }
+        case OfflineSpendVerdict_Tags.CertMemberMismatch: {
+          return ordinalConverter.allocationSize(6);
+        }
+        case OfflineSpendVerdict_Tags.CertNotReferenced: {
+          return ordinalConverter.allocationSize(7);
+        }
+        case OfflineSpendVerdict_Tags.WrongReceiver: {
+          return ordinalConverter.allocationSize(8);
+        }
+        case OfflineSpendVerdict_Tags.NotADebit: {
+          return ordinalConverter.allocationSize(9);
+        }
+        case OfflineSpendVerdict_Tags.CertExpired: {
+          return ordinalConverter.allocationSize(10);
+        }
+        case OfflineSpendVerdict_Tags.ProposalExpired: {
+          return ordinalConverter.allocationSize(11);
+        }
+        case OfflineSpendVerdict_Tags.ProposalInadmissible: {
+          return ordinalConverter.allocationSize(12);
+        }
+        case OfflineSpendVerdict_Tags.Overspent: {
+          const inner = value.inner;
+          let size = ordinalConverter.allocationSize(13);
+          size += FfiConverterInt64.allocationSize(inner.availableCenti);
+          size += FfiConverterInt64.allocationSize(inner.attemptedCenti);
+          return size;
+        }
+        case OfflineSpendVerdict_Tags.MalformedHistory: {
+          return ordinalConverter.allocationSize(14);
+        }
+        default:
+          throw new UniffiInternalError.UnexpectedEnumCase();
+      }
+    }
+  }
+  return new FFIConverter();
 })();
 
 // Flat error type: PayloadError
@@ -705,6 +2268,7 @@ export enum RecoveryError_Tags {
   Encryption = 'Encryption',
   Corrupt = 'Corrupt',
   AddressMismatch = 'AddressMismatch',
+  NeedMoreResponses = 'NeedMoreResponses',
   Internal = 'Internal',
 }
 export const RecoveryError = (() => {
@@ -862,7 +2426,7 @@ export const RecoveryError = (() => {
       return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 7;
     }
   }
-  class Internal extends UniffiError {
+  class NeedMoreResponses extends UniffiError {
     /**
      * @private
      * This field is private and should not be used.
@@ -874,6 +2438,28 @@ export const RecoveryError = (() => {
      */
     readonly [variantOrdinalSymbol] = 8;
 
+    readonly tag = RecoveryError_Tags.NeedMoreResponses;
+
+    constructor(message: string) {
+      super('RecoveryError', 'NeedMoreResponses', message);
+    }
+
+    static instanceOf(e: any): e is NeedMoreResponses {
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 8;
+    }
+  }
+  class Internal extends UniffiError {
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [uniffiTypeNameSymbol]: string = 'RecoveryError';
+    /**
+     * @private
+     * This field is private and should not be used.
+     */
+    readonly [variantOrdinalSymbol] = 9;
+
     readonly tag = RecoveryError_Tags.Internal;
 
     constructor(message: string) {
@@ -881,7 +2467,7 @@ export const RecoveryError = (() => {
     }
 
     static instanceOf(e: any): e is Internal {
-      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 8;
+      return instanceOf(e) && (e as any)[variantOrdinalSymbol] === 9;
     }
   }
 
@@ -897,6 +2483,7 @@ export const RecoveryError = (() => {
     Encryption,
     Corrupt,
     AddressMismatch,
+    NeedMoreResponses,
     Internal,
     instanceOf,
   };
@@ -912,6 +2499,7 @@ export type RecoveryError = InstanceType<
     | 'Encryption'
     | 'Corrupt'
     | 'AddressMismatch'
+    | 'NeedMoreResponses'
     | 'Internal']
 >;
 
@@ -953,6 +2541,11 @@ const FfiConverterTypeRecoveryError = (() => {
           );
 
         case 8:
+          return new RecoveryError.NeedMoreResponses(
+            FfiConverterString.read(from),
+          );
+
+        case 9:
           return new RecoveryError.Internal(FfiConverterString.read(from));
 
         default:
@@ -2435,10 +4028,252 @@ const FfiConverterTypeRecoveryPackage = new FfiConverterObject(
   uniffiTypeRecoveryPackageObjectFactory,
 );
 
+export interface RecoverySessionLike {
+  addResponse(responsePayload: ArrayBuffer): /*throws*/ number;
+  fingerprint(): string;
+  reconstruct(): /*throws*/ WalletContentsLike;
+  requestPayload(): ArrayBuffer;
+  responses(): number;
+}
+/**
+ * @deprecated Use `RecoverySessionLike` instead.
+ */
+export type RecoverySessionInterface = RecoverySessionLike;
+
+export class RecoverySession
+  extends UniffiAbstractObject
+  implements RecoverySessionLike
+{
+  readonly [uniffiTypeNameSymbol] = 'RecoverySession';
+  readonly [destructorGuardSymbol]: UniffiGcObject;
+  readonly [pointerLiteralSymbol]: UniffiHandle;
+  constructor(targetAddress: string) /*throws*/ {
+    super();
+    const pointer = uniffiCaller.rustCallWithError(
+      /*liftError:*/ FfiConverterTypeRecoveryError.lift.bind(
+        FfiConverterTypeRecoveryError,
+      ),
+      /*caller:*/ callStatus => {
+        return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_constructor_recoverysession_new(
+          FfiConverterString.lower(
+            targetAddress,
+            nativeModule().rustbuffer_alloc,
+          ),
+          callStatus,
+        );
+      },
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+    );
+    this[pointerLiteralSymbol] = pointer;
+    this[destructorGuardSymbol] =
+      uniffiTypeRecoverySessionObjectFactory.bless(pointer);
+  }
+
+  addResponse(responsePayload: ArrayBuffer): number /*throws*/ {
+    return FfiConverterUInt32.lift(
+      uniffiCaller.rustCallWithError(
+        /*liftError:*/ FfiConverterTypeRecoveryError.lift.bind(
+          FfiConverterTypeRecoveryError,
+        ),
+        /*caller:*/ callStatus => {
+          return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_method_recoverysession_add_response(
+            uniffiTypeRecoverySessionObjectFactory.clonePointer(this),
+            FfiConverterArrayBuffer.lower(
+              responsePayload,
+              nativeModule().rustbuffer_alloc,
+            ),
+            callStatus,
+          );
+        },
+        /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      ),
+    );
+  }
+
+  fingerprint(): string {
+    return ((__rb: Uint8Array) => {
+      try {
+        return FfiConverterString.lift(__rb);
+      } finally {
+        nativeModule().rustbuffer_free(__rb);
+      }
+    })(
+      uniffiCaller.rustCall(
+        /*caller:*/ callStatus => {
+          return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_method_recoverysession_fingerprint(
+            uniffiTypeRecoverySessionObjectFactory.clonePointer(this),
+            callStatus,
+          );
+        },
+        /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      ),
+    );
+  }
+
+  reconstruct(): WalletContentsLike /*throws*/ {
+    return FfiConverterTypeWalletContents.lift(
+      uniffiCaller.rustCallWithError(
+        /*liftError:*/ FfiConverterTypeRecoveryError.lift.bind(
+          FfiConverterTypeRecoveryError,
+        ),
+        /*caller:*/ callStatus => {
+          return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_method_recoverysession_reconstruct(
+            uniffiTypeRecoverySessionObjectFactory.clonePointer(this),
+            callStatus,
+          );
+        },
+        /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      ),
+    );
+  }
+
+  requestPayload(): ArrayBuffer {
+    return ((__rb: Uint8Array) => {
+      try {
+        return FfiConverterArrayBuffer.lift(__rb);
+      } finally {
+        nativeModule().rustbuffer_free(__rb);
+      }
+    })(
+      uniffiCaller.rustCall(
+        /*caller:*/ callStatus => {
+          return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_method_recoverysession_request_payload(
+            uniffiTypeRecoverySessionObjectFactory.clonePointer(this),
+            callStatus,
+          );
+        },
+        /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      ),
+    );
+  }
+
+  responses(): number {
+    return FfiConverterUInt32.lift(
+      uniffiCaller.rustCall(
+        /*caller:*/ callStatus => {
+          return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_method_recoverysession_responses(
+            uniffiTypeRecoverySessionObjectFactory.clonePointer(this),
+            callStatus,
+          );
+        },
+        /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      ),
+    );
+  }
+
+  uniffiDestroy(): void {
+    const ptr = (this as any)[destructorGuardSymbol];
+    if (ptr !== undefined) {
+      const pointer = uniffiTypeRecoverySessionObjectFactory.pointer(this);
+      uniffiTypeRecoverySessionObjectFactory.freePointer(pointer);
+      uniffiTypeRecoverySessionObjectFactory.unbless(ptr);
+      delete (this as any)[destructorGuardSymbol];
+    }
+  }
+
+  static instanceOf(obj_: any): obj_ is RecoverySession {
+    return uniffiTypeRecoverySessionObjectFactory.isConcreteType(obj_);
+  }
+}
+
+const uniffiTypeRecoverySessionObjectFactory: UniffiObjectFactory<RecoverySessionLike> =
+  (() => {
+    return {
+      create(pointer: UniffiHandle): RecoverySessionLike {
+        const instance = Object.create(RecoverySession.prototype);
+        instance[pointerLiteralSymbol] = pointer;
+        instance[destructorGuardSymbol] = this.bless(pointer);
+        instance[uniffiTypeNameSymbol] = 'RecoverySession';
+        return instance;
+      },
+
+      bless(p: UniffiHandle): UniffiGcObject {
+        return uniffiCaller.rustCall(
+          /*caller:*/ status =>
+            nativeModule().ubrn_uniffi_internal_fn_method_recoverysession_ffi__bless_pointer(
+              p,
+              status,
+            ),
+          /*liftString:*/ FfiConverterString.lift,
+        );
+      },
+
+      unbless(ptr_: UniffiGcObject) {
+        ptr_.markDestroyed();
+      },
+
+      pointer(obj_: RecoverySessionLike): UniffiHandle {
+        if ((obj_ as any)[destructorGuardSymbol] === undefined) {
+          throw new UniffiInternalError.UnexpectedNullPointer();
+        }
+        return (obj_ as any)[pointerLiteralSymbol];
+      },
+
+      clonePointer(obj_: RecoverySessionLike): UniffiHandle {
+        const pointer = this.pointer(obj_);
+        return uniffiCaller.rustCall(
+          /*caller:*/ callStatus =>
+            nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_clone_recoverysession(
+              pointer,
+              callStatus,
+            ),
+          /*liftString:*/ FfiConverterString.lift,
+        );
+      },
+
+      freePointer(pointer: UniffiHandle): void {
+        uniffiCaller.rustCall(
+          /*caller:*/ callStatus =>
+            nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_free_recoverysession(
+              pointer,
+              callStatus,
+            ),
+          /*liftString:*/ FfiConverterString.lift,
+        );
+      },
+
+      isConcreteType(obj_: any): obj_ is RecoverySessionLike {
+        return (
+          obj_[destructorGuardSymbol] &&
+          obj_[uniffiTypeNameSymbol] === 'RecoverySession'
+        );
+      },
+    };
+  })();
+const FfiConverterTypeRecoverySession = new FfiConverterObject(
+  uniffiTypeRecoverySessionObjectFactory,
+);
+
+// FfiConverter for Array<BundleEntryInfo>
+const FfiConverterSequenceTypeBundleEntryInfo = new FfiConverterArray(
+  FfiConverterTypeBundleEntryInfo,
+);
+
+// FfiConverter for bigint | undefined
+const FfiConverterOptionalUInt64 = new FfiConverterOptional(FfiConverterUInt64);
+
+// FfiConverter for string | undefined
+const FfiConverterOptionalString = new FfiConverterOptional(FfiConverterString);
+
 // FfiConverter for Map<string, string>
 const FfiConverterMapStringString = new FfiConverterMap(
   FfiConverterString,
   FfiConverterString,
+);
+
+// FfiConverter for Array<ArrayBuffer>
+const FfiConverterSequenceBytes = new FfiConverterArray(
+  FfiConverterArrayBuffer,
+);
+
+// FfiConverter for ArrayBuffer | undefined
+const FfiConverterOptionalBytes = new FfiConverterOptional(
+  FfiConverterArrayBuffer,
+);
+
+// FfiConverter for Array<ReceiptOutcome>
+const FfiConverterSequenceTypeReceiptOutcome = new FfiConverterArray(
+  FfiConverterTypeReceiptOutcome,
 );
 
 // FfiConverter for Array<string>
@@ -2467,6 +4302,22 @@ function uniffiEnsureInitialized() {
     );
   }
   if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_func_bundle_assemble() !==
+    47649
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_func_bundle_assemble',
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_func_bundle_parse() !==
+    7754
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_func_bundle_parse',
+    );
+  }
+  if (
     nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_func_canonical_bytes() !==
     55743
   ) {
@@ -2475,11 +4326,43 @@ function uniffiEnsureInitialized() {
     );
   }
   if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_func_certificate_parse() !==
+    27331
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_func_certificate_parse',
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_func_certificate_request_sign() !==
+    49135
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_func_certificate_request_sign',
+    );
+  }
+  if (
     nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_func_is_valid_address() !==
     25471
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       'uniffi_rrn_mobile_ffi_checksum_func_is_valid_address',
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_func_offline_spend_verify() !==
+    48229
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_func_offline_spend_verify',
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_func_outbox_next_entry() !==
+    20017
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_func_outbox_next_entry',
     );
   }
   if (
@@ -2496,6 +4379,22 @@ function uniffiEnsureInitialized() {
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       'uniffi_rrn_mobile_ffi_checksum_func_parse_shard_payload',
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_func_proposal_sign_with_certificate() !==
+    43018
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_func_proposal_sign_with_certificate',
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_func_receipt_parse() !==
+    3449
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_func_receipt_parse',
     );
   }
   if (
@@ -2683,6 +4582,54 @@ function uniffiEnsureInitialized() {
     );
   }
   if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_constructor_recoverysession_new() !==
+    48493
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_constructor_recoverysession_new',
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_method_recoverysession_add_response() !==
+    36757
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_method_recoverysession_add_response',
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_method_recoverysession_fingerprint() !==
+    50269
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_method_recoverysession_fingerprint',
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_method_recoverysession_reconstruct() !==
+    12064
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_method_recoverysession_reconstruct',
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_method_recoverysession_request_payload() !==
+    19155
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_method_recoverysession_request_payload',
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_method_recoverysession_responses() !==
+    31227
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_method_recoverysession_responses',
+    );
+  }
+  if (
     nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_constructor_signature_from_bytes() !==
     12225
   ) {
@@ -2751,15 +4698,23 @@ function uniffiEnsureInitialized() {
 export default Object.freeze({
   initialize: uniffiEnsureInitialized,
   converters: {
+    FfiConverterTypeBundleEntryInfo,
+    FfiConverterTypeBundleInfo,
+    FfiConverterTypeCertError,
+    FfiConverterTypeCertificateInfo,
     FfiConverterTypeCryptoError,
+    FfiConverterTypeDtnError,
     FfiConverterTypeEncryptedWallet,
     FfiConverterTypeHash,
     FfiConverterTypeKeypair,
+    FfiConverterTypeOfflineSpendVerdict,
     FfiConverterTypePayloadError,
     FfiConverterTypePublicKey,
+    FfiConverterTypeReceiptOutcome,
     FfiConverterTypeRecoveryError,
     FfiConverterTypeRecoveryPackage,
     FfiConverterTypeRecoveryRequestInfo,
+    FfiConverterTypeRecoverySession,
     FfiConverterTypeShardInfo,
     FfiConverterTypeSignature,
     FfiConverterTypeWalletContents,
