@@ -1,22 +1,31 @@
 /**
- * Wire format for a station key-recovery ceremony (T1.11.3 slice D).
+ * Wire format for a key-recovery ceremony (ADR-0016).
  *
- * When a station operator has lost their passphrase, they run a recovery
- * ceremony: the station mints an ephemeral recovery key and publishes a
- * *request* naming the identity to recover; each holder of a shard turns their
- * sealed piece into a raw Shamir share re-sealed to that ephemeral key and hands
- * back a *response*; the operator opens any `K` responses and reconstructs the
- * key. This module is the phone's half of the exchange — reading a scanned
- * request and encoding the response — and the crypto lives in Rust (reached via
- * {@link parseRecoveryRequest} and {@link Wallet.respondToRecovery}).
+ * When someone has lost the key to their identity, they run a recovery ceremony
+ * on a device they control — a new phone, a laptop, or (for a station's own key)
+ * the station: the recovering device mints an ephemeral recovery key and
+ * publishes a *request* naming the identity to recover; each holder of a shard
+ * turns their sealed piece into a raw Shamir share re-sealed to that ephemeral
+ * key and hands back a *response*; the recovering device opens any `K` responses
+ * and reconstructs the key. Reconstruction never happens on the station for a
+ * *member's* key — it runs on the member's own device (ADR-0006).
+ *
+ * This module carries both halves of the exchange as QR strings: the *holder*
+ * side reads a scanned request ({@link decodeRequestQr},
+ * {@link parseRecoveryRequest}) and renders a response ({@link encodeResponseQr},
+ * {@link Wallet.respondToRecovery}); the *recovering* side renders its request
+ * ({@link encodeRequestQr}) and reads scanned responses ({@link decodeResponseQr},
+ * fed to {@link wallet/recoveryRequester.RecoverySession}). The crypto lives in
+ * Rust throughout.
  *
  * Two QR schemes carry the exchange, mirrored byte-for-byte on the station side
- * (`rrn-station::recovery`): the phone scans a `rrnrecover-req:` request and
- * renders a `rrnrecover-resp:` response. Both wrap raw bytes as base64 behind a
- * scheme prefix — the same shape as the `rrnrecovery:` shard scheme
+ * (`rrn-station::recovery`): a `rrnrecover-req:` request and a
+ * `rrnrecover-resp:` response. Both wrap raw bytes as base64 behind a scheme
+ * prefix — the same shape as the `rrnrecovery:` shard scheme
  * ({@link wallet/recoveryShard}) — so a scanner can reject the wrong kind of QR
  * instead of mis-parsing it. The raw Shamir share is never in the clear on this
- * path: it is sealed to the operator's ephemeral key inside the response bytes.
+ * path: it is sealed to the recovering device's ephemeral key inside the
+ * response bytes.
  */
 import {base64ToBytes, bytesToBase64} from '../crypto/base64';
 import {getRrnCryptoFfi, type RecoveryRequestInfo} from '../crypto/ffi';
@@ -44,9 +53,31 @@ export function decodeRequestQr(value: string): Uint8Array | null {
   }
 }
 
+/** Encodes request bytes as the `rrnrecover-req:<base64>` string to render as a
+ * QR — the recovering device's half, shown for holders to scan. */
+export function encodeRequestQr(request: Uint8Array): string {
+  return REQUEST_QR_PREFIX + bytesToBase64(request);
+}
+
 /** Encodes response bytes as the `rrnrecover-resp:<base64>` string to render as a QR. */
 export function encodeResponseQr(response: Uint8Array): string {
   return RESPONSE_QR_PREFIX + bytesToBase64(response);
+}
+
+/**
+ * Decodes a scanned response QR string back to response bytes, or returns `null`
+ * if the string is not a recovery-response QR (wrong prefix or corrupt base64) —
+ * the recovering device's counterpart to {@link decodeRequestQr}.
+ */
+export function decodeResponseQr(value: string): Uint8Array | null {
+  if (!value.startsWith(RESPONSE_QR_PREFIX)) {
+    return null;
+  }
+  try {
+    return base64ToBytes(value.slice(RESPONSE_QR_PREFIX.length));
+  } catch {
+    return null;
+  }
 }
 
 /**

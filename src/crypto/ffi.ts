@@ -105,15 +105,54 @@ export interface ShardInfo {
 }
 
 /**
- * Non-secret description of a station key-recovery *request* (T1.11.3 slice D),
- * for a holder's confirm screen. During a recovery ceremony the operator mints
- * an ephemeral key and publishes a request naming the identity to be recovered;
- * a holder reads this off the scanned request to see whom they are being asked
- * to help before contributing their piece.
+ * Non-secret description of a key-recovery *request*, for a holder's confirm
+ * screen. During a recovery ceremony the recovering device mints an ephemeral
+ * key and publishes a request naming the identity to be recovered; a holder
+ * reads this off the scanned request to see whom they are being asked to help,
+ * and confirms the {@link fingerprint} against the requester's screen
+ * out-of-band, before contributing their piece (ADR-0016).
  */
 export interface RecoveryRequestInfo {
   /** The `rrn1…` address of the identity this request seeks to recover. */
   targetAddress: string;
+  /**
+   * The ceremony fingerprint (`xxxxx-xxxxx`) — a domain-tagged hash of this
+   * ceremony's ephemeral recovery key. Every holder must see the *same* code the
+   * requester is showing; two holders shown different codes are being played
+   * against each other (ADR-0016).
+   */
+  fingerprint: string;
+}
+
+/**
+ * The requester side of the reconstruction ceremony, run on the device
+ * rebuilding its OWN identity — a new phone or laptop recovering a lost key
+ * (ADR-0016). It mints the ephemeral recovery keypair, publishes the request,
+ * gathers holder responses, and reconstructs the wallet, all inside Rust: the
+ * ephemeral secret and the rebuilt key never cross this boundary, only the
+ * finished {@link WalletContents} handle does, exactly like a fresh identity.
+ * The station is never involved (ADR-0006).
+ */
+export interface RecoverySession {
+  /** The request bytes to render as a `rrnrecover-req:<base64>` QR. */
+  requestPayload(): Uint8Array;
+  /** The ceremony fingerprint (`xxxxx-xxxxx`) to show in large type; every
+   * holder must see this exact code. */
+  fingerprint(): string;
+  /**
+   * Opens a scanned holder response and adds it, returning the count gathered so
+   * far. A duplicate scan (same share) is ignored — the count does not advance.
+   * Throws (recovery error) if the response is not for this ceremony.
+   */
+  addResponse(responsePayload: Uint8Array): number;
+  /** How many distinct responses have been gathered. */
+  responses(): number;
+  /**
+   * Reconstructs the recovered identity from the responses gathered so far.
+   * Throws `NeedMoreResponses` when there are too few (or the shares don't
+   * rebuild the target address) — never a wrong key.
+   */
+  reconstruct(): WalletContents;
 }
 
 /**
@@ -195,6 +234,16 @@ export interface RrnCryptoFfi {
    * `rrnrecover-req:` QR. Throws (recovery error) if the bytes are malformed.
    */
   parseRecoveryRequest(request: Uint8Array): RecoveryRequestInfo;
+  /**
+   * Begins a reconstruction ceremony to recover `targetAddress` on this device
+   * (ADR-0016): mints the ephemeral recovery keypair and returns a stateful
+   * {@link RecoverySession} that gathers responses and rebuilds the key. Throws
+   * (recovery error) if the address is malformed. The recovering device — never
+   * the station — runs this over its own identity (ADR-0006).
+   */
+  RecoverySession: {
+    create(targetAddress: string): RecoverySession;
+  };
   /**
    * A holder's contribution to a recovery ceremony (T1.11.3 slice D): turns the
    * sealed shard the holder stored (`storedShardPayload`) into a raw Shamir

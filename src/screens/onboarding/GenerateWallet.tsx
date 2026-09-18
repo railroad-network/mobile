@@ -12,14 +12,21 @@ import {ActivityIndicator, StyleSheet, View} from 'react-native';
 
 import {Button, Heading, Text} from '../../components';
 import {useTheme} from '../../theme';
-import {createWallet} from '../../wallet/Wallet';
+import {createWallet, persistWallet, type Wallet} from '../../wallet/Wallet';
 import type {OnboardingScreenProps} from '../../navigation/types';
 import {useOnboarding} from './OnboardingContext';
 import {OnboardingScaffold} from './OnboardingScaffold';
 
-const STEPS = [
+const CREATE_STEPS = [
   'Generating your keypair',
   'Encrypting with your passphrase',
+  'Storing securely on device',
+];
+
+// The recover path already holds the rebuilt identity; the work here is the
+// (slow) seal under the new device passphrase and the keychain write.
+const RESTORE_STEPS = [
+  'Sealing with your new passphrase',
   'Storing securely on device',
 ];
 
@@ -55,8 +62,17 @@ export function GenerateWallet({
   navigation,
 }: OnboardingScreenProps<'GenerateWallet'>) {
   const theme = useTheme();
-  const {passphrase, biometricEnabled, setCreatedAddress, setCreatedWallet, clearSecrets} =
-    useOnboarding();
+  const {
+    passphrase,
+    biometricEnabled,
+    recoveredWallet,
+    setCreatedAddress,
+    setCreatedWallet,
+    clearSecrets,
+  } = useOnboarding();
+  // A recovered/imported identity is a truthy handle; treat both null and a
+  // partial context (undefined) as the ordinary create path.
+  const restoring = Boolean(recoveredWallet);
   const [error, setError] = useState<string | null>(null);
   // Guards against the effect running twice (React strict-mode double invoke /
   // re-render) and creating two wallets.
@@ -77,9 +93,21 @@ export function GenerateWallet({
         // freezes the previous screen in place and this one flashes by afterward.
         await delay(PRE_PAINT_MS);
         const startedAt = Date.now();
-        const wallet = await createWallet(passphrase, undefined, {
-          requireBiometric: biometricEnabled,
-        });
+        // On the recover path the identity already exists (reconstructed from a
+        // circle or opened from an export) — seal *that* under the new device
+        // passphrase rather than minting a fresh keypair. Either way the write is
+        // the same keychain-backed, passphrase-sealed store.
+        let wallet: Wallet;
+        if (recoveredWallet) {
+          await persistWallet(recoveredWallet, passphrase, undefined, {
+            requireBiometric: biometricEnabled,
+          });
+          wallet = recoveredWallet;
+        } else {
+          wallet = await createWallet(passphrase, undefined, {
+            requireBiometric: biometricEnabled,
+          });
+        }
         // When biometric is enabled, createWallet's keychain write puts up an OS
         // prompt that covers this screen, so the seconds the user spent
         // authenticating were not spent looking at the progress UI. Measure the
@@ -100,7 +128,10 @@ export function GenerateWallet({
         await delay(MIN_VISIBLE_MS - (Date.now() - visibleSince));
         navigation.replace('WalletReady');
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Could not create your wallet.');
+        const fallback = restoring
+          ? 'Could not restore your wallet.'
+          : 'Could not create your wallet.';
+        setError(e instanceof Error ? e.message : fallback);
       }
     })();
     // `attempt` re-arms the effect on retry; other deps are stable for the
@@ -152,10 +183,10 @@ export function GenerateWallet({
         <Heading
           level="headingMedium"
           style={[styles.centerText, {marginBottom: theme.spacing.lg}]}>
-          Creating your identity
+          {restoring ? 'Restoring your wallet' : 'Creating your identity'}
         </Heading>
         <View style={[styles.steps, {gap: theme.spacing.md}]}>
-          {STEPS.map(step => (
+          {(restoring ? RESTORE_STEPS : CREATE_STEPS).map(step => (
             <View key={step} style={styles.step}>
               <View
                 style={[styles.dot, {backgroundColor: theme.colors.primary}]}

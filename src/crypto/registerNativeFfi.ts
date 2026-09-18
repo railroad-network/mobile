@@ -22,6 +22,7 @@ import {
   type Keypair,
   type PublicKey,
   type RecoveryPackage,
+  type RecoverySession,
   type RrnCryptoFfi,
   type Signature,
   type WalletContents,
@@ -104,6 +105,16 @@ function wrapRecoveryPackage(pkg: gen.RecoveryPackageLike): RecoveryPackage {
   };
 }
 
+function wrapRecoverySession(session: gen.RecoverySessionLike): RecoverySession {
+  return {
+    requestPayload: () => toU8(session.requestPayload()),
+    fingerprint: () => session.fingerprint(),
+    addResponse: response => session.addResponse(toArrayBuffer(response)),
+    responses: () => session.responses(),
+    reconstruct: () => wrapWalletContents(session.reconstruct()),
+  };
+}
+
 // --- the seam implementation ------------------------------------------------
 
 const nativeFfi: RrnCryptoFfi = {
@@ -152,7 +163,11 @@ const nativeFfi: RrnCryptoFfi = {
   },
   parseRecoveryRequest: request => {
     const info = gen.parseRecoveryRequest(toArrayBuffer(request));
-    return {targetAddress: info.targetAddress};
+    return {targetAddress: info.targetAddress, fingerprint: info.fingerprint};
+  },
+  RecoverySession: {
+    create: targetAddress =>
+      wrapRecoverySession(new gen.RecoverySession(targetAddress)),
   },
   respondToRecovery: (wallet, storedShardPayload, request) => {
     const native = nativeWallet.get(wallet);

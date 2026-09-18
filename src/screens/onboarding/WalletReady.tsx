@@ -13,7 +13,7 @@
 import {StyleSheet, View} from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 
-import {Button, Card, Heading, Text} from '../../components';
+import {Banner, Button, Card, Heading, Text} from '../../components';
 import {useTheme} from '../../theme';
 import {useWalletSession} from '../../wallet/WalletSession';
 import type {OnboardingScreenProps} from '../../navigation/types';
@@ -24,8 +24,9 @@ const QR_SIZE = 180;
 
 export function WalletReady({navigation}: OnboardingScreenProps<'WalletReady'>) {
   const theme = useTheme();
-  const {createdAddress, createdWallet} = useOnboarding();
+  const {createdAddress, createdWallet, recoveredWallet} = useOnboarding();
   const {adopt, refresh} = useWalletSession();
+  const restored = Boolean(recoveredWallet);
 
   // Entering the app flips the root navigator from the onboarding stack to the
   // main app; the stack unmounts, so no explicit navigation is needed. Adopting
@@ -72,9 +73,19 @@ export function WalletReady({navigation}: OnboardingScreenProps<'WalletReady'>) 
             },
           ]}>
           <Text variant="label" color={theme.colors.success}>
-            ✓ Wallet created
+            {restored ? '✓ Wallet restored' : '✓ Wallet created'}
           </Text>
         </View>
+
+        {restored && (
+          <View style={styles.notice}>
+            <Banner variant="info" title="One more step to spend">
+              Ask your community's operator to unpair your old phone, then pair
+              this one. Your balance and history come back once you're paired
+              again.
+            </Banner>
+          </View>
+        )}
 
         <Card style={styles.qrCard}>
           <View style={styles.qrFrame}>
@@ -125,6 +136,10 @@ const styles = StyleSheet.create({
     borderRadius: 9999,
     paddingHorizontal: 14,
     paddingVertical: 6,
+    marginBottom: 20,
+  },
+  notice: {
+    alignSelf: 'stretch',
     marginBottom: 20,
   },
   qrCard: {

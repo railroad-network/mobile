@@ -67,6 +67,11 @@ const unused = () => {
 };
 
 const fakeFfi: RrnCryptoFfi = {
+  RecoverySession: {
+    create: () => {
+      throw new Error('recovery ceremony not exercised by these tests');
+    },
+  },
   Keypair: {generate: unused},
   PublicKey: {
     fromBytes: unused,

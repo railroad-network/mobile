@@ -1,0 +1,398 @@
+/**
+ * Rebuild a key from the recovery circle (ADR-0016), on the member's own new
+ * device — never the station (ADR-0006).
+ *
+ * Three in-screen steps drive the {@link RecoverySession} (the requester side of
+ * the ceremony; the crypto lives in Rust):
+ *   1. `address` — the member enters (or scans) the identity they are recovering.
+ *      That mints an ephemeral recovery key and opens a session.
+ *   2. `request` — this device shows a `rrnrecover-req:` QR and, in large type,
+ *      the ceremony fingerprint. Every holder must see this *same* fingerprint
+ *      before they contribute — it is how two holders notice they were shown
+ *      different ceremonies. Progress ("2 responses · need 3") tracks the shares
+ *      gathered so far.
+ *   3. `scan` — the member scans each holder's `rrnrecover-resp:` QR. A response
+ *      for a different ceremony is refused, not mixed in. When enough shares
+ *      rebuild the target address, the recovered identity is carried into the
+ *      shared onboarding tail (set a device passphrase → biometrics → join).
+ *
+ * A reconstruction with too few (or wrong) shares reports "keep scanning" — never
+ * a wrong key. The ephemeral secret stays in Rust and is zeroized when the
+ * session is dropped.
+ */
+import {useState} from 'react';
+import {StyleSheet, View} from 'react-native';
+import QRCode from 'react-native-qrcode-svg';
+
+import {Banner, Button, Card, Field, Heading, QRScanner, Text} from '../../components';
+import {isValidAddress} from '../../crypto/address';
+import {parseAddressQr} from '../../ledger/addressQr';
+import {useTheme} from '../../theme';
+import type {OnboardingScreenProps} from '../../navigation/types';
+import {RecoverySession} from '../../wallet/recoveryRequester';
+import {useOnboarding} from './OnboardingContext';
+import {RECOVERY_THRESHOLD} from '../recovery/RecoveryContext';
+import {OnboardingScaffold} from './OnboardingScaffold';
+
+const QR_SIZE = 200;
+
+type Step = 'address' | 'request' | 'scan';
+
+interface Notice {
+  variant: 'warning' | 'info';
+  title: string;
+  body: string;
+}
+
+export function RecoverFromCircle({
+  navigation,
+}: OnboardingScreenProps<'RecoverFromCircle'>) {
+  const theme = useTheme();
+  const {setRecoveredWallet} = useOnboarding();
+
+  const [step, setStep] = useState<Step>('address');
+  const [session, setSession] = useState<RecoverySession | null>(null);
+  const [addressInput, setAddressInput] = useState('');
+  const [addressError, setAddressError] = useState<string | null>(null);
+  const [scanningAddress, setScanningAddress] = useState(false);
+  const [responses, setResponses] = useState(0);
+  const [notice, setNotice] = useState<Notice | null>(null);
+
+  function begin() {
+    const address = addressInput.trim();
+    if (!isValidAddress(address)) {
+      setAddressError('That is not a valid address.');
+      return;
+    }
+    try {
+      setSession(RecoverySession.begin(address));
+      setResponses(0);
+      setNotice(null);
+      setStep('request');
+    } catch {
+      setAddressError('That is not a valid address.');
+    }
+  }
+
+  // Mint a fresh ceremony (new ephemeral key ⇒ new fingerprint) and discard the
+  // responses gathered so far — the remedy when a mixed/poisoned set won't
+  // rebuild, or the member simply wants to restart. Holders must re-scan the new
+  // request.
+  function startOver() {
+    if (session === null) return;
+    setSession(RecoverySession.begin(addressInput.trim()));
+    setResponses(0);
+    setNotice(null);
+    setStep('request');
+  }
+
+  function onScanAddress(value: string) {
+    // Accept the plain `rrn1…` a credential card shows and the `rrn:…?addr=` QR
+    // envelope alike (the same parser the vouch flow uses); anything else is
+    // called out, not silently dropped.
+    const scanned = parseAddressQr(value);
+    if (scanned === null) {
+      setNotice({
+        variant: 'warning',
+        title: "That isn't an address",
+        body: 'Scan the address QR from a credential card or a friend’s saved contact.',
+      });
+      return;
+    }
+    setAddressInput(scanned.address);
+    setAddressError(null);
+    setNotice(null);
+    setScanningAddress(false);
+  }
+
+  function onScanResponse(value: string) {
+    if (session === null) return;
+    const result = session.addResponseQr(value);
+    if (result.kind === 'not-a-response') {
+      setNotice({
+        variant: 'warning',
+        title: "That isn't a recovery response",
+        body: 'Scan the response your holder is showing — a request or address QR won’t work here.',
+      });
+      return;
+    }
+    if (result.kind === 'wrong-ceremony') {
+      setNotice({
+        variant: 'warning',
+        title: 'That response is for a different recovery',
+        body: 'It was made for another ceremony and can’t be used here. Ask the holder to scan your current request.',
+      });
+      return;
+    }
+
+    // Accepted. If the count didn't advance, it was a re-scan of a share already
+    // held — say so gently and keep going.
+    if (result.responses === responses) {
+      setNotice({
+        variant: 'info',
+        title: 'Already have that one',
+        body: 'That holder’s piece is already counted. Scan a different holder next.',
+      });
+      return;
+    }
+    setResponses(result.responses);
+    setNotice(null);
+
+    const rebuilt = session.reconstruct();
+    if (rebuilt.kind === 'recovered') {
+      // Carry the rebuilt identity into the shared tail; it is sealed under a new
+      // device passphrase there (D3: a recovered wallet starts unanchored and
+      // re-syncs its nonce before its first spend).
+      setRecoveredWallet(rebuilt.wallet);
+      navigation.navigate('Passphrase');
+      return;
+    }
+    // Enough pieces by count, but they don't rebuild the key — a share is from a
+    // different circle or a bad actor (ADR-0016's named residual). Say so and
+    // point at the remedy: a fresh request (startOver).
+    if (result.responses >= RECOVERY_THRESHOLD) {
+      setNotice({
+        variant: 'warning',
+        title: "Those pieces don't rebuild your key",
+        body: 'One may be from a different circle, or the wrong ceremony. Start over with a fresh request and gather pieces from the right holders.',
+      });
+    }
+    // Back to the request so the next holder can scan it, with progress updated.
+    setStep('request');
+  }
+
+  // --- step: enter the address being recovered ------------------------------
+  if (step === 'address') {
+    if (scanningAddress) {
+      return (
+        <OnboardingScaffold
+          footer={
+            <Button
+              variant="ghost"
+              size="lg"
+              fullWidth
+              onPress={() => setScanningAddress(false)}>
+              Enter it by hand
+            </Button>
+          }>
+          <Heading level="headingMedium" style={{marginBottom: theme.spacing.sm}}>
+            Scan their address
+          </Heading>
+          <Text
+            variant="body"
+            color={theme.colors.textSecondary}
+            style={{marginBottom: theme.spacing.lg}}>
+            Point the camera at the address QR from a credential card or a
+            friend's contact list.
+          </Text>
+          {notice !== null && (
+            <View style={{marginBottom: theme.spacing.md}}>
+              <Banner variant={notice.variant} title={notice.title}>
+                {notice.body}
+              </Banner>
+            </View>
+          )}
+          <Card padded={false} style={styles.scanner}>
+            <QRScanner onScan={onScanAddress} isActive />
+          </Card>
+        </OnboardingScaffold>
+      );
+    }
+    return (
+      <OnboardingScaffold
+        footer={
+          <>
+            <Button
+              variant="primary"
+              size="lg"
+              fullWidth
+              disabled={addressInput.trim().length === 0}
+              onPress={begin}>
+              Start recovery
+            </Button>
+            <Button
+              variant="ghost"
+              size="lg"
+              fullWidth
+              onPress={() => navigation.goBack()}>
+              Back
+            </Button>
+          </>
+        }>
+        <Heading level="headingMedium" style={{marginBottom: theme.spacing.sm}}>
+          Which identity are you recovering?
+        </Heading>
+        <Text
+          variant="body"
+          color={theme.colors.textSecondary}
+          style={{marginBottom: theme.spacing.lg}}>
+          Enter your rrn1… address — the one on your credential card, or that a
+          friend has saved for you.
+        </Text>
+        <View style={{gap: theme.spacing.md}}>
+          <Field
+            label="Your address"
+            value={addressInput}
+            onChangeText={t => {
+              setAddressInput(t);
+              if (addressError !== null) setAddressError(null);
+            }}
+            placeholder="rrn1…"
+            error={addressError ?? undefined}
+            autoCapitalize="none"
+            autoCorrect={false}
+            spellCheck={false}
+            autoComplete="off"
+            textContentType="none"
+            importantForAutofill="no"
+          />
+          <Button
+            variant="ghost"
+            size="md"
+            fullWidth
+            onPress={() => setScanningAddress(true)}>
+            Scan their address instead
+          </Button>
+        </View>
+      </OnboardingScaffold>
+    );
+  }
+
+  const progress = `${responses} ${responses === 1 ? 'response' : 'responses'} · need ${RECOVERY_THRESHOLD}`;
+
+  // --- step: show the request + fingerprint ---------------------------------
+  if (step === 'request' && session !== null) {
+    return (
+      <OnboardingScaffold
+        footer={
+          <>
+            <Button
+              variant="primary"
+              size="lg"
+              fullWidth
+              onPress={() => {
+                setNotice(null);
+                setStep('scan');
+              }}>
+              Scan a holder's response
+            </Button>
+            {responses > 0 && (
+              <Button variant="ghost" size="lg" fullWidth onPress={startOver}>
+                Start over with a new request
+              </Button>
+            )}
+          </>
+        }>
+        {notice !== null && (
+          <Banner variant={notice.variant} title={notice.title}>
+            {notice.body}
+          </Banner>
+        )}
+
+        <View style={styles.centerCol}>
+          <Heading level="headingSmall" style={styles.centerText}>
+            Show this to your holders
+          </Heading>
+          <Card style={styles.qrCard}>
+            <View style={styles.qrFrame}>
+              <QRCode
+                value={session.requestQr()}
+                size={QR_SIZE}
+                color="#000000"
+                backgroundColor="#FFFFFF"
+              />
+            </View>
+          </Card>
+
+          <Text
+            variant="caption"
+            color={theme.colors.textSecondary}
+            style={styles.centerText}>
+            Ceremony fingerprint
+          </Text>
+          <Text
+            variant="mono"
+            color={theme.colors.text}
+            selectable
+            style={styles.fingerprint}
+            accessibilityLabel={`Ceremony fingerprint: ${session.fingerprint()}`}>
+            {session.fingerprint()}
+          </Text>
+          <Text
+            variant="body"
+            color={theme.colors.textSecondary}
+            style={[styles.centerText, {marginBottom: theme.spacing.md}]}>
+            Every holder must see this exact code on their own screen. Read it
+            aloud together — if it doesn't match, stop.
+          </Text>
+
+          <View
+            style={[
+              styles.progress,
+              {
+                backgroundColor: theme.colors.surfaceRaised,
+                borderColor: theme.colors.border,
+              },
+            ]}>
+            <Text variant="label" color={theme.colors.text}>
+              {progress}
+            </Text>
+          </View>
+        </View>
+      </OnboardingScaffold>
+    );
+  }
+
+  // --- step: scan holder responses ------------------------------------------
+  return (
+    <OnboardingScaffold
+      footer={
+        <Button
+          variant="ghost"
+          size="lg"
+          fullWidth
+          onPress={() => setStep('request')}>
+          Done scanning for now
+        </Button>
+      }>
+      {notice !== null && (
+        <Banner variant={notice.variant} title={notice.title}>
+          {notice.body}
+        </Banner>
+      )}
+      <Heading level="headingMedium" style={{marginBottom: theme.spacing.sm}}>
+        Scan a holder's response
+      </Heading>
+      <Text
+        variant="body"
+        color={theme.colors.textSecondary}
+        style={{marginBottom: theme.spacing.md}}>
+        Point the camera at the response each holder shows you. {progress}.
+      </Text>
+      <Card padded={false} style={styles.scanner}>
+        <QRScanner onScan={onScanResponse} isActive={step === 'scan'} />
+      </Card>
+    </OnboardingScaffold>
+  );
+}
+
+const styles = StyleSheet.create({
+  scanner: {height: 320, overflow: 'hidden'},
+  centerCol: {alignItems: 'center'},
+  centerText: {textAlign: 'center'},
+  qrCard: {padding: 14, marginTop: 12, marginBottom: 16},
+  qrFrame: {backgroundColor: '#FFFFFF', borderRadius: 12, padding: 12},
+  fingerprint: {
+    fontSize: 28,
+    letterSpacing: 2,
+    marginTop: 2,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  progress: {
+    borderWidth: 1,
+    borderRadius: 9999,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
+});

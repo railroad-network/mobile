@@ -21,6 +21,12 @@ import {HelpRecover} from '../src/screens/main/HelpRecover';
 import {bytesToBase64} from '../src/crypto/base64';
 import {REQUEST_QR_PREFIX} from '../src/wallet/recoveryCeremony';
 import type {HeldShard} from '../src/wallet/heldShards';
+import fingerprintFixture from './fixtures/recovery_fingerprint.json';
+
+// The ceremony fingerprint the holder confirms against the requester's screen.
+// Taken from the cross-platform fixture the station toolchain committed, so the
+// value the holder card shows is asserted byte-for-byte against Rust's output.
+const FINGERPRINT = fingerprintFixture.vectors[0].fingerprint;
 
 // --- Mocked seams -----------------------------------------------------------
 
@@ -163,7 +169,10 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockOnScan = undefined;
   mockLoadHeldShards.mockResolvedValue({rrn1friend: heldShard('rrn1friend')});
-  mockParseRecoveryRequest.mockReturnValue({targetAddress: 'rrn1friend'});
+  mockParseRecoveryRequest.mockReturnValue({
+    targetAddress: 'rrn1friend',
+    fingerprint: FINGERPRINT,
+  });
   mockRespondToRecovery.mockResolvedValue(RESPONSE);
   mockLoadWallet.mockResolvedValue({respondToRecovery: mockRespondToRecovery});
 });
@@ -177,6 +186,17 @@ test('scanning a request we hold a shard for moves to the confirm step', async (
   expect(mockParseRecoveryRequest).toHaveBeenCalledTimes(1);
   expect(hasText(r, 'Recovering')).toBe(true);
   expect(hasText(r, 'rrn1friend')).toBe(true);
+});
+
+test('the confirm step shows the ceremony fingerprint and the verify-in-person copy', async () => {
+  const r = await renderScreen();
+  await scan(requestQr());
+
+  // The exact fingerprint the requester shows must appear for the holder to
+  // read aloud and match (RRN-A-001 / RRN-M-002).
+  expect(hasText(r, FINGERPRINT)).toBe(true);
+  expect(hasText(r, 'Read this code aloud')).toBe(true);
+  expect(hasText(r, 'only as trustworthy as the person showing it')).toBe(true);
 });
 
 test('unlocking contributes the held shard and shows a response QR', async () => {

@@ -33,10 +33,12 @@ interface MockOnboarding {
   biometricEnabled: boolean;
   createdAddress: string | null;
   createdWallet: unknown;
+  recoveredWallet: unknown;
   setPassphrase: jest.Mock;
   setBiometricEnabled: jest.Mock;
   setCreatedAddress: jest.Mock;
   setCreatedWallet: jest.Mock;
+  setRecoveredWallet: jest.Mock;
   clearSecrets: jest.Mock;
 }
 const mockOnboarding: MockOnboarding = {
@@ -44,10 +46,12 @@ const mockOnboarding: MockOnboarding = {
   biometricEnabled: false,
   createdAddress: null,
   createdWallet: null,
+  recoveredWallet: null,
   setPassphrase: jest.fn((v: string) => (mockOnboarding.passphrase = v)),
   setBiometricEnabled: jest.fn((v: boolean) => (mockOnboarding.biometricEnabled = v)),
   setCreatedAddress: jest.fn((v: string) => (mockOnboarding.createdAddress = v)),
   setCreatedWallet: jest.fn((v: unknown) => (mockOnboarding.createdWallet = v)),
+  setRecoveredWallet: jest.fn((v: unknown) => (mockOnboarding.recoveredWallet = v)),
   clearSecrets: jest.fn(() => (mockOnboarding.passphrase = '')),
 };
 jest.mock('../src/screens/onboarding/OnboardingContext', () => ({
@@ -56,8 +60,10 @@ jest.mock('../src/screens/onboarding/OnboardingContext', () => ({
 }));
 
 const mockCreateWallet = jest.fn();
+const mockPersistWallet = jest.fn();
 jest.mock('../src/wallet/Wallet', () => ({
   createWallet: (...args: unknown[]) => mockCreateWallet(...args),
+  persistWallet: (...args: unknown[]) => mockPersistWallet(...args),
 }));
 
 const mockRefresh = jest.fn();
@@ -151,6 +157,8 @@ beforeEach(() => {
   mockOnboarding.passphrase = '';
   mockOnboarding.biometricEnabled = false;
   mockOnboarding.createdAddress = null;
+  mockOnboarding.createdWallet = null;
+  mockOnboarding.recoveredWallet = null;
 });
 
 // --- Passphrase -------------------------------------------------------------
@@ -282,6 +290,35 @@ describe('GenerateWallet', () => {
     expect(mockOnboarding.setCreatedAddress).toHaveBeenCalledWith('rrn1exampleaddress');
     expect(mockOnboarding.clearSecrets).toHaveBeenCalled();
     expect(navigation.replace).toHaveBeenCalledWith('WalletReady');
+  });
+
+  test('on the recover path it re-seals the recovered identity, never minting a new key', async () => {
+    // The identity already exists (reconstructed from a circle / opened from an
+    // export); the generate step must seal *that* under the new device
+    // passphrase — the D3 "re-seal, never mint" invariant.
+    const recovered = {address: 'rrn1recovered'};
+    mockOnboarding.passphrase = 'a new device passphrase';
+    mockOnboarding.biometricEnabled = false;
+    mockOnboarding.recoveredWallet = recovered;
+    mockPersistWallet.mockResolvedValue(undefined);
+
+    const navigation = nav();
+    const r = await renderScreen(
+      <GenerateWallet navigation={navigation} route={{} as any} />,
+    );
+    await settle();
+
+    expect(mockCreateWallet).not.toHaveBeenCalled();
+    expect(mockPersistWallet).toHaveBeenCalledWith(
+      recovered,
+      'a new device passphrase',
+      undefined,
+      {requireBiometric: false},
+    );
+    expect(mockOnboarding.setCreatedAddress).toHaveBeenCalledWith('rrn1recovered');
+    expect(mockOnboarding.setCreatedWallet).toHaveBeenCalledWith(recovered);
+    expect(navigation.replace).toHaveBeenCalledWith('WalletReady');
+    expect(hasText(r, 'Restoring your wallet')).toBe(true);
   });
 
   test('holds the progress screen when creation returns near-instantly', async () => {

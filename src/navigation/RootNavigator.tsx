@@ -10,6 +10,9 @@ import {Passphrase} from '../screens/onboarding/Passphrase';
 import {BiometricSetup} from '../screens/onboarding/BiometricSetup';
 import {GenerateWallet} from '../screens/onboarding/GenerateWallet';
 import {WalletReady} from '../screens/onboarding/WalletReady';
+import {RecoverChoice} from '../screens/onboarding/RecoverChoice';
+import {RecoverFromCircle} from '../screens/onboarding/RecoverFromCircle';
+import {RecoverFromExport} from '../screens/onboarding/RecoverFromExport';
 import {Home} from '../screens/main/Home';
 import {Send} from '../screens/main/Send';
 import {Community} from '../screens/main/Community';
@@ -74,6 +77,15 @@ function OnboardingNavigator() {
     <OnboardingProvider>
       <OnboardingStack.Navigator screenOptions={{headerShown: false}}>
         <OnboardingStack.Screen name="Welcome" component={Welcome} />
+        <OnboardingStack.Screen name="RecoverChoice" component={RecoverChoice} />
+        <OnboardingStack.Screen
+          name="RecoverFromCircle"
+          component={RecoverFromCircle}
+        />
+        <OnboardingStack.Screen
+          name="RecoverFromExport"
+          component={RecoverFromExport}
+        />
         <OnboardingStack.Screen name="Passphrase" component={Passphrase} />
         <OnboardingStack.Screen name="BiometricSetup" component={BiometricSetup} />
         <OnboardingStack.Screen

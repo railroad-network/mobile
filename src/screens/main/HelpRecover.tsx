@@ -59,6 +59,7 @@ interface Notice {
 /** What we scanned and the shard we hold for it, carried into the confirm step. */
 interface Target {
   address: string;
+  fingerprint: string;
   shard: HeldShard;
   request: Uint8Array;
 }
@@ -123,7 +124,12 @@ export function HelpRecover({navigation}: MainStackScreenProps<'HelpRecover'>) {
     }
 
     setNotice(null);
-    setTarget({address: info.targetAddress, shard, request: bytes});
+    setTarget({
+      address: info.targetAddress,
+      fingerprint: info.fingerprint,
+      shard,
+      request: bytes,
+    });
     setMode('confirm');
   }
 
@@ -201,6 +207,26 @@ export function HelpRecover({navigation}: MainStackScreenProps<'HelpRecover'>) {
             <Text variant="caption" color={theme.colors.textSecondary}>
               You hold a {target.shard.threshold}-of-{target.shard.total} piece
               for them. Any {target.shard.threshold} holders can bring them back.
+            </Text>
+          </Card>
+
+          <Card style={{gap: theme.spacing.xs}}>
+            <Text variant="caption" color={theme.colors.textSecondary}>
+              Ceremony fingerprint
+            </Text>
+            <Text
+              variant="mono"
+              color={theme.colors.text}
+              selectable
+              style={styles.fingerprint}
+              accessibilityLabel={`Ceremony fingerprint: ${target.fingerprint}`}>
+              {target.fingerprint}
+            </Text>
+            <Text variant="caption" color={theme.colors.textSecondary}>
+              Only contribute if you've confirmed — in person, or on a channel you
+              already trust — that this is really them recovering their own key.
+              Read this code aloud together; it must match their screen exactly. A
+              recovery request is only as trustworthy as the person showing it.
             </Text>
           </Card>
 
@@ -284,6 +310,7 @@ export function HelpRecover({navigation}: MainStackScreenProps<'HelpRecover'>) {
 
 const styles = StyleSheet.create({
   scanner: {height: 320, overflow: 'hidden'},
+  fingerprint: {fontSize: 24, letterSpacing: 2},
   centerCol: {alignItems: 'center'},
   centerText: {textAlign: 'center'},
   qrCard: {padding: 14},
