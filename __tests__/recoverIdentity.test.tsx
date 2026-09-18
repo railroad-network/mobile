@@ -31,6 +31,16 @@ const FINGERPRINT = fingerprintFixture.vectors[0].fingerprint;
 
 // --- Mocked seams -----------------------------------------------------------
 
+// RecoverFromCircle pauses its scanner via useIsFocused; outside a navigator it
+// has no context, so stub it to "focused" (the QRScanner itself is mocked below).
+jest.mock('@react-navigation/native', () => ({useIsFocused: () => true}));
+
+// The address-scan path parses a scanned QR through this seam.
+const mockParseAddressQr = jest.fn();
+jest.mock('../src/ledger/addressQr', () => ({
+  parseAddressQr: (v: string) => mockParseAddressQr(v),
+}));
+
 let mockOnScan: ((value: string) => void) | undefined;
 jest.mock('../src/components/QRScanner', () => {
   const ReactActual = require('react');
@@ -158,6 +168,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockOnScan = undefined;
   mockIsValid = () => true;
+  mockParseAddressQr.mockReturnValue(null);
   mockSession = {
     requestQr: jest.fn(() => 'rrnrecover-req:AAAA'),
     fingerprint: jest.fn(() => FINGERPRINT),
@@ -261,5 +272,71 @@ describe('RecoverFromCircle', () => {
     expect(mockSession.addResponseQr).toHaveBeenCalledTimes(3);
     expect(mockSetRecoveredWallet).toHaveBeenCalledWith(wallet);
     expect(navigation.navigate).toHaveBeenCalledWith('Passphrase');
+  });
+
+  test('a non-response QR shows guidance and is not counted', async () => {
+    mockSession.addResponseQr.mockReturnValue({kind: 'not-a-response'});
+    const r = await startCeremony();
+    await press(button(r, "Scan a holder's response"));
+    await scan('rrn1someplainaddress');
+
+    expect(hasText(r, "isn't a recovery response")).toBe(true);
+    expect(mockSession.reconstruct).not.toHaveBeenCalled();
+  });
+
+  test('once a full circle is gathered but it will not rebuild, it offers a fresh start (not a wrong verdict)', async () => {
+    // K is unknown to the requester; reaching the common threshold without a
+    // rebuild must read as "still rebuilding", never "these pieces are bad".
+    let count = 0;
+    mockSession.addResponseQr.mockImplementation(() => ({
+      kind: 'added',
+      responses: ++count,
+    }));
+    mockSession.reconstruct.mockReturnValue({kind: 'need-more'});
+
+    const r = await startCeremony();
+    for (let i = 0; i < 3; i++) {
+      await press(button(r, "Scan a holder's response"));
+      await scan(`rrnrecover-resp:SHARE${i}`);
+    }
+
+    expect(hasText(r, 'Still rebuilding')).toBe(true);
+    expect(hasText(r, "don't rebuild your key")).toBe(false);
+    expect(mockSetRecoveredWallet).not.toHaveBeenCalled();
+  });
+
+  test('start over mints a fresh ceremony', async () => {
+    mockSession.addResponseQr.mockReturnValue({kind: 'added', responses: 1});
+    mockSession.reconstruct.mockReturnValue({kind: 'need-more'});
+    const r = await startCeremony();
+    await press(button(r, "Scan a holder's response"));
+    await scan('rrnrecover-resp:SHARE0');
+    // One piece gathered → the start-over affordance appears on the request step.
+    await press(button(r, 'Start over with a new request'));
+
+    // begin() once at ceremony start, once for the fresh request.
+    expect(mockBegin).toHaveBeenCalledTimes(2);
+    expect(mockBegin).toHaveBeenLastCalledWith('rrn1lostidentity');
+  });
+
+  test('the address scan accepts an address QR and starts the ceremony with it', async () => {
+    mockParseAddressQr.mockReturnValue({address: 'rrn1scannedidentity'});
+    const navigation = nav();
+    const r = await render(<RecoverFromCircle navigation={navigation} route={{} as any} />);
+    await press(button(r, 'Scan your address instead'));
+    await scan('rrn1scannedidentity');
+    await press(button(r, 'Start recovery'));
+
+    expect(mockBegin).toHaveBeenCalledWith('rrn1scannedidentity');
+  });
+
+  test('the address scan rejects a non-address QR', async () => {
+    mockParseAddressQr.mockReturnValue(null);
+    const r = await render(<RecoverFromCircle navigation={nav()} route={{} as any} />);
+    await press(button(r, 'Scan your address instead'));
+    await scan('rrnrecover-resp:NOTANADDRESS');
+
+    expect(hasText(r, "isn't an address")).toBe(true);
+    expect(mockBegin).not.toHaveBeenCalled();
   });
 });

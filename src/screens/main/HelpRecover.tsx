@@ -95,7 +95,7 @@ export function HelpRecover({navigation}: MainStackScreenProps<'HelpRecover'>) {
       setNotice({
         variant: 'warning',
         title: "That isn't a recovery request",
-        body: 'Scan the request your friend’s station is showing — a shard or plain address QR won’t work here.',
+        body: 'Scan the request your friend’s device is showing — a shard or plain address QR won’t work here.',
       });
       return;
     }

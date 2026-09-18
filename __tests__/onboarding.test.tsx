@@ -21,6 +21,7 @@ import {SafeAreaProvider} from 'react-native-safe-area-context';
 import * as Keychain from 'react-native-keychain';
 
 import {ThemeProvider} from '../src/theme';
+import {Welcome} from '../src/screens/onboarding/Welcome';
 import {Passphrase} from '../src/screens/onboarding/Passphrase';
 import {BiometricSetup} from '../src/screens/onboarding/BiometricSetup';
 import {GenerateWallet} from '../src/screens/onboarding/GenerateWallet';
@@ -513,5 +514,28 @@ describe('WalletReady', () => {
     await press(button(r, 'Skip for now'));
     expect(mockAdopt).toHaveBeenCalledWith(created);
     mockOnboarding.createdWallet = null;
+  });
+});
+
+describe('Welcome', () => {
+  test('"Create my wallet" clears any recovered identity before the create flow', async () => {
+    // Guards the create path from silently sealing an identity a previous,
+    // abandoned recovery left in the flow.
+    mockOnboarding.recoveredWallet = {address: 'rrn1stale'};
+    const navigation = nav();
+    const r = await renderScreen(<Welcome navigation={navigation} route={{} as any} />);
+
+    await press(button(r, 'Create my wallet'));
+    expect(mockOnboarding.setRecoveredWallet).toHaveBeenCalledWith(null);
+    expect(navigation.navigate).toHaveBeenCalledWith('Passphrase');
+  });
+
+  test('"Recover an existing identity" opens the recover chooser', async () => {
+    const navigation = nav();
+    const r = await renderScreen(<Welcome navigation={navigation} route={{} as any} />);
+
+    await press(button(r, 'Recover an existing identity'));
+    expect(navigation.navigate).toHaveBeenCalledWith('RecoverChoice');
+    expect(mockOnboarding.setRecoveredWallet).not.toHaveBeenCalled();
   });
 });

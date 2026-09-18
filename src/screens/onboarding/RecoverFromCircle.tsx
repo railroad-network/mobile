@@ -9,8 +9,9 @@
  *   2. `request` — this device shows a `rrnrecover-req:` QR and, in large type,
  *      the ceremony fingerprint. Every holder must see this *same* fingerprint
  *      before they contribute — it is how two holders notice they were shown
- *      different ceremonies. Progress ("2 responses · need 3") tracks the shares
- *      gathered so far.
+ *      different ceremonies. Progress tracks the pieces gathered so far (the
+ *      requester cannot know the circle's real threshold, so the count is a hint,
+ *      not a hard target).
  *   3. `scan` — the member scans each holder's `rrnrecover-resp:` QR. A response
  *      for a different ceremony is refused, not mixed in. When enough shares
  *      rebuild the target address, the recovered identity is carried into the
@@ -20,8 +21,9 @@
  * a wrong key. The ephemeral secret stays in Rust and is zeroized when the
  * session is dropped.
  */
-import {useState} from 'react';
+import {useRef, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
+import {useIsFocused} from '@react-navigation/native';
 import QRCode from 'react-native-qrcode-svg';
 
 import {Banner, Button, Card, Field, Heading, QRScanner, Text} from '../../components';
@@ -49,6 +51,11 @@ export function RecoverFromCircle({
 }: OnboardingScreenProps<'RecoverFromCircle'>) {
   const theme = useTheme();
   const {setRecoveredWallet} = useOnboarding();
+  // Pauses the camera when this screen is not the focused route — the onboarding
+  // stack keeps it mounted underneath the passphrase → ready tail after a
+  // successful rebuild, and a still-live scanner there would keep the camera on
+  // and could fire a stale scan into an unmounted flow.
+  const isFocused = useIsFocused();
 
   const [step, setStep] = useState<Step>('address');
   const [session, setSession] = useState<RecoverySession | null>(null);
@@ -56,6 +63,9 @@ export function RecoverFromCircle({
   const [addressError, setAddressError] = useState<string | null>(null);
   const [scanningAddress, setScanningAddress] = useState(false);
   const [responses, setResponses] = useState(0);
+  // A synchronous mirror of the gathered count, so two camera events in the same
+  // React batch dedupe against the true running total rather than a stale render.
+  const responsesRef = useRef(0);
   const [notice, setNotice] = useState<Notice | null>(null);
 
   function begin() {
@@ -66,6 +76,7 @@ export function RecoverFromCircle({
     }
     try {
       setSession(RecoverySession.begin(address));
+      responsesRef.current = 0;
       setResponses(0);
       setNotice(null);
       setStep('request');
@@ -81,6 +92,7 @@ export function RecoverFromCircle({
   function startOver() {
     if (session === null) return;
     setSession(RecoverySession.begin(addressInput.trim()));
+    responsesRef.current = 0;
     setResponses(0);
     setNotice(null);
     setStep('request');
@@ -126,8 +138,9 @@ export function RecoverFromCircle({
     }
 
     // Accepted. If the count didn't advance, it was a re-scan of a share already
-    // held — say so gently and keep going.
-    if (result.responses === responses) {
+    // held — say so gently and keep going. Compare against the synchronous mirror
+    // so a rapid double-scan can't be misjudged against a stale render.
+    if (result.responses === responsesRef.current) {
       setNotice({
         variant: 'info',
         title: 'Already have that one',
@@ -135,6 +148,7 @@ export function RecoverFromCircle({
       });
       return;
     }
+    responsesRef.current = result.responses;
     setResponses(result.responses);
     setNotice(null);
 
@@ -142,19 +156,22 @@ export function RecoverFromCircle({
     if (rebuilt.kind === 'recovered') {
       // Carry the rebuilt identity into the shared tail; it is sealed under a new
       // device passphrase there (D3: a recovered wallet starts unanchored and
-      // re-syncs its nonce before its first spend).
+      // re-syncs its nonce before its first spend). Leave the scan step first so
+      // the camera pauses and no stale scan fires into the tail (see isFocused).
+      setStep('request');
       setRecoveredWallet(rebuilt.wallet);
       navigation.navigate('Passphrase');
       return;
     }
-    // Enough pieces by count, but they don't rebuild the key — a share is from a
-    // different circle or a bad actor (ADR-0016's named residual). Say so and
-    // point at the remedy: a fresh request (startOver).
+    // Not enough shares yet — the requester cannot know the circle's real
+    // threshold (K is set at split time and can exceed the mobile default), so we
+    // do NOT declare the set bad. Once the member has plausibly gathered a full
+    // circle, offer the remedy for a poisoned/mixed set without asserting it.
     if (result.responses >= RECOVERY_THRESHOLD) {
       setNotice({
-        variant: 'warning',
-        title: "Those pieces don't rebuild your key",
-        body: 'One may be from a different circle, or the wrong ceremony. Start over with a fresh request and gather pieces from the right holders.',
+        variant: 'info',
+        title: 'Still rebuilding',
+        body: "If you've gathered a piece from everyone in your circle and it still won't rebuild, one may be from a different circle — start over with a fresh request.",
       });
     }
     // Back to the request so the next holder can scan it, with progress updated.
@@ -176,14 +193,14 @@ export function RecoverFromCircle({
             </Button>
           }>
           <Heading level="headingMedium" style={{marginBottom: theme.spacing.sm}}>
-            Scan their address
+            Scan your address
           </Heading>
           <Text
             variant="body"
             color={theme.colors.textSecondary}
             style={{marginBottom: theme.spacing.lg}}>
-            Point the camera at the address QR from a credential card or a
-            friend's contact list.
+            Point the camera at your address QR — from your credential card, or a
+            contact a friend saved for you.
           </Text>
           {notice !== null && (
             <View style={{marginBottom: theme.spacing.md}}>
@@ -193,7 +210,7 @@ export function RecoverFromCircle({
             </View>
           )}
           <Card padded={false} style={styles.scanner}>
-            <QRScanner onScan={onScanAddress} isActive />
+            <QRScanner onScan={onScanAddress} isActive={isFocused} />
           </Card>
         </OnboardingScaffold>
       );
@@ -251,14 +268,16 @@ export function RecoverFromCircle({
             size="md"
             fullWidth
             onPress={() => setScanningAddress(true)}>
-            Scan their address instead
+            Scan your address instead
           </Button>
         </View>
       </OnboardingScaffold>
     );
   }
 
-  const progress = `${responses} ${responses === 1 ? 'response' : 'responses'} · need ${RECOVERY_THRESHOLD}`;
+  // The requester doesn't know the circle's real threshold, so state the count
+  // and give the common case as a hint rather than a hard target.
+  const progress = `${responses} ${responses === 1 ? 'piece' : 'pieces'} gathered · usually ${RECOVERY_THRESHOLD} needed`;
 
   // --- step: show the request + fingerprint ---------------------------------
   if (step === 'request' && session !== null) {
@@ -370,7 +389,7 @@ export function RecoverFromCircle({
         Point the camera at the response each holder shows you. {progress}.
       </Text>
       <Card padded={false} style={styles.scanner}>
-        <QRScanner onScan={onScanResponse} isActive={step === 'scan'} />
+        <QRScanner onScan={onScanResponse} isActive={step === 'scan' && isFocused} />
       </Card>
     </OnboardingScaffold>
   );
