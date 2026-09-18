@@ -20,23 +20,38 @@ import {Pressable, View} from 'react-native';
 import {Button, Card, Heading, Text} from '../../components';
 import {useTheme} from '../../theme';
 import type {OnboardingScreenProps} from '../../navigation/types';
+import {useOnboarding} from './OnboardingContext';
 import {OnboardingScaffold} from './OnboardingScaffold';
 
 export function RecoverChoice({
   navigation,
 }: OnboardingScreenProps<'RecoverChoice'>) {
   const theme = useTheme();
+  const {setRecoveredWallet} = useOnboarding();
+
+  // Bail out of recovery straight into fresh wallet creation, mirroring Welcome's
+  // "Create my wallet": drop any identity an abandoned recovery attempt left in
+  // the flow so the generate step seals a new keypair, not that one.
+  function createNew() {
+    setRecoveredWallet(null);
+    navigation.navigate('Passphrase');
+  }
 
   return (
     <OnboardingScaffold
       footer={
-        <Button
-          variant="ghost"
-          size="lg"
-          fullWidth
-          onPress={() => navigation.goBack()}>
-          Create a new wallet instead
-        </Button>
+        <>
+          <Button variant="ghost" size="lg" fullWidth onPress={createNew}>
+            Create a new wallet instead
+          </Button>
+          <Button
+            variant="ghost"
+            size="lg"
+            fullWidth
+            onPress={() => navigation.goBack()}>
+            Back
+          </Button>
+        </>
       }>
       <Heading level="headingMedium" style={{marginBottom: theme.spacing.sm}}>
         Recover your identity

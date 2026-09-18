@@ -21,8 +21,8 @@
  * a wrong key. The ephemeral secret stays in Rust and is zeroized when the
  * session is dropped.
  */
-import {useRef, useState} from 'react';
-import {StyleSheet, View} from 'react-native';
+import {useEffect, useRef, useState} from 'react';
+import {Alert, StyleSheet, View} from 'react-native';
 import {useIsFocused} from '@react-navigation/native';
 import QRCode from 'react-native-qrcode-svg';
 
@@ -67,6 +67,34 @@ export function RecoverFromCircle({
   // React batch dedupe against the true running total rather than a stale render.
   const responsesRef = useRef(0);
   const [notice, setNotice] = useState<Notice | null>(null);
+  // Set once a rebuild has been carried into the shared tail, so leaving after a
+  // successful recovery never prompts — there is nothing left to lose then.
+  const [committed, setCommitted] = useState(false);
+
+  // Guard against silently losing a partly-gathered circle. Once at least one
+  // holder's piece is in, any exit from the ceremony — the Cancel button, the
+  // system back gesture, anything that pops this screen — confirms first, so an
+  // accidental back doesn't discard shares the holders would have to re-scan.
+  // `addListener` is optional-chained so the screen still renders outside a
+  // navigator (tests, storybook).
+  useEffect(() => {
+    if (responses === 0 || committed) return;
+    return navigation.addListener?.('beforeRemove', e => {
+      e.preventDefault();
+      Alert.alert(
+        'Cancel recovery?',
+        "You've gathered pieces from your circle. Leaving now discards them, and your holders would have to scan a fresh request.",
+        [
+          {text: 'Keep going', style: 'cancel'},
+          {
+            text: 'Discard and leave',
+            style: 'destructive',
+            onPress: () => navigation.dispatch(e.data.action),
+          },
+        ],
+      );
+    });
+  }, [navigation, responses, committed]);
 
   function begin() {
     const address = addressInput.trim();
@@ -159,6 +187,7 @@ export function RecoverFromCircle({
       // re-syncs its nonce before its first spend). Leave the scan step first so
       // the camera pauses and no stale scan fires into the tail (see isFocused).
       setStep('request');
+      setCommitted(true);
       setRecoveredWallet(rebuilt.wallet);
       navigation.navigate('Passphrase');
       return;
@@ -300,6 +329,13 @@ export function RecoverFromCircle({
                 Start over with a new request
               </Button>
             )}
+            <Button
+              variant="ghost"
+              size="lg"
+              fullWidth
+              onPress={() => navigation.goBack()}>
+              Cancel recovery
+            </Button>
           </>
         }>
         {notice !== null && (
@@ -366,13 +402,22 @@ export function RecoverFromCircle({
   return (
     <OnboardingScaffold
       footer={
-        <Button
-          variant="ghost"
-          size="lg"
-          fullWidth
-          onPress={() => setStep('request')}>
-          Done scanning for now
-        </Button>
+        <>
+          <Button
+            variant="ghost"
+            size="lg"
+            fullWidth
+            onPress={() => setStep('request')}>
+            Done scanning for now
+          </Button>
+          <Button
+            variant="ghost"
+            size="lg"
+            fullWidth
+            onPress={() => navigation.goBack()}>
+            Cancel recovery
+          </Button>
+        </>
       }>
       {notice !== null && (
         <Banner variant={notice.variant} title={notice.title}>

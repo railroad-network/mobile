@@ -18,6 +18,7 @@
  * pure wire helpers stay real.
  */
 import React from 'react';
+import {Alert} from 'react-native';
 import ReactTestRenderer, {act} from 'react-test-renderer';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 
@@ -100,7 +101,13 @@ const metrics = {
 };
 
 function nav() {
-  return {navigate: jest.fn(), goBack: jest.fn()} as any;
+  return {
+    navigate: jest.fn(),
+    goBack: jest.fn(),
+    dispatch: jest.fn(),
+    // Returns an unsubscribe, like the real navigation prop.
+    addListener: jest.fn(() => jest.fn()),
+  } as any;
 }
 
 type Renderer = ReactTestRenderer.ReactTestRenderer;
@@ -338,5 +345,52 @@ describe('RecoverFromCircle', () => {
 
     expect(hasText(r, "isn't an address")).toBe(true);
     expect(mockBegin).not.toHaveBeenCalled();
+  });
+
+  test('leaving with pieces gathered confirms before discarding them', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    mockSession.addResponseQr.mockReturnValue({kind: 'added', responses: 1});
+    mockSession.reconstruct.mockReturnValue({kind: 'need-more'});
+
+    const navigation = nav();
+    let beforeRemove: ((e: any) => void) | undefined;
+    navigation.addListener = jest.fn((event: string, cb: (e: any) => void) => {
+      if (event === 'beforeRemove') beforeRemove = cb;
+      return jest.fn();
+    });
+
+    const r = await startCeremony(navigation);
+    await press(button(r, "Scan a holder's response"));
+    await scan('rrnrecover-resp:SHARE0'); // one piece in → the guard arms
+
+    expect(beforeRemove).toBeDefined();
+    const event = {preventDefault: jest.fn(), data: {action: {type: 'GO_BACK'}}};
+    await act(async () => beforeRemove!(event));
+
+    // The pop is intercepted and a confirm shown rather than leaving outright.
+    expect(event.preventDefault).toHaveBeenCalled();
+    expect(alertSpy).toHaveBeenCalled();
+    expect(navigation.dispatch).not.toHaveBeenCalled();
+
+    // Choosing to discard replays the original navigation action.
+    const buttons = alertSpy.mock.calls[0][2] as any[];
+    buttons.find(b => b.style === 'destructive')!.onPress();
+    expect(navigation.dispatch).toHaveBeenCalledWith({type: 'GO_BACK'});
+
+    alertSpy.mockRestore();
+  });
+
+  test('leaving before any piece is gathered does not arm the confirm', async () => {
+    const navigation = nav();
+    let beforeRemove: ((e: any) => void) | undefined;
+    navigation.addListener = jest.fn((event: string, cb: (e: any) => void) => {
+      if (event === 'beforeRemove') beforeRemove = cb;
+      return jest.fn();
+    });
+
+    // Reach the request step with zero responses gathered.
+    await startCeremony(navigation);
+
+    expect(beforeRemove).toBeUndefined();
   });
 });

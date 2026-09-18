@@ -68,14 +68,23 @@ export function Passphrase({navigation}: OnboardingScreenProps<'Passphrase'>) {
   return (
     <OnboardingScaffold
       footer={
-        <Button
-          variant="primary"
-          size="lg"
-          fullWidth
-          disabled={!canContinue}
-          onPress={onContinue}>
-          Continue
-        </Button>
+        <>
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            disabled={!canContinue}
+            onPress={onContinue}>
+            Continue
+          </Button>
+          <Button
+            variant="ghost"
+            size="lg"
+            fullWidth
+            onPress={() => navigation.goBack()}>
+            Back
+          </Button>
+        </>
       }>
       <Heading level="headingMedium" style={{marginBottom: theme.spacing.sm}}>
         Set a passphrase
