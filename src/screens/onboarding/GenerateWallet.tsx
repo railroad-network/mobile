@@ -149,19 +149,11 @@ export function GenerateWallet({
     return (
       <OnboardingScaffold
         center
+        onBack={() => navigation.goBack()}
         footer={
-          <>
-            <Button variant="primary" size="lg" fullWidth onPress={retry}>
-              Try again
-            </Button>
-            <Button
-              variant="ghost"
-              size="lg"
-              fullWidth
-              onPress={() => navigation.goBack()}>
-              Back
-            </Button>
-          </>
+          <Button variant="primary" size="lg" fullWidth onPress={retry}>
+            Try again
+          </Button>
         }>
         <View style={styles.center}>
           <Heading

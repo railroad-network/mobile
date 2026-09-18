@@ -39,19 +39,11 @@ export function RecoverChoice({
 
   return (
     <OnboardingScaffold
+      onBack={() => navigation.goBack()}
       footer={
-        <>
-          <Button variant="ghost" size="lg" fullWidth onPress={createNew}>
-            Create a new wallet instead
-          </Button>
-          <Button
-            variant="ghost"
-            size="lg"
-            fullWidth
-            onPress={() => navigation.goBack()}>
-            Back
-          </Button>
-        </>
+        <Button variant="ghost" size="lg" fullWidth onPress={createNew}>
+          Create a new wallet instead
+        </Button>
       }>
       <Heading level="headingMedium" style={{marginBottom: theme.spacing.sm}}>
         Recover your identity

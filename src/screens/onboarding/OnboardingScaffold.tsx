@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
+import {BackLink} from '../../components';
 import {darkColors, useTheme} from '../../theme';
 
 export interface OnboardingScaffoldProps {
@@ -28,6 +29,16 @@ export interface OnboardingScaffoldProps {
    * moments (Welcome, generating). Forces a light-content status bar.
    */
   dark?: boolean;
+  /**
+   * Where the top-left back link goes — the same BackLink affordance the rest
+   * of the app uses (see ScreenHeader/BackLink). Omit only for a screen that is
+   * genuinely the bottom of its stack (Welcome) or must not be interrupted
+   * (wallet generation in progress). Pinned above the scroll area so it stays
+   * put even on centered screens.
+   */
+  onBack?: () => void;
+  /** Back label; defaults to "Back". */
+  backLabel?: string;
 }
 
 export function OnboardingScaffold({
@@ -35,6 +46,8 @@ export function OnboardingScaffold({
   footer,
   center = false,
   dark = false,
+  onBack,
+  backLabel,
 }: OnboardingScaffoldProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
@@ -45,13 +58,24 @@ export function OnboardingScaffold({
       style={[styles.fill, {backgroundColor: bg}]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       {dark && <StatusBar barStyle="light-content" backgroundColor={bg} />}
+      {onBack !== undefined && (
+        <View
+          style={{
+            paddingTop: insets.top + theme.spacing.md,
+            paddingHorizontal: theme.spacing.lg,
+          }}>
+          <BackLink onPress={onBack} label={backLabel} />
+        </View>
+      )}
       <ScrollView
         style={styles.fill}
         contentContainerStyle={[
           styles.content,
           center && styles.centered,
           {
-            paddingTop: insets.top + theme.spacing.xl,
+            // With a back link above, the top gap is already spent on it.
+            paddingTop:
+              onBack !== undefined ? theme.spacing.md : insets.top + theme.spacing.xl,
             paddingHorizontal: theme.spacing.lg,
             paddingBottom: theme.spacing.lg,
           },

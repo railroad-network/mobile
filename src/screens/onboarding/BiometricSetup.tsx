@@ -74,42 +74,34 @@ export function BiometricSetup({
   return (
     <OnboardingScaffold
       center
+      onBack={() => navigation.goBack()}
       footer={
-        <>
-          {supported ? (
-            <>
-              <Button
-                variant="primary"
-                size="lg"
-                fullWidth
-                onPress={() => proceed(true)}>
-                {`Enable ${label}`}
-              </Button>
-              <Button
-                variant="ghost"
-                size="lg"
-                fullWidth
-                onPress={() => proceed(false)}>
-                Not now
-              </Button>
-            </>
-          ) : (
+        supported ? (
+          <>
             <Button
               variant="primary"
               size="lg"
               fullWidth
-              onPress={() => proceed(false)}>
-              Continue
+              onPress={() => proceed(true)}>
+              {`Enable ${label}`}
             </Button>
-          )}
+            <Button
+              variant="ghost"
+              size="lg"
+              fullWidth
+              onPress={() => proceed(false)}>
+              Not now
+            </Button>
+          </>
+        ) : (
           <Button
-            variant="ghost"
+            variant="primary"
             size="lg"
             fullWidth
-            onPress={() => navigation.goBack()}>
-            Back
+            onPress={() => proceed(false)}>
+            Continue
           </Button>
-        </>
+        )
       }>
       <View style={styles.body}>
         <View style={[styles.mark, {backgroundColor: theme.colors.primaryTint}]}>

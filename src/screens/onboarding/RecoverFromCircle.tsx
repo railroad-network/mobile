@@ -212,6 +212,7 @@ export function RecoverFromCircle({
     if (scanningAddress) {
       return (
         <OnboardingScaffold
+          onBack={() => navigation.goBack()}
           footer={
             <Button
               variant="ghost"
@@ -246,24 +247,16 @@ export function RecoverFromCircle({
     }
     return (
       <OnboardingScaffold
+        onBack={() => navigation.goBack()}
         footer={
-          <>
-            <Button
-              variant="primary"
-              size="lg"
-              fullWidth
-              disabled={addressInput.trim().length === 0}
-              onPress={begin}>
-              Start recovery
-            </Button>
-            <Button
-              variant="ghost"
-              size="lg"
-              fullWidth
-              onPress={() => navigation.goBack()}>
-              Back
-            </Button>
-          </>
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            disabled={addressInput.trim().length === 0}
+            onPress={begin}>
+            Start recovery
+          </Button>
         }>
         <Heading level="headingMedium" style={{marginBottom: theme.spacing.sm}}>
           Which identity are you recovering?
@@ -312,6 +305,8 @@ export function RecoverFromCircle({
   if (step === 'request' && session !== null) {
     return (
       <OnboardingScaffold
+        onBack={() => navigation.goBack()}
+        backLabel="Cancel recovery"
         footer={
           <>
             <Button
@@ -329,13 +324,6 @@ export function RecoverFromCircle({
                 Start over with a new request
               </Button>
             )}
-            <Button
-              variant="ghost"
-              size="lg"
-              fullWidth
-              onPress={() => navigation.goBack()}>
-              Cancel recovery
-            </Button>
           </>
         }>
         {notice !== null && (
@@ -401,23 +389,16 @@ export function RecoverFromCircle({
   // --- step: scan holder responses ------------------------------------------
   return (
     <OnboardingScaffold
+      onBack={() => navigation.goBack()}
+      backLabel="Cancel recovery"
       footer={
-        <>
-          <Button
-            variant="ghost"
-            size="lg"
-            fullWidth
-            onPress={() => setStep('request')}>
-            Done scanning for now
-          </Button>
-          <Button
-            variant="ghost"
-            size="lg"
-            fullWidth
-            onPress={() => navigation.goBack()}>
-            Cancel recovery
-          </Button>
-        </>
+        <Button
+          variant="ghost"
+          size="lg"
+          fullWidth
+          onPress={() => setStep('request')}>
+          Done scanning for now
+        </Button>
       }>
       {notice !== null && (
         <Banner variant={notice.variant} title={notice.title}>
