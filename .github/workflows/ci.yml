@@ -181,6 +181,12 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('android/gradle/wrapper/gradle-wrapper.properties', 'android/build.gradle', 'android/app/build.gradle') }}
           restore-keys: ${{ runner.os }}-gradle-
       - uses: android-actions/setup-android@v3
+        with:
+          # setup-android@v3 defaults to installing `tools platform-tools`, but
+          # Google removed the legacy `tools` SDK package, so the default now
+          # fails ("Failed to find package 'tools'"). Install only what we need;
+          # the Android Gradle Plugin auto-provisions build-tools/platforms.
+          packages: platform-tools
       # The Rust FFI (ADR-0007) lives in the sibling `station` repo, exactly as
       # in ios-build above: check it out at the relative path ubrn.config.yaml
       # expects, pinned to .station-version.
