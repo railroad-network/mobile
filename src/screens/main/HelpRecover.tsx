@@ -174,7 +174,7 @@ export function HelpRecover({navigation}: MainStackScreenProps<'HelpRecover'>) {
         title="Help someone recover"
         subtitle={
           'When a friend you hold a shard for loses their key, scan the request ' +
-          'their station shows to contribute your piece.'
+          'their device shows to contribute your piece.'
         }
         onBack={() => navigation.goBack()}
       />
@@ -296,7 +296,7 @@ export function HelpRecover({navigation}: MainStackScreenProps<'HelpRecover'>) {
             variant="body"
             color={theme.colors.textSecondary}
             style={styles.centerText}>
-            Have their station scan this. It only works for them — your piece is
+            Have their device scan this. It only works for them — your piece is
             sealed to this one recovery.
           </Text>
           <Button variant="primary" size="lg" fullWidth onPress={() => navigation.goBack()}>

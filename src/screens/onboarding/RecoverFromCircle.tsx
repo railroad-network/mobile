@@ -21,9 +21,9 @@
  * a wrong key. The ephemeral secret stays in Rust and is zeroized when the
  * session is dropped.
  */
-import {useEffect, useRef, useState} from 'react';
+import {useRef, useState} from 'react';
 import {Alert, StyleSheet, View} from 'react-native';
-import {useIsFocused} from '@react-navigation/native';
+import {useIsFocused, usePreventRemove} from '@react-navigation/native';
 import QRCode from 'react-native-qrcode-svg';
 
 import {Banner, Button, Card, Field, Heading, QRScanner, Text} from '../../components';
@@ -73,28 +73,25 @@ export function RecoverFromCircle({
 
   // Guard against silently losing a partly-gathered circle. Once at least one
   // holder's piece is in, any exit from the ceremony — the Cancel button, the
-  // system back gesture, anything that pops this screen — confirms first, so an
-  // accidental back doesn't discard shares the holders would have to re-scan.
-  // `addListener` is optional-chained so the screen still renders outside a
-  // navigator (tests, storybook).
-  useEffect(() => {
-    if (responses === 0 || committed) return;
-    return navigation.addListener?.('beforeRemove', e => {
-      e.preventDefault();
-      Alert.alert(
-        'Cancel recovery?',
-        "You've gathered pieces from your circle. Leaving now discards them, and your holders would have to scan a fresh request.",
-        [
-          {text: 'Keep going', style: 'cancel'},
-          {
-            text: 'Discard and leave',
-            style: 'destructive',
-            onPress: () => navigation.dispatch(e.data.action),
-          },
-        ],
-      );
-    });
-  }, [navigation, responses, committed]);
+  // Android system back, the iOS swipe-back gesture — confirms first, so an
+  // accidental leave doesn't discard shares the holders would have to re-scan.
+  // usePreventRemove (rather than a bare beforeRemove listener) also feeds
+  // preventNativeDismiss, so the iOS gesture is refused before the native pop
+  // instead of snapping the screen back under the alert.
+  usePreventRemove(responses > 0 && !committed, ({data}) => {
+    Alert.alert(
+      'Cancel recovery?',
+      "You've gathered pieces from your circle. Leaving now discards them, and your holders would have to scan a fresh request.",
+      [
+        {text: 'Keep going', style: 'cancel'},
+        {
+          text: 'Discard and leave',
+          style: 'destructive',
+          onPress: () => navigation.dispatch(data.action),
+        },
+      ],
+    );
+  });
 
   function begin() {
     const address = addressInput.trim();
@@ -106,6 +103,7 @@ export function RecoverFromCircle({
       setSession(RecoverySession.begin(address));
       responsesRef.current = 0;
       setResponses(0);
+      setCommitted(false);
       setNotice(null);
       setStep('request');
     } catch {
@@ -122,6 +120,7 @@ export function RecoverFromCircle({
     setSession(RecoverySession.begin(addressInput.trim()));
     responsesRef.current = 0;
     setResponses(0);
+    setCommitted(false);
     setNotice(null);
     setStep('request');
   }

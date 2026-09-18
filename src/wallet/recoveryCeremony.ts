@@ -32,10 +32,10 @@ import {getRrnCryptoFfi, type RecoveryRequestInfo} from '../crypto/ffi';
 
 export type {RecoveryRequestInfo};
 
-/** URI-style scheme marking a QR string as a recovery *request* (station→phone). */
+/** URI-style scheme marking a QR string as a recovery *request* (requester→holder). */
 export const REQUEST_QR_PREFIX = 'rrnrecover-req:';
 
-/** URI-style scheme marking a QR string as a recovery *response* (phone→station). */
+/** URI-style scheme marking a QR string as a recovery *response* (holder→requester). */
 export const RESPONSE_QR_PREFIX = 'rrnrecover-resp:';
 
 /**

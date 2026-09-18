@@ -23,6 +23,7 @@ import ReactTestRenderer, {act} from 'react-test-renderer';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 
 import {ThemeProvider} from '../src/theme';
+import {RecoverChoice} from '../src/screens/onboarding/RecoverChoice';
 import {RecoverFromExport} from '../src/screens/onboarding/RecoverFromExport';
 import {RecoverFromCircle} from '../src/screens/onboarding/RecoverFromCircle';
 import type {AddResponseResult, ReconstructResult} from '../src/wallet/recoveryRequester';
@@ -32,9 +33,15 @@ const FINGERPRINT = fingerprintFixture.vectors[0].fingerprint;
 
 // --- Mocked seams -----------------------------------------------------------
 
-// RecoverFromCircle pauses its scanner via useIsFocused; outside a navigator it
-// has no context, so stub it to "focused" (the QRScanner itself is mocked below).
-jest.mock('@react-navigation/native', () => ({useIsFocused: () => true}));
+// RecoverFromCircle pauses its scanner via useIsFocused and guards a
+// partly-gathered ceremony via usePreventRemove; outside a navigator neither has
+// context, so stub useIsFocused to "focused" and capture usePreventRemove's
+// (preventRemove, callback) args so tests can drive the confirm.
+const mockUsePreventRemove = jest.fn();
+jest.mock('@react-navigation/native', () => ({
+  useIsFocused: () => true,
+  usePreventRemove: (...args: unknown[]) => mockUsePreventRemove(...args),
+}));
 
 // The address-scan path parses a scanned QR through this seam.
 const mockParseAddressQr = jest.fn();
@@ -108,6 +115,15 @@ function nav() {
     // Returns an unsubscribe, like the real navigation prop.
     addListener: jest.fn(() => jest.fn()),
   } as any;
+}
+
+// The (preventRemove, callback) the screen last passed to usePreventRemove.
+function lastPreventRemove(): [boolean, (o: {data: {action: unknown}}) => void] {
+  const calls = mockUsePreventRemove.mock.calls;
+  return calls[calls.length - 1] as [
+    boolean,
+    (o: {data: {action: unknown}}) => void,
+  ];
 }
 
 type Renderer = ReactTestRenderer.ReactTestRenderer;
@@ -353,26 +369,19 @@ describe('RecoverFromCircle', () => {
     mockSession.reconstruct.mockReturnValue({kind: 'need-more'});
 
     const navigation = nav();
-    let beforeRemove: ((e: any) => void) | undefined;
-    navigation.addListener = jest.fn((event: string, cb: (e: any) => void) => {
-      if (event === 'beforeRemove') beforeRemove = cb;
-      return jest.fn();
-    });
-
     const r = await startCeremony(navigation);
     await press(button(r, "Scan a holder's response"));
     await scan('rrnrecover-resp:SHARE0'); // one piece in → the guard arms
 
-    expect(beforeRemove).toBeDefined();
-    const event = {preventDefault: jest.fn(), data: {action: {type: 'GO_BACK'}}};
-    await act(async () => beforeRemove!(event));
+    // The screen asks navigation to prevent removal while pieces are held.
+    const [prevent, onConfirm] = lastPreventRemove();
+    expect(prevent).toBe(true);
 
-    // The pop is intercepted and a confirm shown rather than leaving outright.
-    expect(event.preventDefault).toHaveBeenCalled();
+    // A prevented exit shows a confirm rather than leaving; only choosing to
+    // discard replays the original navigation action.
+    onConfirm({data: {action: {type: 'GO_BACK'}}});
     expect(alertSpy).toHaveBeenCalled();
     expect(navigation.dispatch).not.toHaveBeenCalled();
-
-    // Choosing to discard replays the original navigation action.
     const buttons = alertSpy.mock.calls[0][2] as any[];
     buttons.find(b => b.style === 'destructive')!.onPress();
     expect(navigation.dispatch).toHaveBeenCalledWith({type: 'GO_BACK'});
@@ -381,16 +390,63 @@ describe('RecoverFromCircle', () => {
   });
 
   test('leaving before any piece is gathered does not arm the confirm', async () => {
+    await startCeremony(); // request step, zero responses
+    expect(lastPreventRemove()[0]).toBe(false);
+  });
+
+  test('the confirm is disarmed once a rebuild is carried into the tail', async () => {
+    const wallet = {address: 'rrn1lostidentity'} as any;
+    let count = 0;
+    mockSession.addResponseQr.mockImplementation(() => ({
+      kind: 'added',
+      responses: ++count,
+    }));
+    mockSession.reconstruct.mockImplementation(() =>
+      count >= 3 ? {kind: 'recovered', wallet} : {kind: 'need-more'},
+    );
+
     const navigation = nav();
-    let beforeRemove: ((e: any) => void) | undefined;
-    navigation.addListener = jest.fn((event: string, cb: (e: any) => void) => {
-      if (event === 'beforeRemove') beforeRemove = cb;
-      return jest.fn();
-    });
+    const r = await startCeremony(navigation);
+    for (let i = 0; i < 3; i++) {
+      await press(button(r, "Scan a holder's response"));
+      await scan(`rrnrecover-resp:SHARE${i}`);
+    }
 
-    // Reach the request step with zero responses gathered.
-    await startCeremony(navigation);
+    expect(navigation.navigate).toHaveBeenCalledWith('Passphrase');
+    // Rebuilt and moved to the tail — nothing left to lose, so leaving is free.
+    expect(lastPreventRemove()[0]).toBe(false);
+  });
 
-    expect(beforeRemove).toBeUndefined();
+  test('cancel recovery leaves the ceremony', async () => {
+    const navigation = nav();
+    const r = await startCeremony(navigation);
+    await press(button(r, 'Cancel recovery'));
+    expect(navigation.goBack).toHaveBeenCalled();
+  });
+});
+
+describe('RecoverChoice', () => {
+  test('create-instead drops any half-recovered identity and starts fresh', async () => {
+    const navigation = nav();
+    const r = await render(
+      <RecoverChoice navigation={navigation} route={{} as any} />,
+    );
+    await press(button(r, 'Create a new wallet instead'));
+
+    expect(mockSetRecoveredWallet).toHaveBeenCalledWith(null);
+    expect(navigation.navigate).toHaveBeenCalledWith('Passphrase');
+  });
+});
+
+describe('recovery fingerprint fixture', () => {
+  // The byte-identical VALUE contract is enforced on the station side
+  // (rrn-mobile-ffi's recovery_ceremony.rs). Here we only pin the copied file's
+  // shape, so a hand-copy drift is visible on this side too.
+  test('has the cross-platform shape the station contract produces', () => {
+    expect(fingerprintFixture.vectors).toHaveLength(3);
+    for (const v of fingerprintFixture.vectors) {
+      expect(v.recovery_pubkey_hex).toMatch(/^[0-9a-f]{64}$/);
+      expect(v.fingerprint).toMatch(/^[0-9a-f]{5}-[0-9a-f]{5}$/);
+    }
   });
 });
