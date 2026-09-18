@@ -305,8 +305,6 @@ export function RecoverFromCircle({
   if (step === 'request' && session !== null) {
     return (
       <OnboardingScaffold
-        onBack={() => navigation.goBack()}
-        backLabel="Cancel recovery"
         footer={
           <>
             <Button
@@ -324,6 +322,13 @@ export function RecoverFromCircle({
                 Start over with a new request
               </Button>
             )}
+            <Button
+              variant="ghost"
+              size="lg"
+              fullWidth
+              onPress={() => navigation.goBack()}>
+              Cancel recovery
+            </Button>
           </>
         }>
         {notice !== null && (
@@ -389,16 +394,23 @@ export function RecoverFromCircle({
   // --- step: scan holder responses ------------------------------------------
   return (
     <OnboardingScaffold
-      onBack={() => navigation.goBack()}
-      backLabel="Cancel recovery"
       footer={
-        <Button
-          variant="ghost"
-          size="lg"
-          fullWidth
-          onPress={() => setStep('request')}>
-          Done scanning for now
-        </Button>
+        <>
+          <Button
+            variant="ghost"
+            size="lg"
+            fullWidth
+            onPress={() => setStep('request')}>
+            Show my request again
+          </Button>
+          <Button
+            variant="ghost"
+            size="lg"
+            fullWidth
+            onPress={() => navigation.goBack()}>
+            Cancel recovery
+          </Button>
+        </>
       }>
       {notice !== null && (
         <Banner variant={notice.variant} title={notice.title}>
