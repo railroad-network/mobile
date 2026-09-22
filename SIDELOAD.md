@@ -2,7 +2,11 @@
 
 There is no app store distribution (see the deployment constraints): pilot users
 install a **signed release APK** directly. This doc has two halves — how a
-maintainer builds and signs the APK, and how a pilot user installs it.
+maintainer builds and signs the APK, and how a pilot user installs it. The
+member-facing version of the second half, with the pairing ceremony that
+follows, is [Install the app](https://railroad-network.github.io/members/install-the-app.html)
+on the docs site; the per-vendor battery settings that keep the app syncing
+in the background are in [Keeping phones in sync](https://railroad-network.github.io/operators/keeping-phones-in-sync.html).
 
 The release build targets **arm64-v8a only** (every Android phone from ~2017 on),
 is **not** minified (ProGuard off), and is signed **locally** — the keystore and
