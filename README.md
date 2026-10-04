@@ -7,10 +7,11 @@
 > recovery, and a signed, sideloadable Android release is available for
 > pilots. The app is **online-only for signing**: the Phase 2 offline features
 > (outbox, headroom certificates, paper export) exist in the Rust core and in
-> the command-line wallet, not yet as screens here. An internal AI-assisted
-> security review found no High-severity issues (see
-> [Audit status](#audit-status)); an independent professional audit is still
-> pending. **Do not use with real value.**
+> the command-line wallet, not yet as screens here. The second internal
+> AI-assisted security review (October 2026) found one High-severity issue that
+> is open until its fix lands (see [Audit status](#audit-status)); an
+> independent professional audit is still pending. **Do not use with real
+> value.**
 
 **Railroad Network** is a platform for self-organizing communities: a
 mutual-credit economy denominated in a single unit (the "Common"),
@@ -146,8 +147,25 @@ lands in both. When the FFI surface changes in `../station`, re-run the
 
 ## Audit status
 
-**Internal AI-assisted review complete; independent professional audit
-pending.** A security review of the mobile client was performed on 2026-08-25 at
+**Two internal AI-assisted reviews complete, fixes for the second in
+progress; independent professional audit pending.**
+
+The **October 2026 review**, performed on 2026-10-02 at commit
+[`23db157`](https://github.com/railroad-network/mobile/commit/23db157), reported
+**one High-severity finding**, with 6 Medium, 12 Low, and 1 Info. The High
+(RRN-M-011): amounts on action buttons drop their sign, so a −20.00 offer reads
+"Accept 20.00". The Mediums concentrate at what the phone signs and shows:
+payment requests presented as incoming payments, a wallet overwrite on Android
+Back, signing over station-supplied ids and a re-fetched charter, and the
+pairing and recovery codes (whose fix is shared with the station). **Until each
+fix lands, those findings are open.** The full report is
+[`docs/security/audit-2026-10.md`](docs/security/audit-2026-10.md); each
+finding gets a dated update there when its fix merges. The companion station
+report is
+[`audit-2026-10.md`](https://github.com/railroad-network/station/blob/main/docs/security/audit-2026-10.md)
+in the station repo.
+
+The **August 2026 review** of the mobile client was performed on 2026-08-25 at
 commit [`b32f2ca`](https://github.com/railroad-network/mobile/commit/b32f2ca),
 covering on-device key custody, the transport and pairing envelope as the phone
 builds them, the QR ceremony surfaces, background execution, and the Android/iOS
@@ -161,7 +179,7 @@ report, with each finding's failure scenario and a remediation order, is at
 recovery-ceremony finding about an unauthenticated request (RRN-M-002) is
 closed by the ceremony fingerprint every requester and holder card now shows.
 
-Important: this was a **code review performed by an AI model** operated by the
+Important: both were **code reviews performed by an AI model** operated by the
 maintainer, **not** a penetration test or an attestation by a professional
 security firm. It is intended to raise the floor, not to clear the stack for
 production. Absence of a finding is not evidence of absence, and an independent
