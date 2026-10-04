@@ -39,6 +39,9 @@ Please include:
 Every audit report is published, and the threat model states plainly what is
 *not* mitigated:
 
+- [`docs/security/audit-2026-10.md`](docs/security/audit-2026-10.md): the
+  October 2026 review of this client (one High finding, fixes in progress),
+  with a dated update as each fix lands.
 - [`docs/security/audit-2026-08.md`](docs/security/audit-2026-08.md): the
   August 2026 review of this client.
 - The station repo's
