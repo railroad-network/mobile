@@ -130,7 +130,55 @@ export class Wallet {
   }
 }
 
-/** Options for {@link createWallet}. */
+/**
+ * The shortest passphrase a wallet may be sealed under, in characters
+ * (`string.length`). Onboarding and change-passphrase enforce it before the user
+ * proceeds; the storage layer enforces it again so no screen can seal a wallet
+ * under an empty or short passphrase by mistake.
+ */
+export const MIN_PASSPHRASE_LENGTH = 12;
+
+/** A wallet write was refused because the passphrase is below {@link MIN_PASSPHRASE_LENGTH}. */
+export class WeakPassphraseError extends Error {
+  constructor() {
+    super(
+      `passphrase is shorter than ${MIN_PASSPHRASE_LENGTH} characters; refusing to seal the wallet`,
+    );
+    this.name = 'WeakPassphraseError';
+  }
+}
+
+/** A wallet write was refused because this device already stores a wallet. */
+export class WalletExistsError extends Error {
+  constructor() {
+    super('a wallet already exists on this device; refusing to overwrite it');
+    this.name = 'WalletExistsError';
+  }
+}
+
+function assertPassphraseFloor(passphrase: string): void {
+  if (passphrase.length < MIN_PASSPHRASE_LENGTH) {
+    throw new WeakPassphraseError();
+  }
+}
+
+/**
+ * The checks every write of a *new* identity runs before any key is minted or
+ * sealed: the passphrase floor, then — unless the caller explicitly asked to
+ * replace it — that no wallet is already stored.
+ */
+async function assertMayStoreNewWallet(
+  passphrase: string,
+  store: SecureStore,
+  options: CreateWalletOptions,
+): Promise<void> {
+  assertPassphraseFloor(passphrase);
+  if (!options.overwrite && (await store.has(SecureStoreKeys.WALLET_FILE))) {
+    throw new WalletExistsError();
+  }
+}
+
+/** Options for {@link createWallet} and {@link persistWallet}. */
 export interface CreateWalletOptions {
   /**
    * Gate reads of the stored wallet behind biometric authentication. Defaults
@@ -139,11 +187,23 @@ export interface CreateWalletOptions {
    * retrieval of the (already encrypted) `.rrnwallet` blob from the keychain.
    */
   requireBiometric?: boolean;
+  /**
+   * Replace a wallet already stored on this device. Defaults to `false`: the
+   * write is refused with {@link WalletExistsError} instead, so the identity on
+   * the device can never be silently lost. Nothing passes `true` today; a flow
+   * that replaces an identity must say so here, where review can see it.
+   */
+  overwrite?: boolean;
 }
 
 /**
  * Creates a brand-new identity and persists it, sealed under `passphrase`, to
  * the OS secure store. Returns the opened wallet.
+ *
+ * Refuses — before minting a key — a passphrase below
+ * {@link MIN_PASSPHRASE_LENGTH} ({@link WeakPassphraseError}) and, unless
+ * `options.overwrite` is set, a device that already stores a wallet
+ * ({@link WalletExistsError}).
  *
  * @param store overridable for tests; defaults to the process-wide SecureStore.
  */
@@ -152,6 +212,7 @@ export async function createWallet(
   store: SecureStore = getSecureStore(),
   options: CreateWalletOptions = {},
 ): Promise<Wallet> {
+  await assertMayStoreNewWallet(passphrase, store, options);
   const wallet = Wallet.fromContents(getRrnCryptoFfi().WalletContents.createNew());
   await persistWallet(wallet, passphrase, store, options);
   return wallet;
@@ -160,9 +221,11 @@ export async function createWallet(
 /**
  * Seals `wallet` under `passphrase` and stores it as this device's wallet in the
  * OS secure store — the write shared by first-time creation ({@link createWallet})
- * and adopting a recovered or imported identity onto a device (ADR-0016). Any
- * existing wallet at that slot is overwritten; the caller decides whether that is
- * allowed.
+ * and adopting a recovered or imported identity onto a device (ADR-0016). This is
+ * the only write that can put a *different* identity on the device, so it fails
+ * closed: a passphrase below {@link MIN_PASSPHRASE_LENGTH} is refused
+ * ({@link WeakPassphraseError}), and an existing wallet is never replaced unless
+ * `options.overwrite` is set ({@link WalletExistsError}).
  */
 export async function persistWallet(
   wallet: Wallet,
@@ -170,6 +233,7 @@ export async function persistWallet(
   store: SecureStore = getSecureStore(),
   options: CreateWalletOptions = {},
 ): Promise<void> {
+  await assertMayStoreNewWallet(passphrase, store, options);
   const bytes = await saveWalletToBytes(wallet, passphrase);
   await store.save(SecureStoreKeys.WALLET_FILE, bytes, {
     requireBiometric: options.requireBiometric,
@@ -248,13 +312,16 @@ export async function hasWallet(
  * Re-encrypts the stored wallet under `newPassphrase` (T1.2.8 change passphrase).
  * The `oldPassphrase` is verified first by opening the wallet — a wrong old
  * passphrase rejects with the FFI wallet error and nothing is written. The new
- * bytes keep the current biometric gate.
+ * bytes keep the current biometric gate. A `newPassphrase` below
+ * {@link MIN_PASSPHRASE_LENGTH} is refused ({@link WeakPassphraseError}). It
+ * re-writes the same identity, so it does not take the overwrite guard.
  */
 export async function changePassphrase(
   oldPassphrase: string,
   newPassphrase: string,
   store: SecureStore = getSecureStore(),
 ): Promise<void> {
+  assertPassphraseFloor(newPassphrase);
   const wallet = await loadWallet(oldPassphrase, store);
   if (wallet === null) {
     throw new Error('No wallet on this device.');

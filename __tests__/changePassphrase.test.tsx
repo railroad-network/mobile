@@ -15,6 +15,8 @@ import {ChangePassphrase} from '../src/screens/main/ChangePassphrase';
 
 const mockChange = jest.fn();
 jest.mock('../src/wallet/Wallet', () => ({
+  MIN_PASSPHRASE_LENGTH: jest.requireActual('../src/wallet/Wallet')
+    .MIN_PASSPHRASE_LENGTH,
   changePassphrase: (...args: unknown[]) => mockChange(...args),
 }));
 

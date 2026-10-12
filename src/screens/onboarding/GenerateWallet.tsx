@@ -5,14 +5,29 @@
  * biometric gate if the user opted in). A brief progress indicator covers the
  * work, then it advances to WalletReady.
  *
- * The passphrase is wiped from onboarding state the moment sealing succeeds.
+ * The passphrase is wiped from onboarding state once sealing succeeds, and the
+ * stack is reset to WalletReady so the screens that held it are unmounted and
+ * cannot be revisited.
+ *
+ * It never writes over a wallet already on the device and never seals under a
+ * passphrase that is no longer in memory: either condition stops it before any
+ * key is minted or stored (the wallet layer refuses both as well).
  */
 import {useEffect, useRef, useState} from 'react';
 import {ActivityIndicator, StyleSheet, View} from 'react-native';
+import {usePreventRemove} from '@react-navigation/native';
 
 import {Button, Heading, Text} from '../../components';
 import {useTheme} from '../../theme';
-import {createWallet, persistWallet, type Wallet} from '../../wallet/Wallet';
+import {
+  createWallet,
+  hasWallet,
+  MIN_PASSPHRASE_LENGTH,
+  persistWallet,
+  WalletExistsError,
+  type Wallet,
+} from '../../wallet/Wallet';
+import {useWalletSession} from '../../wallet/WalletSession';
 import type {OnboardingScreenProps} from '../../navigation/types';
 import {useOnboarding} from './OnboardingContext';
 import {OnboardingScaffold} from './OnboardingScaffold';
@@ -58,6 +73,19 @@ function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+/**
+ * Why this screen stopped. `no-passphrase` and `exists` are not retryable here:
+ * the first starts onboarding over, the second opens the wallet already stored.
+ */
+type Failure =
+  | {kind: 'no-passphrase'}
+  | {kind: 'exists'}
+  | {kind: 'error'; message: string};
+
+const NO_PASSPHRASE_MESSAGE =
+  'Your passphrase is no longer in memory. Go back and choose it again.';
+const EXISTS_MESSAGE = 'A wallet already exists on this device.';
+
 export function GenerateWallet({
   navigation,
 }: OnboardingScreenProps<'GenerateWallet'>) {
@@ -70,14 +98,33 @@ export function GenerateWallet({
     setCreatedWallet,
     clearSecrets,
   } = useOnboarding();
+  const {refresh} = useWalletSession();
   // A recovered/imported identity is a truthy handle; treat both null and a
   // partial context (undefined) as the ordinary create path.
   const restoring = Boolean(recoveredWallet);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<Failure | null>(null);
+  // Flips once the wallet is sealed and stored; releases the Back guard below so
+  // the reset to WalletReady can go through.
+  const [finished, setFinished] = useState(false);
   // Guards against the effect running twice (React strict-mode double invoke /
   // re-render) and creating two wallets.
   const startedRef = useRef(false);
   const [attempt, setAttempt] = useState(0);
+
+  // While the seal runs, Back (the Android system button included — the stack's
+  // `gestureEnabled: false` covers only the iOS swipe) is ignored: leaving here
+  // mid-seal would strand a half-finished write, and re-entering would find the
+  // passphrase gone. Released on success and on any error.
+  usePreventRemove(!finished && error === null, () => {});
+
+  // Reset rather than replace, so nothing beneath WalletReady — the screens that
+  // held the passphrase — can be returned to. Runs after the render in which
+  // `finished` released the Back guard; a reset dispatched while the guard is
+  // still registered would be swallowed by it.
+  useEffect(() => {
+    if (!finished) return;
+    navigation.reset({index: 0, routes: [{name: 'WalletReady'}]});
+  }, [finished, navigation]);
 
   useEffect(() => {
     // Create exactly once. The ref (not a cleanup flag) is what dedups here:
@@ -88,6 +135,19 @@ export function GenerateWallet({
 
     (async () => {
       try {
+        // Reaching here without the passphrase (it is wiped after a successful
+        // seal) means the flow was re-entered; sealing under what is left would
+        // lock the member out. Start over instead of calling the wallet layer.
+        if (passphrase.length < MIN_PASSPHRASE_LENGTH) {
+          setError({kind: 'no-passphrase'});
+          return;
+        }
+        // Never write over an identity already on this device — checked before
+        // any write this screen makes.
+        if (await hasWallet()) {
+          setError({kind: 'exists'});
+          return;
+        }
         // Let the navigation transition finish and this screen paint before the
         // (JS-thread-blocking) seal starts — see PRE_PAINT_MS. Otherwise the seal
         // freezes the previous screen in place and this one flashes by afterward.
@@ -126,12 +186,19 @@ export function GenerateWallet({
         clearSecrets();
         // Only the success path is padded; an error should surface immediately.
         await delay(MIN_VISIBLE_MS - (Date.now() - visibleSince));
-        navigation.replace('WalletReady');
+        setFinished(true);
       } catch (e) {
+        if (e instanceof WalletExistsError) {
+          setError({kind: 'exists'});
+          return;
+        }
         const fallback = restoring
           ? 'Could not restore your wallet.'
           : 'Could not create your wallet.';
-        setError(e instanceof Error ? e.message : fallback);
+        setError({
+          kind: 'error',
+          message: e instanceof Error ? e.message : fallback,
+        });
       }
     })();
     // `attempt` re-arms the effect on retry; other deps are stable for the
@@ -145,28 +212,52 @@ export function GenerateWallet({
     setAttempt(a => a + 1);
   }
 
+  function startOver() {
+    navigation.reset({index: 0, routes: [{name: 'Welcome'}]});
+  }
+
   if (error !== null) {
+    const message =
+      error.kind === 'no-passphrase'
+        ? NO_PASSPHRASE_MESSAGE
+        : error.kind === 'exists'
+          ? EXISTS_MESSAGE
+          : error.message;
+    // An existing wallet is opened, not retried over: refreshing the session
+    // routes the root navigator to the lock screen for it.
+    const footer =
+      error.kind === 'no-passphrase' ? (
+        <Button variant="primary" size="lg" fullWidth onPress={startOver}>
+          Start over
+        </Button>
+      ) : error.kind === 'exists' ? (
+        <Button variant="primary" size="lg" fullWidth onPress={() => refresh()}>
+          Open it
+        </Button>
+      ) : (
+        <Button variant="primary" size="lg" fullWidth onPress={retry}>
+          Try again
+        </Button>
+      );
     return (
       <OnboardingScaffold
         center
-        onBack={() => navigation.goBack()}
-        footer={
-          <Button variant="primary" size="lg" fullWidth onPress={retry}>
-            Try again
-          </Button>
-        }>
+        onBack={error.kind === 'error' ? () => navigation.goBack() : undefined}
+        footer={footer}>
         <View style={styles.center}>
           <Heading
             level="headingSmall"
-            color={theme.colors.danger}
+            color={error.kind === 'exists' ? undefined : theme.colors.danger}
             style={[styles.centerText, {marginBottom: theme.spacing.sm}]}>
-            Something went wrong
+            {error.kind === 'exists'
+              ? 'This device already has a wallet'
+              : 'Something went wrong'}
           </Heading>
           <Text
             variant="body"
             color={theme.colors.textSecondary}
             style={styles.centerText}>
-            {error}
+            {message}
           </Text>
         </View>
       </OnboardingScaffold>

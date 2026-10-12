@@ -27,8 +27,12 @@ import {
   loadWallet,
   loadWalletFromBytes,
   saveWalletToBytes,
+  MIN_PASSPHRASE_LENGTH,
+  persistWallet,
   setBiometricUnlock,
   Wallet,
+  WalletExistsError,
+  WeakPassphraseError,
 } from '../src/wallet/Wallet';
 import {loadProfile, saveProfile} from '../src/wallet/profile';
 import {base64ToBytes} from '../src/crypto/base64';
@@ -163,6 +167,7 @@ for (const v of fixture.wallets) {
 // fromBytes->decrypt round-trip without reimplementing the real format.
 const FAKE_MARKER = 0x00;
 let tokenCounter = 0;
+let identityCounter = 0;
 const fakeSealed = new Map<string, {contents: WalletContents; passphrase: string}>();
 
 const encodeToken = (token: string): Uint8Array =>
@@ -246,12 +251,13 @@ const fakeFfi: RrnCryptoFfi = {
   },
   WalletContents: {
     createNew: () => {
-      // A fresh, unique fake identity.
-      const n = tokenCounter;
+      // A fresh, unique fake identity (the address takes the key's distinct
+      // low digits, not its zero padding).
+      const n = identityCounter++;
       const pubkeyHex = n.toString(16).padStart(64, '0');
       return new FakeWalletContents(
         pubkeyHex,
-        `rrn1fake${pubkeyHex.slice(0, 20)}`,
+        `rrn1fake${pubkeyHex.slice(-20)}`,
         1_700_000_000 + n,
         {},
       );
@@ -273,6 +279,9 @@ const fakeFfi: RrnCryptoFfi = {
     },
   },
 };
+
+// A passphrase that meets the wallet layer's length floor.
+const PASS = 'correct horse battery';
 
 // A minimal in-memory SecureStore for the persistence tests.
 class MemoryStore implements SecureStore {
@@ -377,9 +386,9 @@ describe('Wallet', () => {
 
   test('saveWalletToBytes then loadWalletFromBytes round-trips', async () => {
     const store = new MemoryStore();
-    const wallet = await createWallet('pw', store);
-    const bytes = await saveWalletToBytes(wallet, 'pw');
-    const reloaded = await loadWalletFromBytes(bytes, 'pw');
+    const wallet = await createWallet(PASS, store);
+    const bytes = await saveWalletToBytes(wallet, PASS);
+    const reloaded = await loadWalletFromBytes(bytes, PASS);
     expect(reloaded.address).toBe(wallet.address);
     expect(reloaded).toBeInstanceOf(Wallet);
   });
@@ -388,68 +397,68 @@ describe('Wallet', () => {
 describe('Wallet settings ops (T1.2.8)', () => {
   test('changePassphrase re-encrypts: the new passphrase opens it, the old no longer does', async () => {
     const store = new MemoryStore();
-    await createWallet('old-pass', store);
-    await changePassphrase('old-pass', 'new-pass-1234', store);
+    await createWallet(PASS, store);
+    await changePassphrase(PASS, 'new-pass-1234', store);
     expect(await loadWallet('new-pass-1234', store)).not.toBeNull();
-    await expect(loadWallet('old-pass', store)).rejects.toBeInstanceOf(WalletError);
+    await expect(loadWallet(PASS, store)).rejects.toBeInstanceOf(WalletError);
   });
 
   test('changePassphrase with the wrong current passphrase rejects and changes nothing', async () => {
     const store = new MemoryStore();
-    await createWallet('old-pass', store);
+    await createWallet(PASS, store);
     await expect(
       changePassphrase('wrong', 'new-pass-1234', store),
     ).rejects.toBeInstanceOf(WalletError);
     // The original passphrase still works.
-    expect(await loadWallet('old-pass', store)).not.toBeNull();
+    expect(await loadWallet(PASS, store)).not.toBeNull();
   });
 
   test('exportWalletBytes yields base64 that re-imports to the same identity', async () => {
     const store = new MemoryStore();
-    const wallet = await createWallet('pw', store);
-    const b64 = await exportWalletBytes('pw', store);
+    const wallet = await createWallet(PASS, store);
+    const b64 = await exportWalletBytes(PASS, store);
     expect(typeof b64).toBe('string');
-    const reloaded = await loadWalletFromBytes(base64ToBytes(b64), 'pw');
+    const reloaded = await loadWalletFromBytes(base64ToBytes(b64), PASS);
     expect(reloaded.address).toBe(wallet.address);
   });
 
   test('exportWalletBytes rejects a wrong passphrase', async () => {
     const store = new MemoryStore();
-    await createWallet('pw', store);
+    await createWallet(PASS, store);
     await expect(exportWalletBytes('nope', store)).rejects.toBeInstanceOf(WalletError);
   });
 
   test('importWalletFromExport opens an export back to the same identity', async () => {
     const store = new MemoryStore();
-    const wallet = await createWallet('pw', store);
-    const b64 = await exportWalletBytes('pw', store);
+    const wallet = await createWallet(PASS, store);
+    const b64 = await exportWalletBytes(PASS, store);
     // Surrounding whitespace (from a paste) is tolerated.
-    const opened = await importWalletFromExport(`\n  ${b64}\n`, 'pw');
+    const opened = await importWalletFromExport(`\n  ${b64}\n`, PASS);
     expect(opened.address).toBe(wallet.address);
   });
 
   test('importWalletFromExport rejects a wrong passphrase', async () => {
     const store = new MemoryStore();
-    await createWallet('pw', store);
-    const b64 = await exportWalletBytes('pw', store);
+    await createWallet(PASS, store);
+    const b64 = await exportWalletBytes(PASS, store);
     await expect(importWalletFromExport(b64, 'nope')).rejects.toBeInstanceOf(WalletError);
   });
 
   test('importWalletFromExport rejects unreadable (non-base64) text', async () => {
-    await expect(importWalletFromExport('not base64 %%%', 'pw')).rejects.toBeTruthy();
+    await expect(importWalletFromExport('not base64 %%%', PASS)).rejects.toBeTruthy();
   });
 
   test('setBiometricUnlock records the preference and keeps the wallet loadable', async () => {
     const store = new MemoryStore();
-    await createWallet('pw', store);
+    await createWallet(PASS, store);
     await setBiometricUnlock(false, store);
     expect((await loadProfile(store)).biometricEnabled).toBe(false);
-    expect(await loadWallet('pw', store)).not.toBeNull();
+    expect(await loadWallet(PASS, store)).not.toBeNull();
   });
 
   test('factoryReset clears every wallet-scoped entry', async () => {
     const store = new MemoryStore();
-    await createWallet('pw', store);
+    await createWallet(PASS, store);
     await saveProfile({nickname: 'asa'}, store);
     expect(await hasWallet(store)).toBe(true);
 
@@ -458,5 +467,84 @@ describe('Wallet settings ops (T1.2.8)', () => {
     expect(await hasWallet(store)).toBe(false);
     expect(await store.load(SecureStoreKeys.PROFILE)).toBeNull();
     expect(await store.load(SecureStoreKeys.RECOVERY_CONFIG)).toBeNull();
+  });
+});
+
+describe('wallet creation guards', () => {
+  test('persistWallet refuses to overwrite an existing wallet', async () => {
+    const store = new MemoryStore();
+    const first = await createWallet(PASS, store);
+    const other = Wallet.fromContents(fakeFfi.WalletContents.createNew());
+    expect(other.address).not.toBe(first.address);
+
+    await expect(persistWallet(other, PASS, store)).rejects.toBeInstanceOf(
+      WalletExistsError,
+    );
+    expect((await loadWallet(PASS, store))!.address).toBe(first.address);
+  });
+
+  test('createWallet refuses when a wallet exists, before minting a key', async () => {
+    const store = new MemoryStore();
+    const first = await createWallet(PASS, store);
+    const createNew = jest.spyOn(fakeFfi.WalletContents, 'createNew');
+    try {
+      await expect(createWallet(PASS, store)).rejects.toBeInstanceOf(
+        WalletExistsError,
+      );
+      expect(createNew).not.toHaveBeenCalled();
+    } finally {
+      createNew.mockRestore();
+    }
+    expect((await loadWallet(PASS, store))!.address).toBe(first.address);
+  });
+
+  test('overwrite: true is the only way to replace a wallet', async () => {
+    const store = new MemoryStore();
+    await createWallet(PASS, store);
+    const other = Wallet.fromContents(fakeFfi.WalletContents.createNew());
+
+    await expect(
+      persistWallet(other, PASS, store, {overwrite: false}),
+    ).rejects.toBeInstanceOf(WalletExistsError);
+    await persistWallet(other, PASS, store, {overwrite: true});
+    expect((await loadWallet(PASS, store))!.address).toBe(other.address);
+
+    const replaced = await createWallet(PASS, store, {overwrite: true});
+    expect((await loadWallet(PASS, store))!.address).toBe(replaced.address);
+  });
+
+  test('an empty or short passphrase is refused', async () => {
+    const short = 'a'.repeat(MIN_PASSPHRASE_LENGTH - 1);
+    expect(MIN_PASSPHRASE_LENGTH).toBe(12);
+
+    // Nothing stored yet: neither create nor persist may write.
+    const empty = new MemoryStore();
+    for (const weak of ['', short]) {
+      await expect(createWallet(weak, empty)).rejects.toBeInstanceOf(
+        WeakPassphraseError,
+      );
+      const recovered = Wallet.fromContents(fakeFfi.WalletContents.createNew());
+      await expect(persistWallet(recovered, weak, empty)).rejects.toBeInstanceOf(
+        WeakPassphraseError,
+      );
+      expect(await hasWallet(empty)).toBe(false);
+    }
+
+    // A stored wallet: a short new passphrase leaves it sealed as before.
+    const store = new MemoryStore();
+    const wallet = await createWallet(PASS, store);
+    const before = await store.load(SecureStoreKeys.WALLET_FILE);
+    for (const weak of ['', short]) {
+      await expect(changePassphrase(PASS, weak, store)).rejects.toBeInstanceOf(
+        WeakPassphraseError,
+      );
+      // The floor applies even with an explicit overwrite.
+      await expect(
+        createWallet(weak, store, {overwrite: true}),
+      ).rejects.toBeInstanceOf(WeakPassphraseError);
+    }
+    expect(await hasWallet(store)).toBe(true);
+    expect(await store.load(SecureStoreKeys.WALLET_FILE)).toBe(before);
+    expect((await loadWallet(PASS, store))!.address).toBe(wallet.address);
   });
 });
