@@ -14,6 +14,8 @@ import {ThemeProvider} from '../src/theme';
 import {ChangePassphrase} from '../src/screens/main/ChangePassphrase';
 
 const mockChange = jest.fn();
+// The floor must be forwarded: the screen reads it through passphraseStrength,
+// which re-exports it from this module.
 jest.mock('../src/wallet/Wallet', () => ({
   MIN_PASSPHRASE_LENGTH: jest.requireActual('../src/wallet/Wallet')
     .MIN_PASSPHRASE_LENGTH,

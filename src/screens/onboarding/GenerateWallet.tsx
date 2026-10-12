@@ -216,6 +216,26 @@ export function GenerateWallet({
     navigation.reset({index: 0, routes: [{name: 'Welcome'}]});
   }
 
+  // Opening the stored wallet hands off to the session, which swallows a failed
+  // keystore read; check first so a failure lands on the retryable error state
+  // instead of a button that silently does nothing.
+  async function openExisting() {
+    try {
+      if (!(await hasWallet())) {
+        setError({kind: 'error', message: 'No wallet was found on this device.'});
+        return;
+      }
+    } catch (e) {
+      setError({
+        kind: 'error',
+        message:
+          e instanceof Error ? e.message : 'Could not open the wallet on this device.',
+      });
+      return;
+    }
+    await refresh();
+  }
+
   if (error !== null) {
     const message =
       error.kind === 'no-passphrase'
@@ -231,7 +251,7 @@ export function GenerateWallet({
           Start over
         </Button>
       ) : error.kind === 'exists' ? (
-        <Button variant="primary" size="lg" fullWidth onPress={() => refresh()}>
+        <Button variant="primary" size="lg" fullWidth onPress={openExisting}>
           Open it
         </Button>
       ) : (

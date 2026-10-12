@@ -65,7 +65,9 @@ const mockPersistWallet = jest.fn();
 const mockHasWallet = jest.fn();
 jest.mock('../src/wallet/Wallet', () => {
   // The passphrase floor and the error class are the real ones; only the
-  // writes and the existence check are spies.
+  // writes and the existence check are spies. The floor must be forwarded:
+  // passphraseStrength re-exports it from this module, so a mock without it
+  // would silently disable the Passphrase screen's length check here.
   const actual = jest.requireActual('../src/wallet/Wallet');
   return {
     MIN_PASSPHRASE_LENGTH: actual.MIN_PASSPHRASE_LENGTH,
@@ -544,6 +546,8 @@ describe('GenerateWallet', () => {
     expect(hasText(r, 'A wallet already exists on this device.')).toBe(true);
     expect(hasText(r, 'Try again')).toBe(false);
     expect(preventingRemove()).toBe(false);
+    // The wallet another write stored is there by the time the member taps.
+    mockHasWallet.mockResolvedValue(true);
     await press(button(r, 'Open it'));
     expect(mockRefresh).toHaveBeenCalledTimes(1);
     expect(navigation.reset).not.toHaveBeenCalled();
@@ -564,6 +568,23 @@ describe('GenerateWallet', () => {
     expect(hasText(r, 'A wallet already exists on this device.')).toBe(true);
     await press(button(r, 'Open it'));
     expect(mockRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  test('"Open it" falls back to a retryable error when the keystore read fails', async () => {
+    mockOnboarding.passphrase = 'correcthorsebattery';
+    mockHasWallet.mockResolvedValue(true);
+
+    const r = await renderScreen(
+      <GenerateWallet navigation={nav()} route={{} as any} />,
+    );
+    await settle();
+    mockHasWallet.mockRejectedValue(new Error('keystore unavailable'));
+    await press(button(r, 'Open it'));
+
+    expect(mockRefresh).not.toHaveBeenCalled();
+    expect(hasText(r, 'keystore unavailable')).toBe(true);
+    expect(button(r, 'Try again')).toBeTruthy();
+    expect(mockCreateWallet).not.toHaveBeenCalled();
   });
 
   test('creates only one wallet even if the effect re-runs', async () => {
