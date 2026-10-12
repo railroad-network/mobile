@@ -10,12 +10,15 @@ import {
   amountSign,
   dayLabel,
   formatCommons,
+  formatCommonsMagnitude,
+  formatSignedCommons,
   parseCommons,
+  parseOfferCommons,
   relativeTime,
   shortAddress,
   MINUS,
 } from '../src/ledger/format';
-import {stateBadge, tierBadge, tierLabel} from '../src/ledger/txDisplay';
+import {paymentCopy, paymentRole, stateBadge, tierBadge, tierLabel} from '../src/ledger/txDisplay';
 
 describe('dayLabel', () => {
   // Fixed local reference: Monday, Jul 15 2024, noon.
@@ -79,9 +82,12 @@ describe('formatCommons', () => {
     expect(formatCommons(100000000)).toBe('1,000,000.00');
   });
 
-  test('is sign-agnostic (absolute value only)', () => {
-    expect(formatCommons(-300)).toBe('3.00');
-    expect(formatCommons(300)).toBe('3.00');
+  test('formatCommons keeps the minus', () => {
+    expect(formatCommons(-2000)).toBe('−20.00');
+    expect(formatCommons(-2000)).toBe(`${MINUS}20.00`); // U+2212, not a hyphen
+    expect(formatCommons(2000)).toBe('20.00'); // no plus
+    expect(formatCommons(0)).toBe('0.00');
+    expect(formatCommons(-123456)).toBe('−1,234.56');
   });
 });
 
@@ -143,5 +149,105 @@ describe('tierBadge / tierLabel (T1.8.6)', () => {
     expect(tierLabel(2)).toBe('Tier 2 — reputation-staked');
     expect(tierLabel(1)).toBe('Tier 1 — settlement window');
     expect(tierLabel(undefined)).toBe('Tier 1 — settlement window');
+  });
+});
+
+describe('formatCommonsMagnitude', () => {
+  test('drops the sign — only for callers that draw it themselves', () => {
+    expect(formatCommonsMagnitude(-300)).toBe('3.00');
+    expect(formatCommonsMagnitude(300)).toBe('3.00');
+    expect(formatCommonsMagnitude(-123456)).toBe('1,234.56');
+  });
+});
+
+describe('formatSignedCommons', () => {
+  test('signs both ways and leaves zero bare', () => {
+    expect(formatSignedCommons(2000)).toBe('+20.00');
+    expect(formatSignedCommons(-2000)).toBe('−20.00');
+    expect(formatSignedCommons(0)).toBe('0.00');
+  });
+});
+
+describe('parseOfferCommons', () => {
+  const neg = {allowNegative: true};
+  const pos = {allowNegative: false};
+
+  test('blank is no offer', () => {
+    expect(parseOfferCommons('', pos)).toEqual({centi: null});
+    expect(parseOfferCommons('   ', neg)).toEqual({centi: null});
+  });
+
+  test('parses to integer centi through the same rules as parseCommons', () => {
+    expect(parseOfferCommons('4', pos)).toEqual({centi: 400});
+    expect(parseOfferCommons('4.5', pos)).toEqual({centi: 450});
+    expect(parseOfferCommons(' 4.20 ', pos)).toEqual({centi: 420});
+    expect(parseOfferCommons('0.29', pos)).toEqual({centi: 29}); // no float rounding
+    expect(parseOfferCommons('4.001', pos)).toEqual({error: 'Use at most two decimal places.'});
+    expect(parseOfferCommons('99999999999999999', pos)).toEqual({error: 'That amount is too large.'});
+  });
+
+  test('a sign is allowed only when the listing is a subsidy', () => {
+    expect(parseOfferCommons('-3', neg)).toEqual({centi: -300});
+    expect(parseOfferCommons('−3.25', neg)).toEqual({centi: -325}); // U+2212
+    expect(parseOfferCommons('-3', pos)).toEqual({error: 'Offers on this listing can’t be negative.'});
+    expect(parseOfferCommons('−3', pos)).toEqual({error: 'Offers on this listing can’t be negative.'});
+    expect(parseOfferCommons('-0', neg)).toEqual({centi: 0});
+    expect(Object.is((parseOfferCommons('-0', neg) as {centi: number}).centi, -0)).toBe(false);
+  });
+
+  test('anything that is not a plain amount is refused', () => {
+    const invalid = {error: 'Enter an amount in Commons, like 4 or 4.50'};
+    for (const s of ['1e3', '0x10', '--1', '-−1', '+5', '-', '4.', '.5', 'Infinity', 'NaN', '4,000']) {
+      expect(parseOfferCommons(s, neg)).toEqual(invalid);
+    }
+  });
+
+  test('every accepted value is a safe integer', () => {
+    for (const s of ['0', '1', '0.01', '12345.67', '-0.01', '-9007199254740.99']) {
+      const r = parseOfferCommons(s, neg);
+      expect('centi' in r && Number.isSafeInteger(r.centi)).toBe(true);
+    }
+  });
+});
+
+describe('paymentRole + paymentCopy', () => {
+  test('direction and sign decide the role; zero takes the direction role', () => {
+    expect(paymentRole({direction: 'in', amountCenti: 500})).toBe('paying_you');
+    expect(paymentRole({direction: 'in', amountCenti: 0})).toBe('paying_you');
+    expect(paymentRole({direction: 'in', amountCenti: -500})).toBe('requesting_from_you');
+    expect(paymentRole({direction: 'out', amountCenti: -500})).toBe('you_paid');
+    expect(paymentRole({direction: 'out', amountCenti: 0})).toBe('you_paid');
+    expect(paymentRole({direction: 'out', amountCenti: 500})).toBe('you_requested');
+  });
+
+  test('each role has its exact wording', () => {
+    expect(paymentCopy('paying_you', 'ana', 500)).toEqual({
+      caption: 'from ana',
+      heading: 'ana is paying you',
+      detailTitle: 'Received from ana',
+      directionLabel: 'Incoming credit',
+      magnitude: '5.00',
+    });
+    expect(paymentCopy('requesting_from_you', 'ana', -2000)).toEqual({
+      caption: 'request from ana',
+      heading: 'ana is asking you to pay',
+      detailTitle: 'Requested by ana',
+      directionLabel: 'Payment request — you pay',
+      magnitude: '20.00',
+    });
+    expect(paymentCopy('you_paid', 'ana', -500)).toEqual({
+      caption: 'to ana',
+      heading: 'You paid ana',
+      detailTitle: 'Sent to ana',
+      directionLabel: 'Outgoing debit',
+      magnitude: '5.00',
+    });
+    expect(paymentCopy('you_requested', 'ana', 500)).toEqual({
+      caption: 'request to ana',
+      heading: 'You asked ana to pay',
+      detailTitle: 'Requested from ana',
+      directionLabel: 'Payment request — they pay',
+      magnitude: '5.00',
+    });
   });
 });

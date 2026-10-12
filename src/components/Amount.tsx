@@ -5,11 +5,16 @@
  *
  * Takes **signed integer centi** (see `ledger/format`), never a float: positive
  * is a credit (`+`), negative a debit (a proper minus), zero is muted.
+ *
+ * It draws the sign itself (and colors it), so it formats the digits with the
+ * unsigned `formatCommonsMagnitude` — one of the few callers allowed to (see
+ * `ledger/format`). With `signed={false}` the sign is dropped on purpose; a
+ * caller that does so must make the direction plain some other way.
  */
 import {StyleSheet, View} from 'react-native';
 
 import {useTheme} from '../theme';
-import {amountSign, formatCommons} from '../ledger/format';
+import {amountSign, formatCommonsMagnitude} from '../ledger/format';
 import {CommonMark} from './CommonMark';
 import {Text} from './Text';
 
@@ -62,7 +67,7 @@ export function Amount({
   const sign = signed ? amountSign(centi) : '';
 
   return (
-    <View style={styles.row} accessibilityLabel={`${accessibleSign(centi)}${formatCommons(centi)} Commons`}>
+    <View style={styles.row} accessibilityLabel={`${accessibleSign(centi)}${formatCommonsMagnitude(centi)} Commons`}>
       <Text
         variant="mono"
         color={resolved}
@@ -74,7 +79,7 @@ export function Amount({
         }}
         allowFontScaling={false}>
         {sign}
-        {formatCommons(centi)}
+        {formatCommonsMagnitude(centi)}
       </Text>
       {showMark && (
         <View style={styles.mark}>

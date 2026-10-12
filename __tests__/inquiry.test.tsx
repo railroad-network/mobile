@@ -366,3 +366,117 @@ test('a closed inquiry shows the outcome and no composer', async () => {
   expect(findButton(r, 'Decline')).toBeUndefined();
   expect(findButton(r, 'Withdraw')).toBeUndefined();
 });
+
+// --- signs: an amount beside an action keeps its minus ------------------------
+
+test('a negative offer is never shown as a positive Accept', async () => {
+  // A Goods listing (priced above zero) whose buyer offered below zero: accepting
+  // would bind the provider to pay. The provider must not see "Accept 20.00".
+  mockSession.wallet = {address: PROVIDER};
+  mockThread.data = thread({listed_amount_centi: 2500, initial_offer_centi: -2000, messages: []});
+  const r = await render();
+  const accepts = r.root.findAll(
+    n => n.props.accessibilityRole === 'button' && textOf(n).includes('Accept'),
+  );
+  expect(accepts.filter(n => textOf(n).includes('Accept 20.00'))).toHaveLength(0);
+  expect(accepts).toHaveLength(0);
+  expect(hasText(r, 'below zero on a listing that isn’t a subsidy')).toBe(true);
+  // The provider can still decline.
+  expect(findButton(r, 'Decline')).toBeDefined();
+});
+
+test('a subsidy listing accepts a negative offer with its sign', async () => {
+  mockSession.wallet = {address: PROVIDER};
+  mockThread.data = thread({listed_amount_centi: -500, initial_offer_centi: -300, messages: []});
+  const r = await render();
+  await press(button(r, 'Accept −3.00'));
+  expect(mockClose).toHaveBeenCalledWith({
+    inquiryId: 'iq1',
+    outcome: {kind: 'agreed', finalPriceCenti: -300},
+  });
+});
+
+test('the agreed banner and recurring card keep the sign', async () => {
+  mockThread.data = thread({
+    listed_amount_centi: -500,
+    state: 'closed',
+    outcome: 'agreed',
+    final_price_centi: -300,
+  });
+  const r = await render();
+  expect(hasText(r, 'Both sides agreed at −3.00')).toBe(true);
+
+  mockThread.data = thread({
+    state: 'closed',
+    outcome: 'agreed',
+    final_price_centi: 4300,
+    listing_recurring: recurring,
+  });
+  const r2 = await render();
+  expect(hasText(r2, 'You’ll be charged 43.00 per week')).toBe(true);
+});
+
+test('a negative agreed price on a subsidy offers Request, not Send', async () => {
+  mockSession.wallet = {address: BUYER};
+  mockThread.data = thread({
+    listed_amount_centi: -500,
+    state: 'closed',
+    outcome: 'agreed',
+    final_price_centi: -300,
+  });
+  const r = await render();
+  expect(
+    r.root.findAll(n => n.props.accessibilityRole === 'button' && textOf(n).includes('Send')),
+  ).toHaveLength(0);
+  await press(button(r, 'Request 3.00 from the provider'));
+  // The same settle call — a negative proposal is the request.
+  expect(mockSettle).toHaveBeenCalledWith({
+    inquiryId: 'iq1',
+    listingTitle: 'Barn raising',
+    providerAddress: PROVIDER,
+    amountCenti: -300,
+    listingIdHex: 'l1',
+  });
+
+  mockActivity.data = [{memo: 'Barn raising · #iq1', state: 'pending'}];
+  const r2 = await render();
+  expect(hasText(r2, 'Request sent')).toBe(true);
+  expect(hasText(r2, 'You requested 3.00, pending the provider’s confirmation')).toBe(true);
+});
+
+test('an agreed price of zero offers nothing to pay', async () => {
+  mockSession.wallet = {address: BUYER};
+  mockThread.data = thread({state: 'closed', outcome: 'agreed', final_price_centi: 0});
+  const r = await render();
+  expect(
+    r.root.findAll(
+      n =>
+        n.props.accessibilityRole === 'button' &&
+        (textOf(n).includes('Send') || textOf(n).includes('Request')),
+    ),
+  ).toHaveLength(0);
+  expect(hasText(r, 'Agreed at no charge — nothing to pay.')).toBe(true);
+});
+
+test('a zero or negative per-period price offers no recurring contract', async () => {
+  mockSession.wallet = {address: BUYER};
+  for (const price of [0, -300]) {
+    mockThread.data = thread({
+      listed_amount_centi: -500,
+      state: 'closed',
+      outcome: 'agreed',
+      final_price_centi: price,
+      listing_recurring: recurring,
+    });
+    const r = await render();
+    expect(findButton(r, 'Set up recurring contract')).toBeUndefined();
+    expect(hasText(r, 'a recurring charge must be above zero')).toBe(true);
+  }
+});
+
+test('a counter-offer below zero is refused on a listing that isn’t a subsidy', async () => {
+  const r = await render();
+  await type(input(r, 'Counter-offer (optional)'), '-4');
+  expect(hasText(r, 'Offers on this listing can’t be negative.')).toBe(true);
+  expect(button(r, 'Send').props.accessibilityState?.disabled).toBe(true);
+});

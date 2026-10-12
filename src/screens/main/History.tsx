@@ -21,24 +21,28 @@ import {
   relativeTime,
   stateBadge,
   tierBadge,
+  txPaymentCopy,
   useActivity,
   type Transaction,
-  type TransactionDirection,
   type TransactionState,
 } from '../../ledger';
 import {useTheme, type Theme} from '../../theme';
 import type {MainTabScreenProps} from '../../navigation/types';
 
-/** A history filter: everything, by direction, or by a specific state. */
+/**
+ * A history filter: everything, by money flow, or by a specific state. "Sent"
+ * and "Received" follow the money (the member-relative sign), not who proposed:
+ * a request someone sent you that you paid is money you sent.
+ */
 type Filter =
   | {kind: 'all'}
-  | {kind: 'direction'; direction: TransactionDirection}
+  | {kind: 'flow'; flow: 'out' | 'in'}
   | {kind: 'state'; state: TransactionState};
 
 const FILTERS: {key: string; label: string; filter: Filter}[] = [
   {key: 'all', label: 'All', filter: {kind: 'all'}},
-  {key: 'out', label: 'Sent', filter: {kind: 'direction', direction: 'out'}},
-  {key: 'in', label: 'Received', filter: {kind: 'direction', direction: 'in'}},
+  {key: 'out', label: 'Sent', filter: {kind: 'flow', flow: 'out'}},
+  {key: 'in', label: 'Received', filter: {kind: 'flow', flow: 'in'}},
   {key: 'pending', label: 'Pending', filter: {kind: 'state', state: 'pending'}},
   {key: 'settled', label: 'Settled', filter: {kind: 'state', state: 'settled'}},
   {key: 'cancelled', label: 'Cancelled', filter: {kind: 'state', state: 'cancelled'}},
@@ -48,8 +52,8 @@ function matches(tx: Transaction, filter: Filter): boolean {
   switch (filter.kind) {
     case 'all':
       return true;
-    case 'direction':
-      return tx.direction === filter.direction;
+    case 'flow':
+      return filter.flow === 'out' ? tx.amountCenti < 0 : tx.amountCenti > 0;
     case 'state':
       return tx.state === filter.state;
   }
@@ -209,7 +213,7 @@ function HistoryRow({theme, tx, onPress}: {theme: Theme; tx: Transaction; onPres
           {tx.memo ?? tx.counterparty}
         </Text>
         <Text variant="caption" color={theme.colors.textSecondary} numberOfLines={1}>
-          {tx.direction === 'in' ? 'from' : 'to'} {tx.counterparty} · {relativeTime(tx.timestamp)}
+          {txPaymentCopy(tx).caption} · {relativeTime(tx.timestamp)}
         </Text>
       </View>
       <View style={styles.rowRight}>

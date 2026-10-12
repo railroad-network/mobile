@@ -13,17 +13,47 @@
 /** U+2212 MINUS SIGN — a proper minus, not a hyphen, for debit amounts. */
 export const MINUS = '−';
 
+/*
+ * Signed vs unsigned. {@link formatCommons} keeps the minus, so any amount set
+ * beside a verb — a button, a banner, a notification — shows the money flow it
+ * really carries. {@link formatCommonsMagnitude} drops the sign and is for the
+ * few places that draw or word the sign themselves (the `Amount` component, the
+ * direction-verb copy in `txDisplay`, a subsidy label). A jest gate
+ * (`__tests__/amountSignGate.test.ts`) fails the build when any other file
+ * imports the unsigned form.
+ */
+
 /**
- * Formats an *unsigned* centi value as grouped Commons with two decimals, e.g.
- * `123456` → `"1,234.56"`. The sign is applied separately (see {@link amountSign})
- * so callers can color and place it independently of the digits.
+ * Formats signed centi as grouped Commons with two decimals, keeping a proper
+ * minus on a negative value: `-123456` → `"−1,234.56"`, `123456` → `"1,234.56"`
+ * (no plus), `0` → `"0.00"`.
  */
 export function formatCommons(centi: number): string {
+  const digits = formatCommonsMagnitude(centi);
+  return Math.trunc(centi) < 0 ? `${MINUS}${digits}` : digits;
+}
+
+/**
+ * Formats the *magnitude* of a centi value as grouped Commons with two decimals,
+ * e.g. `-123456` → `"1,234.56"`. The sign is dropped — only for callers that
+ * draw it separately (see {@link amountSign}) or whose wording already says
+ * which way the money moves. Gated: see the note above {@link formatCommons}.
+ */
+export function formatCommonsMagnitude(centi: number): string {
   const abs = Math.abs(Math.trunc(centi));
   const whole = Math.floor(abs / 100);
   const cents = abs % 100;
   const grouped = String(whole).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   return `${grouped}.${String(cents).padStart(2, '0')}`;
+}
+
+/**
+ * Formats signed centi with an explicit sign either way: `"+20.00"`,
+ * `"−20.00"`, `"0.00"` — for a member-relative figure such as the balance
+ * after a payment, or a settled amount in a notification.
+ */
+export function formatSignedCommons(centi: number): string {
+  return `${amountSign(Math.trunc(centi))}${formatCommonsMagnitude(centi)}`;
 }
 
 /**
@@ -39,7 +69,7 @@ export function parseCommons(input: string): {centi: number} | {error: string} {
   if (trimmed.length === 0) {
     return {error: 'Enter an amount.'};
   }
-  if (!/^\d+(\.\d+)?$/.test(trimmed)) {
+  if (!AMOUNT_DIGITS.test(trimmed)) {
     return {error: 'Enter a valid amount, like 3.50.'};
   }
   const [whole, frac = ''] = trimmed.split('.');
@@ -51,6 +81,48 @@ export function parseCommons(input: string): {centi: number} | {error: string} {
     return {error: 'That amount is too large.'};
   }
   return {centi};
+}
+
+/** Unsigned decimal digits with an optional fractional part — nothing else. */
+const AMOUNT_DIGITS = /^\d+(\.\d+)?$/;
+
+/** The offer field's message for anything that is not an amount. */
+export const OFFER_INVALID = 'Enter an amount in Commons, like 4 or 4.50';
+
+/** The offer field's message for a negative offer on a listing that isn't a subsidy. */
+export const OFFER_NEGATIVE_REFUSED = 'Offers on this listing can’t be negative.';
+
+/**
+ * Parses an optional marketplace offer to signed integer centi. Blank is
+ * `{centi: null}` (no offer). A single leading `-` or `−` is accepted only when
+ * `allowNegative` — set exactly when the listing's own price is below zero (a
+ * Commons subsidy), the station's sign rule for offers (ADR-0010). The digits
+ * then follow {@link parseCommons}: integer centi, at most two decimals, within
+ * the safe-integer range — so `"1e3"`, `"0x10"`, `"--1"` and `"+5"` are not
+ * amounts, and no float is ever rounded into centi.
+ */
+export function parseOfferCommons(
+  input: string,
+  {allowNegative}: {allowNegative: boolean},
+): {centi: number | null} | {error: string} {
+  const trimmed = input.trim();
+  if (trimmed.length === 0) {
+    return {centi: null};
+  }
+  const negative = trimmed.startsWith('-') || trimmed.startsWith(MINUS);
+  const digits = negative ? trimmed.slice(1) : trimmed;
+  if (!AMOUNT_DIGITS.test(digits)) {
+    return {error: OFFER_INVALID};
+  }
+  if (negative && !allowNegative) {
+    return {error: OFFER_NEGATIVE_REFUSED};
+  }
+  const parsed = parseCommons(digits);
+  if ('error' in parsed) {
+    return parsed;
+  }
+  // `0 - 0` would be −0; an offer of "−0" is just zero.
+  return {centi: negative && parsed.centi !== 0 ? -parsed.centi : parsed.centi};
 }
 
 /** The sign to show for a signed centi value: `+`, a proper minus, or none. */

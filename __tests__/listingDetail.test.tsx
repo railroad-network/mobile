@@ -270,3 +270,46 @@ test('an offline station is named as offline, not as a missing listing', async (
   const r = await renderDetail();
   expect(hasText(r, 'Can’t reach your station')).toBe(true);
 });
+
+// --- offer entry follows the station's sign rule -------------------------------
+
+async function typeOffer(r: Renderer, value: string): Promise<void> {
+  const field = r.root.find(
+    n => n.props.accessibilityLabel === 'Your offer (optional)' && n.props.onChangeText !== undefined,
+  );
+  await act(async () => {
+    field.props.onChangeText(value);
+  });
+}
+
+test('a negative offer on a non-subsidy listing is refused', async () => {
+  const r = await renderDetail(nav());
+  await press(button(r, 'Inquire'));
+  await typeOffer(r, '-20');
+  expect(hasText(r, 'Offers on this listing can’t be negative.')).toBe(true);
+  expect(button(r, 'Send inquiry').props.accessibilityState?.disabled).toBe(true);
+  await press(button(r, 'Send inquiry'));
+  expect(mockOpenInquiry).not.toHaveBeenCalled();
+});
+
+test('a subsidy listing takes a negative offer with its sign', async () => {
+  detail.data = listing({surface: 'commons', amount_centi: -500});
+  const r = await renderDetail(nav());
+  await press(button(r, 'Inquire'));
+  await typeOffer(r, '−3');
+  await press(button(r, 'Send inquiry'));
+  expect(mockOpenInquiry).toHaveBeenCalledWith({listingId: 'abc123', message: '', offerCenti: -300});
+});
+
+test('1e3 and 0x10 are not amounts', async () => {
+  const r = await renderDetail(nav());
+  await press(button(r, 'Inquire'));
+  for (const s of ['1e3', '0x10']) {
+    await typeOffer(r, s);
+    expect(hasText(r, 'Enter an amount in Commons, like 4 or 4.50')).toBe(true);
+    expect(button(r, 'Send inquiry').props.accessibilityState?.disabled).toBe(true);
+  }
+  await typeOffer(r, '4.20');
+  await press(button(r, 'Send inquiry'));
+  expect(mockOpenInquiry).toHaveBeenCalledWith({listingId: 'abc123', message: '', offerCenti: 420});
+});

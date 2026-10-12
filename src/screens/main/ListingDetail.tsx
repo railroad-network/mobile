@@ -40,7 +40,7 @@ import {
   Identicon,
   Text,
 } from '../../components';
-import {dayLabel, formatCommons, shortAddress} from '../../ledger';
+import {dayLabel, formatCommons, parseOfferCommons, shortAddress} from '../../ledger';
 import {
   bandVariant,
   cadenceLabel,
@@ -202,9 +202,12 @@ function InquireAction({
   const [error, setError] = useState<string | undefined>();
 
   const ineligible = listing.viewer_eligible !== undefined && !listing.viewer_eligible.eligible;
-  const offerParsed = parseOffer(offerText);
-  const offerInvalid = offerParsed === 'invalid';
-  const offerCenti = offerParsed === 'invalid' || offerParsed === null ? null : offerParsed;
+  // A negative offer only on a listing priced below zero (a subsidy) — the
+  // station's sign rule for offers.
+  const offerParsed = parseOfferCommons(offerText, {allowNegative: listing.amount_centi < 0});
+  const offerError = 'error' in offerParsed ? offerParsed.error : undefined;
+  const offerInvalid = offerError !== undefined;
+  const offerCenti = 'error' in offerParsed ? null : offerParsed.centi;
 
   const onSend = async () => {
     setSending(true);
@@ -268,7 +271,7 @@ function InquireAction({
             ? 'In Commons — leave blank to accept the listed price'
             : 'This listing’s price is fixed, so offers aren’t invited'
         }
-        error={offerInvalid ? 'Enter an amount in Commons, like 4 or 4.50' : undefined}
+        error={offerError}
       />
       <Button fullWidth onPress={onSend} disabled={sending || offerInvalid} loading={sending}>
         Send inquiry
@@ -287,20 +290,6 @@ function InquireAction({
       )}
     </View>
   );
-}
-
-/** Parses an optional Commons amount to centi. `null` = blank, `'invalid'` = not
- * a number. Negatives are allowed (a Commons subsidy). */
-function parseOffer(input: string): number | null | 'invalid' {
-  const t = input.trim();
-  if (t === '') {
-    return null;
-  }
-  const n = Number(t);
-  if (!Number.isFinite(n)) {
-    return 'invalid';
-  }
-  return Math.round(n * 100);
 }
 
 /** The amber "this is yours" marker at the top of your own listing — the same

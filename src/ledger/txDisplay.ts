@@ -4,7 +4,8 @@
  * the detail view all label states identically.
  */
 import type {BadgeVariant} from '../components';
-import type {Transaction, TransactionState} from './types';
+import {formatCommonsMagnitude} from './format';
+import type {Transaction, TransactionDirection, TransactionState} from './types';
 
 export interface StateBadge {
   variant: BadgeVariant;
@@ -23,6 +24,96 @@ const STATE_BADGE: Record<TransactionState, StateBadge> = {
 /** The badge variant + label for a transaction state. */
 export function stateBadge(state: TransactionState): StateBadge {
   return STATE_BADGE[state];
+}
+
+/**
+ * Who pays whom in a transaction, from this member's side. `direction` alone
+ * says only who *proposed* it: a proposal with a negative amount is a payment
+ * request, which debits its receiver (ADR-0018). The station keeps the
+ * proposal's amount for the receiver and negates it for the sender, so the
+ * member-relative sign is the money flow and the pair decides the role:
+ *
+ * - `paying_you` — inbound, amount ≥ 0: they propose to pay you.
+ * - `requesting_from_you` — inbound, amount < 0: they ask you to pay.
+ * - `you_paid` — outbound, amount ≤ 0: you proposed to pay them.
+ * - `you_requested` — outbound, amount > 0: you asked them to pay.
+ *
+ * Zero takes the ordinary direction role.
+ */
+export type PaymentRole = 'paying_you' | 'requesting_from_you' | 'you_paid' | 'you_requested';
+
+/** The {@link PaymentRole} of a transaction. Every money-flow label derives from it. */
+export function paymentRole(tx: {direction: TransactionDirection; amountCenti: number}): PaymentRole {
+  if (tx.direction === 'in') {
+    return tx.amountCenti < 0 ? 'requesting_from_you' : 'paying_you';
+  }
+  return tx.amountCenti > 0 ? 'you_requested' : 'you_paid';
+}
+
+/** The direction-verb wording for one {@link PaymentRole}. */
+export interface PaymentCopy {
+  /** The list-row line under the title, e.g. `from Ana` / `request from Ana`. */
+  caption: string;
+  /** The confirm screen's line above the amount, e.g. `Ana is asking you to pay`. */
+  heading: string;
+  /** The detail screen's line above the amount, e.g. `Requested by Ana`. */
+  detailTitle: string;
+  /** The detail screen's "Direction" value, e.g. `Payment request — you pay`. */
+  directionLabel: string;
+  /**
+   * The amount with no sign. Use it **only** right after this role's own verb
+   * ("Pay 20.00", "asks you to pay 20.00"), where the wording already says which
+   * way the money moves; anywhere else, format the signed amount.
+   */
+  magnitude: string;
+}
+
+/**
+ * The wording for a transaction in `role` with `counterparty`. The only place
+ * direction-verb copy is built, so a request can never read as a payment on one
+ * screen and a request on another.
+ */
+export function paymentCopy(role: PaymentRole, counterparty: string, centi: number): PaymentCopy {
+  const magnitude = formatCommonsMagnitude(centi);
+  switch (role) {
+    case 'paying_you':
+      return {
+        caption: `from ${counterparty}`,
+        heading: `${counterparty} is paying you`,
+        detailTitle: `Received from ${counterparty}`,
+        directionLabel: 'Incoming credit',
+        magnitude,
+      };
+    case 'requesting_from_you':
+      return {
+        caption: `request from ${counterparty}`,
+        heading: `${counterparty} is asking you to pay`,
+        detailTitle: `Requested by ${counterparty}`,
+        directionLabel: 'Payment request — you pay',
+        magnitude,
+      };
+    case 'you_paid':
+      return {
+        caption: `to ${counterparty}`,
+        heading: `You paid ${counterparty}`,
+        detailTitle: `Sent to ${counterparty}`,
+        directionLabel: 'Outgoing debit',
+        magnitude,
+      };
+    case 'you_requested':
+      return {
+        caption: `request to ${counterparty}`,
+        heading: `You asked ${counterparty} to pay`,
+        detailTitle: `Requested from ${counterparty}`,
+        directionLabel: 'Payment request — they pay',
+        magnitude,
+      };
+  }
+}
+
+/** {@link paymentCopy} for a transaction. */
+export function txPaymentCopy(tx: Transaction): PaymentCopy {
+  return paymentCopy(paymentRole(tx), tx.counterparty, tx.amountCenti);
 }
 
 /**

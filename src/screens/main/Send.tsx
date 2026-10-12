@@ -37,8 +37,7 @@ import {
 } from '../../components';
 import {isValidAddress} from '../../crypto/address';
 import {
-  amountSign,
-  formatCommons,
+  formatSignedCommons,
   parseCommons,
   shortAddress,
   useBalance,
@@ -230,7 +229,7 @@ export function Send({navigation}: MainTabScreenProps<'Send'>) {
         <Card style={styles.amountPreview}>
           <Amount centi={amountCenti} size="xl" signed={false} colored={false} />
           <Text variant="caption" color={theme.colors.textSecondary}>
-            Available after: {formatSigned(availableAfter)} Commons
+            Available after: {formatSignedCommons(availableAfter)} Commons
           </Text>
         </Card>
         <Field
@@ -366,11 +365,6 @@ function Row({theme, label, children}: {theme: Theme; label: string; children: R
       <View style={styles.rowValue}>{children}</View>
     </View>
   );
-}
-
-/** Formats a signed centi value with its sign, for the "available after" line. */
-function formatSigned(centi: number): string {
-  return `${amountSign(centi)}${formatCommons(centi)}`;
 }
 
 /** A short, human handle for a transaction id (hex) on the success screen. */

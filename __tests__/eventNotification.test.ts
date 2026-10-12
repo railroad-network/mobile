@@ -136,3 +136,54 @@ describe('buildEventNotification', () => {
     ).toBeNull();
   });
 });
+
+describe('payment requests and member-relative signs', () => {
+  test('a negative proposal notifies as a payment request', () => {
+    const n = buildEventNotification(
+      event('proposal_received', {direction: 'in', amount_centi: -2000, memo: 'seed share'}),
+      allOn,
+    );
+    expect(n!.title).toBe('Payment request');
+    expect(n!.body).toBe('rrn1count…xxxxx asks you to pay 20.00 ₡ — seed share. Tap to review.');
+    expect(n!.body).not.toContain('Incoming');
+
+    const bare = buildEventNotification(
+      event('proposal_received', {direction: 'in', amount_centi: -2000}),
+      allOn,
+    );
+    expect(bare!.body).toBe('rrn1count…xxxxx asks you to pay 20.00 ₡. Tap to review.');
+  });
+
+  test('a positive proposal is still an incoming payment', () => {
+    const n = buildEventNotification(event('proposal_received', {amount_centi: 500}), allOn);
+    expect(n!.title).toBe('Incoming payment');
+    expect(n!.body).toBe('5.00 ₡ from rrn1count…xxxxx. Tap to confirm.');
+  });
+
+  test('confirmation of a payment the member sent', () => {
+    const n = buildEventNotification(
+      event('confirmation_received', {direction: 'out', amount_centi: -2000}),
+      allOn,
+    );
+    expect(n!.body).toBe('rrn1count…xxxxx confirmed your payment of 20.00 ₡.');
+  });
+
+  test('confirmation of a request the member sent', () => {
+    const n = buildEventNotification(
+      event('confirmation_received', {direction: 'out', amount_centi: 2000}),
+      allOn,
+    );
+    expect(n!.body).toBe('rrn1count…xxxxx agreed to pay your request of 20.00 ₡.');
+  });
+
+  test('settlement and cancellation keep the member-relative sign', () => {
+    expect(
+      buildEventNotification(event('settlement', {direction: 'in', amount_centi: -2000}), allOn)!
+        .body,
+    ).toBe('−20.00 ₡ with rrn1count…xxxxx has settled.');
+    expect(
+      buildEventNotification(event('cancellation', {direction: 'out', amount_centi: 2000}), allOn)!
+        .body,
+    ).toBe('+20.00 ₡ with rrn1count…xxxxx was cancelled.');
+  });
+});

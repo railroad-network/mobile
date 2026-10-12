@@ -312,3 +312,37 @@ test('surfaces the confirmation inbox and opens a proposal', async () => {
   await press(button(r, 'Split the seed order'));
   expect(navigation.navigate).toHaveBeenCalledWith('ConfirmReceived', {id: 'p1'});
 });
+
+test('a payment request in the inbox reads as a request and asks Pay?', async () => {
+  Object.assign(mockInbox, {
+    data: [
+      {
+        id: 'p2', counterparty: 'valley_farm', counterpartyAddress: 'rrn1qvalley',
+        direction: 'in', amountCenti: -2000, memo: 'Seed share',
+        state: 'pending', timestamp: Math.floor(Date.now() / 1000) - 3600,
+        expiresAt: Math.floor(Date.now() / 1000) + 172800,
+      },
+    ],
+    isLoading: false,
+  });
+  Object.assign(mockActivity, {
+    data: [
+      {
+        id: 'r1', counterparty: 'mill_co_op', counterpartyAddress: 'rrn1qmill',
+        direction: 'out', amountCenti: 500, memo: 'Candles owed',
+        state: 'pending', timestamp: Math.floor(Date.now() / 1000) - 600,
+      },
+    ],
+    isLoading: false,
+  });
+  const navigation = nav();
+  const r = await renderHome(navigation);
+  // The request stays in the inbox — paying is confirming — worded as a request.
+  expect(hasText(r, 'request from valley_farm')).toBe(true);
+  expect(hasText(r, 'Pay?')).toBe(true);
+  expect(hasText(r, '−20.00')).toBe(true);
+  // A request this member sent reads as one in recent activity.
+  expect(hasText(r, 'request to mill_co_op')).toBe(true);
+  await press(button(r, 'Seed share, payment request'));
+  expect(navigation.navigate).toHaveBeenCalledWith('ConfirmReceived', {id: 'p2'});
+});

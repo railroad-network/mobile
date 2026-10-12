@@ -136,3 +136,43 @@ test('a filter with no matches shows an empty message', async () => {
   await press(button(r, 'Filter: Received'));
   expect(hasText(r, 'Nothing matches this filter')).toBe(true);
 });
+
+/** Two payment requests: one asked of this member (money out), one they sent (money in). */
+function withRequests(): Transaction[] {
+  return [
+    ...txns(),
+    {
+      id: 'd', counterparty: 'seed_bank', counterpartyAddress: 'rrn1qseed',
+      direction: 'in', amountCenti: -1200, memo: 'Seed share request',
+      state: 'confirmed', timestamp: now - 1800,
+    },
+    {
+      id: 'e', counterparty: 'orchard', counterpartyAddress: 'rrn1qorchard',
+      direction: 'out', amountCenti: 400, memo: 'Apples owed',
+      state: 'pending', timestamp: now - 900,
+    },
+  ];
+}
+
+test('rows word a payment request as a request', async () => {
+  mockActivity.data = withRequests();
+  const r = await renderHistory();
+  expect(hasText(r, 'request from seed_bank')).toBe(true);
+  expect(hasText(r, 'request to orchard')).toBe(true);
+  expect(hasText(r, 'to dr_sarah')).toBe(true);
+  expect(hasText(r, 'from valley_farm')).toBe(true);
+});
+
+test('"Sent" and "Received" follow the money, not who proposed', async () => {
+  mockActivity.data = withRequests();
+  const r = await renderHistory();
+  await press(button(r, 'Filter: Sent'));
+  expect(hasText(r, 'Consultation')).toBe(true); // an ordinary out-flow
+  expect(hasText(r, 'Seed share request')).toBe(true); // a request this member pays
+  expect(hasText(r, 'Apples owed')).toBe(false); // a request they sent: money in
+
+  await press(button(r, 'Filter: Received'));
+  expect(hasText(r, 'Apples owed')).toBe(true);
+  expect(hasText(r, 'Grain delivery')).toBe(true);
+  expect(hasText(r, 'Seed share request')).toBe(false);
+});

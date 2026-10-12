@@ -30,7 +30,14 @@ import {
   Heading,
   Text,
 } from '../../components';
-import {formatCommons, inquiryMemo, relativeTime, useActivity, useSettleAgreement} from '../../ledger';
+import {
+  formatCommons,
+  inquiryMemo,
+  parseOfferCommons,
+  relativeTime,
+  useActivity,
+  useSettleAgreement,
+} from '../../ledger';
 import {
   cadenceLabel,
   perPeriodLabel,
@@ -168,6 +175,12 @@ function ThreadBody({
  * granted the price by agreeing; this commits the payment — a proposal linked to
  * the listing, which the provider then confirms through the standard M0.5 flow.
  *
+ * The action follows the agreed price's sign. Above zero, the buyer sends a
+ * payment. Below zero (a Commons subsidy), the same negative proposal is a
+ * *request* that the provider pays, committed by the provider's confirmation
+ * (ADR-0018) — so the button says Request, not Send. At zero there is nothing
+ * to pay and no button.
+ *
  * Offered exactly once. It guards against a double payment by looking for the
  * inquiry's own memo (`Inquiry <id>`) in the ledger before showing the button —
  * so a second tap, or a re-render from the thread's 5s poll, can't send a second
@@ -183,6 +196,10 @@ function SettleAction({theme, thread}: {theme: Theme; thread: StationInquiryThre
   const memo = inquiryMemo(thread.inquiry_id, thread.listing_title);
   const paid = (activity ?? []).find(tx => tx.memo === memo && tx.state !== 'cancelled');
   const priceCenti = thread.final_price_centi ?? thread.listed_amount_centi;
+  const isRequest = priceCenti < 0;
+  // The amount the provider pays on a subsidy, negated inside the branch that
+  // knows the price is below zero.
+  const requestedCenti = -priceCenti;
 
   const onSend = async () => {
     setSending(true);
@@ -196,7 +213,7 @@ function SettleAction({theme, thread}: {theme: Theme; thread: StationInquiryThre
     });
     setSending(false);
     if (!result.ok) {
-      setError(result.message ?? 'Could not send the payment.');
+      setError(result.message ?? (isRequest ? 'Could not send the request.' : 'Could not send the payment.'));
     }
     // On success the enqueued pending transaction makes `paid` truthy on the next
     // render, replacing the button with the sent state on its own.
@@ -206,12 +223,26 @@ function SettleAction({theme, thread}: {theme: Theme; thread: StationInquiryThre
     return (
       <Card style={{gap: theme.spacing.xs}}>
         <Text variant="label" color={theme.colors.text}>
-          Payment sent
+          {isRequest ? 'Request sent' : 'Payment sent'}
         </Text>
         <Text variant="caption" color={theme.colors.textSecondary}>
-          {paid.state === 'settled'
-            ? `You paid ${formatCommons(priceCenti)} — it’s in your history.`
-            : `${formatCommons(priceCenti)} is on its way, pending the provider’s confirmation.`}
+          {isRequest
+            ? paid.state === 'settled'
+              ? `The provider paid ${formatCommons(requestedCenti)} — it’s in your history.`
+              : `You requested ${formatCommons(requestedCenti)}, pending the provider’s confirmation.`
+            : paid.state === 'settled'
+              ? `You paid ${formatCommons(priceCenti)} — it’s in your history.`
+              : `${formatCommons(priceCenti)} is on its way, pending the provider’s confirmation.`}
+        </Text>
+      </Card>
+    );
+  }
+
+  if (priceCenti === 0) {
+    return (
+      <Card>
+        <Text variant="caption" color={theme.colors.textSecondary}>
+          Agreed at no charge — nothing to pay.
         </Text>
       </Card>
     );
@@ -220,7 +251,9 @@ function SettleAction({theme, thread}: {theme: Theme; thread: StationInquiryThre
   return (
     <View style={{gap: theme.spacing.sm}}>
       <Button fullWidth onPress={onSend} loading={sending} disabled={sending}>
-        {`Send ${formatCommons(priceCenti)} payment`}
+        {isRequest
+          ? `Request ${formatCommons(requestedCenti)} from the provider`
+          : `Send ${formatCommons(priceCenti)} payment`}
       </Button>
       {error !== undefined && (
         <Text variant="caption" color={theme.colors.danger}>
@@ -286,6 +319,18 @@ function RecurringSettleAction({
       setError(result.message ?? 'Could not set up the contract.');
     }
   };
+
+  if (existing === undefined && perPeriodCenti <= 0) {
+    // The station refuses a recurring charge at or below zero, so offering the
+    // setup would only lead to a refusal.
+    return (
+      <Card>
+        <Text variant="caption" color={theme.colors.textSecondary}>
+          This agreement can’t become a recurring contract: a recurring charge must be above zero.
+        </Text>
+      </Card>
+    );
+  }
 
   if (existing !== undefined) {
     return (
@@ -497,9 +542,13 @@ function Composer({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>();
 
-  const offerParsed = parseOffer(offerText);
-  const offerInvalid = offerParsed === 'invalid';
-  const offerCenti = offerParsed === 'invalid' || offerParsed === null ? null : offerParsed;
+  // A negative offer only on a listing priced below zero (a subsidy) — the
+  // station's sign rule for offers.
+  const subsidy = thread.listed_amount_centi < 0;
+  const offerParsed = parseOfferCommons(offerText, {allowNegative: subsidy});
+  const offerError = 'error' in offerParsed ? offerParsed.error : undefined;
+  const offerInvalid = offerError !== undefined;
+  const offerCenti = 'error' in offerParsed ? null : offerParsed.centi;
   // The station refuses a message with neither words nor an offer.
   const canSend = !busy && !offerInvalid && (body.trim().length > 0 || offerCenti !== null);
 
@@ -509,9 +558,13 @@ function Composer({
   // take it (re-offer) — matching the station, which refuses anything else.
   const offerBy = currentOfferBy(thread);
   const buyersOfferOnTable = offerBy === 'buyer';
-  const canAccept = mineRole === 'provider' && buyersOfferOnTable;
   // The buyer's standing offer, which is what the provider grants.
   const acceptCenti = currentOfferCenti(thread);
+  // A below-zero offer on a listing that isn't a subsidy can't be agreed: the
+  // station refuses it, and accepting would bind the provider to pay.
+  const signAllowed = acceptCenti >= 0 || subsidy;
+  const providerTurn = mineRole === 'provider' && buyersOfferOnTable;
+  const canAccept = providerTurn && signAllowed;
   const waitingHint = composerHint(mineRole, buyersOfferOnTable);
 
   const run = async (
@@ -573,7 +626,7 @@ function Composer({
             ? 'In Commons — leave blank to just send a message'
             : 'This listing’s price is fixed, so offers aren’t invited'
         }
-        error={offerInvalid ? 'Enter an amount in Commons, like 4 or 4.50' : undefined}
+        error={offerError}
       />
 
       <Button fullWidth onPress={onSend} disabled={!canSend} loading={busy}>
@@ -608,6 +661,12 @@ function Composer({
           disabled={busy}>
           {mineRole === 'provider' ? 'Decline' : 'Withdraw'}
         </Button>
+      )}
+
+      {providerTurn && !signAllowed && (
+        <Text variant="caption" color={theme.colors.danger}>
+          This offer is below zero on a listing that isn’t a subsidy — it can’t be accepted.
+        </Text>
       )}
 
       {waitingHint !== undefined && (
@@ -659,20 +718,6 @@ function composerHint(mineRole: Party, buyersOfferOnTable: boolean): string | un
   return buyersOfferOnTable
     ? 'The provider will accept or decline your inquiry.'
     : 'The provider countered. Send a matching offer to agree, or withdraw.';
-}
-
-/** Parses an optional Commons amount to centi. `null` = blank, `'invalid'` = not
- * a number. Negatives are allowed (a Commons subsidy). */
-function parseOffer(input: string): number | null | 'invalid' {
-  const t = input.trim();
-  if (t === '') {
-    return null;
-  }
-  const n = Number(t);
-  if (!Number.isFinite(n)) {
-    return 'invalid';
-  }
-  return Math.round(n * 100);
 }
 
 // --- outcome + error --------------------------------------------------------
