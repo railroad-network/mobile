@@ -6,8 +6,13 @@
  * stronger secrets; not a substitute for the real thing.
  */
 
-/** Minimum passphrase length, in characters. Enforced before the user proceeds. */
-export const MIN_PASSPHRASE_LENGTH = 12;
+import {MIN_PASSPHRASE_LENGTH} from '../../wallet/Wallet';
+
+/**
+ * Minimum passphrase length, in characters. Enforced before the user proceeds,
+ * and again by the wallet layer, which owns the constant.
+ */
+export {MIN_PASSPHRASE_LENGTH};
 
 export type StrengthLevel = 0 | 1 | 2 | 3;
 

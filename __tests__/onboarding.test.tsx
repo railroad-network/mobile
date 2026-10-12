@@ -62,9 +62,28 @@ jest.mock('../src/screens/onboarding/OnboardingContext', () => ({
 
 const mockCreateWallet = jest.fn();
 const mockPersistWallet = jest.fn();
-jest.mock('../src/wallet/Wallet', () => ({
-  createWallet: (...args: unknown[]) => mockCreateWallet(...args),
-  persistWallet: (...args: unknown[]) => mockPersistWallet(...args),
+const mockHasWallet = jest.fn();
+jest.mock('../src/wallet/Wallet', () => {
+  // The passphrase floor and the error class are the real ones; only the
+  // writes and the existence check are spies. The floor must be forwarded:
+  // passphraseStrength re-exports it from this module, so a mock without it
+  // would silently disable the Passphrase screen's length check here.
+  const actual = jest.requireActual('../src/wallet/Wallet');
+  return {
+    MIN_PASSPHRASE_LENGTH: actual.MIN_PASSPHRASE_LENGTH,
+    WalletExistsError: actual.WalletExistsError,
+    createWallet: (...args: unknown[]) => mockCreateWallet(...args),
+    persistWallet: (...args: unknown[]) => mockPersistWallet(...args),
+    hasWallet: (...args: unknown[]) => mockHasWallet(...args),
+  };
+});
+
+// GenerateWallet blocks Back during the seal via usePreventRemove; outside a
+// navigator it has no context, so capture its (preventRemove, callback) args.
+const mockUsePreventRemove = jest.fn();
+jest.mock('@react-navigation/native', () => ({
+  ...jest.requireActual('@react-navigation/native'),
+  usePreventRemove: (...args: unknown[]) => mockUsePreventRemove(...args),
 }));
 
 const mockRefresh = jest.fn();
@@ -96,9 +115,22 @@ const metrics = {
   insets: {top: 47, left: 0, right: 0, bottom: 34},
 };
 
-// A permissive navigation stand-in; screens only touch navigate/replace.
+// A permissive navigation stand-in; screens only touch navigate/replace/reset.
 const nav = () =>
-  ({navigate: jest.fn(), replace: jest.fn(), goBack: jest.fn()}) as any;
+  ({
+    navigate: jest.fn(),
+    replace: jest.fn(),
+    reset: jest.fn(),
+    goBack: jest.fn(),
+  }) as any;
+
+const RESET_TO_READY = {index: 0, routes: [{name: 'WalletReady'}]};
+
+// Whether GenerateWallet's Back guard is currently engaged (its last call).
+const preventingRemove = (): boolean => {
+  const calls = mockUsePreventRemove.mock.calls;
+  return calls[calls.length - 1][0] as boolean;
+};
 
 type Renderer = ReactTestRenderer.ReactTestRenderer;
 type Instance = ReactTestRenderer.ReactTestInstance;
@@ -160,6 +192,7 @@ beforeEach(() => {
   mockOnboarding.createdAddress = null;
   mockOnboarding.createdWallet = null;
   mockOnboarding.recoveredWallet = null;
+  mockHasWallet.mockResolvedValue(false);
 });
 
 // --- Passphrase -------------------------------------------------------------
@@ -290,7 +323,7 @@ describe('GenerateWallet', () => {
     });
     expect(mockOnboarding.setCreatedAddress).toHaveBeenCalledWith('rrn1exampleaddress');
     expect(mockOnboarding.clearSecrets).toHaveBeenCalled();
-    expect(navigation.replace).toHaveBeenCalledWith('WalletReady');
+    expect(navigation.reset).toHaveBeenCalledWith(RESET_TO_READY);
   });
 
   test('on the recover path it re-seals the recovered identity, never minting a new key', async () => {
@@ -318,7 +351,7 @@ describe('GenerateWallet', () => {
     );
     expect(mockOnboarding.setCreatedAddress).toHaveBeenCalledWith('rrn1recovered');
     expect(mockOnboarding.setCreatedWallet).toHaveBeenCalledWith(recovered);
-    expect(navigation.replace).toHaveBeenCalledWith('WalletReady');
+    expect(navigation.reset).toHaveBeenCalledWith(RESET_TO_READY);
     expect(hasText(r, 'Restoring your wallet')).toBe(true);
   });
 
@@ -338,13 +371,13 @@ describe('GenerateWallet', () => {
 
     // Creation is already done, but the progress state stays up.
     expect(mockCreateWallet).toHaveBeenCalledTimes(1);
-    expect(navigation.replace).not.toHaveBeenCalled();
+    expect(navigation.reset).not.toHaveBeenCalled();
     expect(hasText(r, 'Creating your identity')).toBe(true);
 
     await act(async () => {
       jest.advanceTimersByTime(3500);
     });
-    expect(navigation.replace).toHaveBeenCalledWith('WalletReady');
+    expect(navigation.reset).toHaveBeenCalledWith(RESET_TO_READY);
   });
 
   test('paints this screen before the blocking seal starts, so it cannot flash by', async () => {
@@ -410,7 +443,7 @@ describe('GenerateWallet', () => {
 
     // The prompt consumed the wall clock, but the screen has not been seen yet,
     // so it must not have advanced.
-    expect(navigation.replace).not.toHaveBeenCalled();
+    expect(navigation.reset).not.toHaveBeenCalled();
     expect(hasText(r, 'Creating your identity')).toBe(true);
 
     // It holds for the minimum-visible window measured from when the prompt
@@ -418,7 +451,7 @@ describe('GenerateWallet', () => {
     await act(async () => {
       jest.advanceTimersByTime(3500);
     });
-    expect(navigation.replace).toHaveBeenCalledWith('WalletReady');
+    expect(navigation.reset).toHaveBeenCalledWith(RESET_TO_READY);
   });
 
   test('shows an error with retry when creation fails', async () => {
@@ -433,6 +466,125 @@ describe('GenerateWallet', () => {
     expect(hasText(r, 'Something went wrong')).toBe(true);
     expect(hasText(r, 'keystore unavailable')).toBe(true);
     expect(button(r, 'Try again')).toBeTruthy();
+    // The Back guard is released so the member can leave the error.
+    expect(preventingRemove()).toBe(false);
+  });
+
+  test('success resets the stack to WalletReady', async () => {
+    mockOnboarding.passphrase = 'correcthorsebattery';
+    mockCreateWallet.mockResolvedValue({address: 'rrn1exampleaddress'});
+
+    const navigation = nav();
+    await renderScreen(<GenerateWallet navigation={navigation} route={{} as any} />);
+    // Back is blocked while the seal runs…
+    expect(preventingRemove()).toBe(true);
+    await settle();
+
+    // …and released before the reset, which replaces the whole onboarding stack
+    // so the screens that held the passphrase cannot be revisited.
+    expect(preventingRemove()).toBe(false);
+    expect(navigation.reset).toHaveBeenCalledTimes(1);
+    expect(navigation.reset).toHaveBeenCalledWith(RESET_TO_READY);
+    expect(navigation.replace).not.toHaveBeenCalled();
+  });
+
+  test('GenerateWallet never runs with a wiped passphrase', async () => {
+    // Android Back from WalletReady used to reach BiometricSetup, whose either
+    // choice opens a fresh GenerateWallet after the passphrase was wiped.
+    mockOnboarding.passphrase = '';
+    mockCreateWallet.mockResolvedValue({address: 'rrn1exampleaddress'});
+    mockPersistWallet.mockResolvedValue(undefined);
+
+    const navigation = nav();
+    const r = await renderScreen(
+      <GenerateWallet navigation={navigation} route={{} as any} />,
+    );
+    await settle();
+
+    expect(mockCreateWallet).not.toHaveBeenCalled();
+    expect(mockPersistWallet).not.toHaveBeenCalled();
+    expect(mockHasWallet).not.toHaveBeenCalled();
+    expect(hasText(r, 'Your passphrase is no longer in memory')).toBe(true);
+    expect(hasText(r, 'Try again')).toBe(false);
+    expect(preventingRemove()).toBe(false);
+
+    // The way out starts onboarding over rather than re-running the seal.
+    await press(button(r, 'Start over'));
+    expect(navigation.reset).toHaveBeenCalledWith({
+      index: 0,
+      routes: [{name: 'Welcome'}],
+    });
+    await settle();
+    expect(mockCreateWallet).not.toHaveBeenCalled();
+  });
+
+  test('a passphrase under the floor never reaches the wallet layer', async () => {
+    mockOnboarding.passphrase = 'a'.repeat(11);
+    mockOnboarding.recoveredWallet = {address: 'rrn1recovered'};
+
+    const r = await renderScreen(
+      <GenerateWallet navigation={nav()} route={{} as any} />,
+    );
+    await settle();
+
+    expect(mockPersistWallet).not.toHaveBeenCalled();
+    expect(mockCreateWallet).not.toHaveBeenCalled();
+    expect(hasText(r, 'Your passphrase is no longer in memory')).toBe(true);
+  });
+
+  test('an existing wallet routes to the lock screen, no retry', async () => {
+    const {WalletExistsError} = jest.requireActual('../src/wallet/Wallet');
+    mockOnboarding.passphrase = 'correcthorsebattery';
+    mockCreateWallet.mockRejectedValue(new WalletExistsError());
+
+    const navigation = nav();
+    const r = await renderScreen(
+      <GenerateWallet navigation={navigation} route={{} as any} />,
+    );
+    await settle();
+
+    expect(hasText(r, 'A wallet already exists on this device.')).toBe(true);
+    expect(hasText(r, 'Try again')).toBe(false);
+    expect(preventingRemove()).toBe(false);
+    // The wallet another write stored is there by the time the member taps.
+    mockHasWallet.mockResolvedValue(true);
+    await press(button(r, 'Open it'));
+    expect(mockRefresh).toHaveBeenCalledTimes(1);
+    expect(navigation.reset).not.toHaveBeenCalled();
+    expect(mockOnboarding.clearSecrets).not.toHaveBeenCalled();
+  });
+
+  test('a wallet found on the device stops the screen before any write', async () => {
+    mockOnboarding.passphrase = 'correcthorsebattery';
+    mockHasWallet.mockResolvedValue(true);
+
+    const r = await renderScreen(
+      <GenerateWallet navigation={nav()} route={{} as any} />,
+    );
+    await settle();
+
+    expect(mockCreateWallet).not.toHaveBeenCalled();
+    expect(mockPersistWallet).not.toHaveBeenCalled();
+    expect(hasText(r, 'A wallet already exists on this device.')).toBe(true);
+    await press(button(r, 'Open it'));
+    expect(mockRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  test('"Open it" falls back to a retryable error when the keystore read fails', async () => {
+    mockOnboarding.passphrase = 'correcthorsebattery';
+    mockHasWallet.mockResolvedValue(true);
+
+    const r = await renderScreen(
+      <GenerateWallet navigation={nav()} route={{} as any} />,
+    );
+    await settle();
+    mockHasWallet.mockRejectedValue(new Error('keystore unavailable'));
+    await press(button(r, 'Open it'));
+
+    expect(mockRefresh).not.toHaveBeenCalled();
+    expect(hasText(r, 'keystore unavailable')).toBe(true);
+    expect(button(r, 'Try again')).toBeTruthy();
+    expect(mockCreateWallet).not.toHaveBeenCalled();
   });
 
   test('creates only one wallet even if the effect re-runs', async () => {

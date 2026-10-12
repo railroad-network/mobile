@@ -6,7 +6,8 @@
  * onboarding stack, rather than passed through navigation route params: route
  * params get serialized into persisted navigation state, and a passphrase has
  * no business living there. {@link OnboardingState.clearSecrets} wipes it from
- * memory as soon as the wallet has been sealed.
+ * memory once the wallet has been sealed, and the stack is then reset to
+ * WalletReady so the screens that held it are unmounted and cannot be revisited.
  */
 import {createContext, useContext, useMemo, useState, type ReactNode} from 'react';
 
