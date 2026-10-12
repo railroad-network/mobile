@@ -10,6 +10,12 @@
  * reason `rejected_by_receiver`; nothing is signed or sent, and the proposal
  * simply expires on the station). An expired proposal can no longer be confirmed.
  *
+ * A proposal with a negative amount is a **payment request**: confirming it
+ * debits the member (ADR-0018). The screen branches on {@link paymentRole}, so a
+ * request reads as one — "asking you to pay", a red amount, a warning, and
+ * **Pay** / **Decline** — never as an incoming payment. The signing call is the
+ * same either way: a confirmation is a confirmation.
+ *
  * The confirmed/rejected state shows immediately via the local overlay; the
  * balance change follows when the settlement window elapses on the station.
  */
@@ -31,9 +37,11 @@ import {
 } from '../../components';
 import {
   isExpired,
+  paymentRole,
   settlementAt,
   shortAddress,
   tierBadge,
+  txPaymentCopy,
   useActivity,
   useConfirmProposal,
   useRecordDecision,
@@ -79,6 +87,8 @@ export function ConfirmReceived({route, navigation}: MainStackScreenProps<'Confi
   }
 
   const expired = isExpired(tx);
+  const isRequest = paymentRole(tx) === 'requesting_from_you';
+  const copy = txPaymentCopy(tx);
 
   async function reject() {
     if (tx === undefined) return;
@@ -120,9 +130,13 @@ export function ConfirmReceived({route, navigation}: MainStackScreenProps<'Confi
     return (
       <ScrollView style={{backgroundColor: theme.colors.bg}} contentContainerStyle={contentPad}>
         <View style={styles.center}>
-          <Heading level="headingLarge">You confirmed receipt</Heading>
+          <Heading level="headingLarge">
+            {isRequest ? 'You agreed to pay' : 'You confirmed receipt'}
+          </Heading>
           <Text variant="body" color={theme.colors.textSecondary} style={styles.centerText}>
-            You signed for “{tx.memo ?? 'this payment'}” from {tx.counterparty}.
+            {isRequest
+              ? `You signed to pay ${copy.magnitude} for “${tx.memo ?? 'this request'}” to ${tx.counterparty}.`
+              : `You signed for “${tx.memo ?? 'this payment'}” from ${tx.counterparty}.`}
           </Text>
         </View>
         {tx.state === 'disputed' ? (
@@ -170,7 +184,9 @@ export function ConfirmReceived({route, navigation}: MainStackScreenProps<'Confi
     return (
       <ScrollView style={{backgroundColor: theme.colors.bg}} contentContainerStyle={contentPad}>
         <View style={styles.center}>
-          <Heading level="headingLarge">Proposal rejected</Heading>
+          <Heading level="headingLarge">
+            {isRequest ? 'Request declined' : 'Proposal rejected'}
+          </Heading>
           <Text variant="body" color={theme.colors.textSecondary} style={styles.centerText}>
             Nothing moved. {tx.counterparty} can propose again, or you can sort it out in person.
           </Text>
@@ -189,7 +205,7 @@ export function ConfirmReceived({route, navigation}: MainStackScreenProps<'Confi
       <View style={styles.center}>
         <Identicon seed={tx.counterpartyAddress} size={56} />
         <Text variant="body" color={theme.colors.textSecondary}>
-          {tx.counterparty} is paying you
+          {copy.heading}
         </Text>
         <Amount centi={tx.amountCenti} size="xl" />
         {tierBadge(tx.oracleTier) !== null && (
@@ -229,14 +245,22 @@ export function ConfirmReceived({route, navigation}: MainStackScreenProps<'Confi
         </Banner>
       ) : (
         <>
-          <Banner variant="info" title="Only confirm what’s true">
-            Tapping “All good” signs your name to “I received this.” If you didn’t, reject it — your
-            word is part of the ledger.
-          </Banner>
+          {isRequest ? (
+            <Banner variant="warning" title="This is a request for you to pay">
+              Confirming signs a debit of {copy.magnitude} from your balance to {tx.counterparty}. Only
+              pay requests you agreed to.
+            </Banner>
+          ) : (
+            <Banner variant="info" title="Only confirm what’s true">
+              Tapping “All good” signs your name to “I received this.” If you didn’t, reject it — your
+              word is part of the ledger.
+            </Banner>
+          )}
           {tx.oracleTier === 2 && (
             <Banner variant="warning" title="This one stakes your reputation">
-              At this amount, confirming puts your standing behind the payment (Tier 2). Only vouch
-              for it if you truly received it.
+              {isRequest
+                ? 'At this amount, confirming puts your standing behind the payment (Tier 2). Only confirm it if you truly agreed to pay.'
+                : 'At this amount, confirming puts your standing behind the payment (Tier 2). Only vouch for it if you truly received it.'}
             </Banner>
           )}
           {confirmError !== null && (
@@ -250,10 +274,10 @@ export function ConfirmReceived({route, navigation}: MainStackScreenProps<'Confi
             fullWidth
             loading={busy}
             onPress={confirmReceipt}>
-            All good — I received this
+            {isRequest ? `Pay ${copy.magnitude}` : 'All good — I received this'}
           </Button>
           <Button variant="ghost" size="lg" fullWidth onPress={reject}>
-            Reject
+            {isRequest ? 'Decline' : 'Reject'}
           </Button>
         </>
       )}

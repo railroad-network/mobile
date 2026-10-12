@@ -200,3 +200,38 @@ test('a confirm that cannot reach the station surfaces a failure and stays on th
   expect(hasText(r, 'Couldn’t reach your station')).toBe(true);
   expect(hasText(r, 'You confirmed receipt')).toBe(false);
 });
+
+// --- payment requests -------------------------------------------------------
+
+test('a payment request reads as a request the member pays', async () => {
+  // A negative proposal debits its receiver: the counterparty is asking this
+  // member to pay 20.00, not paying them.
+  mockActivity.data = [proposal({direction: 'in', amountCenti: -2000})];
+  const r = await renderScreen();
+  expect(hasText(r, 'valley_farm is asking you to pay')).toBe(true);
+  expect(hasText(r, 'is paying you')).toBe(false);
+  expect(hasText(r, 'This is a request for you to pay')).toBe(true);
+  expect(hasText(r, 'Confirming signs a debit of 20.00 from your balance to valley_farm.')).toBe(true);
+  // The amount is drawn signed (a debit), not as a bare 20.00.
+  expect(
+    r.root.findAll(n => n.props.accessibilityLabel === 'minus 20.00 Commons').length,
+  ).toBeGreaterThan(0);
+  expect(buttons(r, 'All good — I received this')).toHaveLength(0);
+  expect(buttons(r, 'Reject')).toHaveLength(0);
+
+  await press(button(r, 'Pay 20.00'));
+  expect(mockConfirmProposal).toHaveBeenCalledWith(PROPOSAL_ID);
+  expect(hasText(r, 'You agreed to pay')).toBe(true);
+  expect(hasText(r, 'You confirmed receipt')).toBe(false);
+});
+
+test('declining a payment request is the same local reject', async () => {
+  mockActivity.data = [proposal({direction: 'in', amountCenti: -2000})];
+  const r = await renderScreen();
+  await press(button(r, 'Decline'));
+  expect(mockRecord).toHaveBeenCalledWith(PROPOSAL_ID, {
+    state: 'cancelled',
+    reason: 'rejected_by_receiver',
+  });
+  expect(mockConfirmProposal).not.toHaveBeenCalled();
+});

@@ -33,7 +33,8 @@ import {Pressable, ScrollView, StyleSheet, Switch, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 import {Amount, Badge, Banner, Button, Card, Field, ScreenHeader, Text} from '../../components';
-import {formatCommons, parseCommons} from '../../ledger';
+import {parseCommons} from '../../ledger';
+import {formatCommonsMagnitude} from '../../ledger/format';
 import {
   CATEGORIES,
   SURFACES,
@@ -327,9 +328,10 @@ function formStateFromDetail(d: StationListingDetail): FormState {
     title: d.title,
     description: d.description,
     category: d.category,
-    // formatCommons groups with commas; parseCommons does not accept them, so
-    // strip them for a value that round-trips through the pricing field.
-    amountText: centi === 0 ? '' : formatCommons(centi).replace(/,/g, ''),
+    // The field holds the magnitude — `isSubsidy` carries the sign. The
+    // formatter groups with commas; parseCommons does not accept them, so strip
+    // them for a value that round-trips through the pricing field.
+    amountText: centi === 0 ? '' : formatCommonsMagnitude(centi).replace(/,/g, ''),
     isSubsidy: centi < 0,
     negotiable: d.negotiable,
     availabilityStatus: d.availability.status,

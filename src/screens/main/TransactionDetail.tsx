@@ -33,6 +33,7 @@ import {
   stateBadge,
   tierBadge,
   tierLabel,
+  txPaymentCopy,
   useActivity,
   useRaiseDispute,
 } from '../../ledger';
@@ -146,7 +147,7 @@ export function TransactionDetail({route, navigation}: MainStackScreenProps<'Tra
           <Card style={styles.hero}>
             <Identicon seed={tx.counterpartyAddress} size={52} />
             <Text variant="body" color={theme.colors.textSecondary}>
-              {tx.direction === 'in' ? 'Received from' : 'Sent to'} {tx.counterparty}
+              {txPaymentCopy(tx).detailTitle}
             </Text>
             <Amount centi={tx.amountCenti} size="xl" />
             {/* Badge sets its own `alignSelf: flex-start`; wrap it so it centers
@@ -240,7 +241,7 @@ export function TransactionDetail({route, navigation}: MainStackScreenProps<'Tra
             <DetailRow
               theme={theme}
               label="Direction"
-              value={tx.direction === 'in' ? 'Incoming credit' : 'Outgoing debit'}
+              value={txPaymentCopy(tx).directionLabel}
             />
             <DetailRow theme={theme} label="Oracle tier" value={tierLabel(tx.oracleTier)} />
             {tx.nonce !== undefined && (

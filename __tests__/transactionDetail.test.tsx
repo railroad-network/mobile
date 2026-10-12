@@ -150,3 +150,18 @@ describe('the "For" line', () => {
     expect(forLabel(undefined, '')).toBe('—');
   });
 });
+
+test.each([
+  ['paying_you', 'in', 1500, 'Received from valley_farm', 'Incoming credit'],
+  ['requesting_from_you', 'in', -1500, 'Requested by valley_farm', 'Payment request — you pay'],
+  ['you_paid', 'out', -1500, 'Sent to valley_farm', 'Outgoing debit'],
+  ['you_requested', 'out', 1500, 'Requested from valley_farm', 'Payment request — they pay'],
+] as const)(
+  'the %s role renders its title and direction label',
+  async (_role, direction, amountCenti, title, label) => {
+    mockActivity.data = [tx({direction, amountCenti})];
+    const r = await renderDetail();
+    expect(hasText(r, title)).toBe(true);
+    expect(hasText(r, label)).toBe(true);
+  },
+);

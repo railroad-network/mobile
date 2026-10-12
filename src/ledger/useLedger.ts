@@ -916,6 +916,10 @@ export function inquiryMemo(inquiryId: string, listingTitle: string): string {
  * {@link inquiryMemo} and the `listing_id` link the proposal carries. The screen
  * guards against a double payment by checking {@link useActivity} for that memo
  * before offering the action.
+ *
+ * `amountCenti` is the agreed price and may be negative: on a Commons subsidy
+ * the negative proposal is a payment request the provider pays, committed by
+ * their confirmation (ADR-0018).
  */
 export function useSettleAgreement(): (args: {
   inquiryId: string;
@@ -954,7 +958,7 @@ export function useSettleAgreement(): (args: {
           counterparty: shortAddress(providerAddress),
           counterpartyAddress: providerAddress,
           direction: 'out',
-          amountCenti: -amountCenti, // display: an outgoing payment is a debit
+          amountCenti: -amountCenti, // display: negate to the member-relative sign
           memo: proposal.memo,
           state: 'pending',
           timestamp: proposal.proposedAt,

@@ -17,7 +17,7 @@ import ReactTestRenderer, {act} from 'react-test-renderer';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 
 import {ThemeProvider} from '../src/theme';
-import {Marketplace} from '../src/screens/main/Marketplace';
+import {Marketplace, priceLabel} from '../src/screens/main/Marketplace';
 import type {MarketplaceFilters} from '../src/marketplace';
 import type {StationListingCard} from '../src/network/StationClient';
 
@@ -226,6 +226,13 @@ test('a Commons subsidy reads as a subsidy, not a loss', async () => {
   };
   const r = await renderMarketplace();
   expect(hasText(r, 'Subsidy')).toBe(true);
+});
+
+test('the price label words a subsidy’s sign once and keeps a price’s', () => {
+  // "Subsidy of" carries the sign, so the digits are unsigned — never "Subsidy of −3.00".
+  expect(priceLabel({surface: 'commons', amount_centi: -300})).toBe('Subsidy of 3.00 Commons');
+  expect(priceLabel({surface: 'goods', amount_centi: 4500})).toBe('45.00 Commons');
+  expect(priceLabel({surface: 'commons', amount_centi: 0})).toBe('Free');
 });
 
 test('no results, unfiltered, invites the first listing rather than showing blank', async () => {

@@ -21,7 +21,7 @@ export type TransactionState =
   /** Under dispute. */
   | 'disputed';
 
-/** Money direction relative to this member. */
+/** Who proposed, relative to this member: `in` = they did, `out` = this member did. */
 export type TransactionDirection = 'in' | 'out';
 
 /** One transaction involving this member. */
@@ -33,8 +33,12 @@ export interface Transaction {
   counterpartyAddress: string;
   direction: TransactionDirection;
   /**
-   * Signed amount in centi: positive is a credit (money in), negative a debit
-   * (money out). Consistent with {@link direction}.
+   * Signed amount in centi, relative to this member: positive is money flowing
+   * to them, negative money flowing from them. It is **not** always consistent
+   * with {@link direction}, which says only who proposed: a payment request (a
+   * proposal with a negative amount, ADR-0018) is `in` yet debits this member,
+   * and a request this member sent is `out` yet credits them. Derive any
+   * money-flow wording from `paymentRole`, never from `direction` alone.
    */
   amountCenti: number;
   /** Optional free-text memo. */

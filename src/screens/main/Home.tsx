@@ -28,6 +28,7 @@ import {
 } from '../../components';
 import {
   isExpired,
+  paymentRole,
   relativeTime,
   shortAddress,
   stateBadge,
@@ -37,6 +38,7 @@ import {
   useIdentity,
   useInbox,
   useRefreshLedger,
+  txPaymentCopy,
   type Transaction,
 } from '../../ledger';
 import {useActiveStation} from '../../network/useStation';
@@ -338,7 +340,7 @@ function ActivityRow({tx, onPress}: {tx: Transaction; onPress: () => void}) {
           {tx.memo ?? tx.counterparty}
         </Text>
         <Text variant="caption" color={theme.colors.textSecondary} numberOfLines={1}>
-          {tx.direction === 'in' ? 'from' : 'to'} {tx.counterparty} · {relativeTime(tx.timestamp)}
+          {txPaymentCopy(tx).caption} · {relativeTime(tx.timestamp)}
         </Text>
       </View>
       <View style={styles.rowRight}>
@@ -354,6 +356,10 @@ function ActivityRow({tx, onPress}: {tx: Transaction; onPress: () => void}) {
 function InboxRow({tx, onPress}: {tx: Transaction; onPress: () => void}) {
   const theme = useTheme();
   const expired = isExpired(tx);
+  // A payment request is kept in the inbox — confirming it is how the member
+  // pays — but it reads as a request and asks "Pay?" rather than "Confirm".
+  const isRequest = paymentRole(tx) === 'requesting_from_you';
+  const action = isRequest ? 'Pay?' : 'Confirm';
   const [pressed, setPressed] = useState(false);
   return (
     <Pressable
@@ -361,7 +367,9 @@ function InboxRow({tx, onPress}: {tx: Transaction; onPress: () => void}) {
       onPressIn={() => setPressed(true)}
       onPressOut={() => setPressed(false)}
       accessibilityRole="button"
-      accessibilityLabel={`${tx.memo ?? tx.counterparty}, ${expired ? 'expired' : 'confirm'}`}
+      accessibilityLabel={`${tx.memo ?? tx.counterparty}, ${
+        expired ? 'expired' : isRequest ? 'payment request' : 'confirm'
+      }`}
       style={[
         styles.row,
         {
@@ -376,13 +384,13 @@ function InboxRow({tx, onPress}: {tx: Transaction; onPress: () => void}) {
           {tx.memo ?? tx.counterparty}
         </Text>
         <Text variant="caption" color={theme.colors.textSecondary} numberOfLines={1}>
-          from {tx.counterparty} · {relativeTime(tx.timestamp)}
+          {txPaymentCopy(tx).caption} · {relativeTime(tx.timestamp)}
         </Text>
       </View>
       <View style={styles.rowRight}>
         <Amount centi={tx.amountCenti} size="sm" />
         <Badge variant={expired ? 'neutral' : 'warning'} size="sm" dot>
-          {expired ? 'Expired' : 'Confirm'}
+          {expired ? 'Expired' : action}
         </Badge>
       </View>
     </Pressable>

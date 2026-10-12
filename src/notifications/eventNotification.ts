@@ -12,8 +12,13 @@
  * transaction row for the ledger kinds (the same shape the history view
  * renders), the vouch row for `vouch_received` — so amounts and counterparties
  * read consistently with the rest of the app.
+ *
+ * Wording follows who pays whom ({@link paymentRole}), not just the row's
+ * direction: a proposal with a negative amount is a payment request the member
+ * would pay, and is announced as one.
  */
-import {formatCommons, shortAddress} from '../ledger/format';
+import {formatCommons, formatSignedCommons, shortAddress} from '../ledger/format';
+import {paymentCopy, paymentRole} from '../ledger/txDisplay';
 import type {StationEvent, StationEventKind} from '../network/StationClient';
 import {shouldNotify, type NotificationPrefs} from './notificationPrefs';
 import type {NotificationContent} from './Notifications';
@@ -29,9 +34,18 @@ const COPY: Partial<Record<StationEventKind, Copy>> = {
     if (event.transaction === undefined) {
       return null;
     }
-    const {amount_centi, counterparty_address, memo} = event.transaction;
-    const amount = `${formatCommons(amount_centi)} ${COMMONS}`;
+    const {amount_centi, counterparty_address, direction, memo} = event.transaction;
     const who = shortAddress(counterparty_address);
+    if (paymentRole({direction, amountCenti: amount_centi}) === 'requesting_from_you') {
+      const magnitude = paymentCopy('requesting_from_you', who, amount_centi).magnitude;
+      return {
+        title: 'Payment request',
+        body: memo
+          ? `${who} asks you to pay ${magnitude} ${COMMONS} — ${memo}. Tap to review.`
+          : `${who} asks you to pay ${magnitude} ${COMMONS}. Tap to review.`,
+      };
+    }
+    const amount = `${formatCommons(amount_centi)} ${COMMONS}`;
     return {
       title: 'Incoming payment',
       body: memo
@@ -43,11 +57,30 @@ const COPY: Partial<Record<StationEventKind, Copy>> = {
     if (event.transaction === undefined) {
       return null;
     }
-    const {amount_centi, counterparty_address} = event.transaction;
-    return {
-      title: 'Payment confirmed',
-      body: `${shortAddress(counterparty_address)} confirmed ${formatCommons(amount_centi)} ${COMMONS}.`,
-    };
+    const {amount_centi, counterparty_address, direction} = event.transaction;
+    const who = shortAddress(counterparty_address);
+    const role = paymentRole({direction, amountCenti: amount_centi});
+    const magnitude = paymentCopy(role, who, amount_centi).magnitude;
+    switch (role) {
+      case 'you_paid':
+        return {
+          title: 'Payment confirmed',
+          body: `${who} confirmed your payment of ${magnitude} ${COMMONS}.`,
+        };
+      case 'you_requested':
+        return {
+          title: 'Payment confirmed',
+          body: `${who} agreed to pay your request of ${magnitude} ${COMMONS}.`,
+        };
+      default:
+        // The confirmer is the proposal's receiver, so this event reaches the
+        // proposer (an `out` row). An `in` row is unexpected; word it neutrally
+        // with the member-relative sign.
+        return {
+          title: 'Payment confirmed',
+          body: `${who} confirmed ${formatSignedCommons(amount_centi)} ${COMMONS}.`,
+        };
+    }
   },
   settlement: event => {
     if (event.transaction === undefined) {
@@ -56,7 +89,7 @@ const COPY: Partial<Record<StationEventKind, Copy>> = {
     const {amount_centi, counterparty_address} = event.transaction;
     return {
       title: 'Payment settled',
-      body: `${formatCommons(amount_centi)} ${COMMONS} with ${shortAddress(counterparty_address)} has settled.`,
+      body: `${formatSignedCommons(amount_centi)} ${COMMONS} with ${shortAddress(counterparty_address)} has settled.`,
     };
   },
   cancellation: event => {
@@ -66,7 +99,7 @@ const COPY: Partial<Record<StationEventKind, Copy>> = {
     const {amount_centi, counterparty_address} = event.transaction;
     return {
       title: 'Payment cancelled',
-      body: `${formatCommons(amount_centi)} ${COMMONS} with ${shortAddress(counterparty_address)} was cancelled.`,
+      body: `${formatSignedCommons(amount_centi)} ${COMMONS} with ${shortAddress(counterparty_address)} was cancelled.`,
     };
   },
   vouch_received: event => {

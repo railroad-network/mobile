@@ -30,6 +30,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 import {Amount, Badge, Card, Field, Heading, Identicon, ScreenHeader, Text} from '../../components';
 import {dayLabel, formatCommons, shortAddress} from '../../ledger';
+import {formatCommonsMagnitude} from '../../ledger/format';
 import {
   SURFACES,
   CATEGORIES,
@@ -452,7 +453,7 @@ export function priceLabel(card: {amount_centi: number; surface: StationSurface}
   }
   if (card.amount_centi < 0) {
     // A negative Commons price is a subsidy: the provider pays the taker.
-    return `Subsidy of ${formatCommons(card.amount_centi)} Commons`;
+    return `Subsidy of ${formatCommonsMagnitude(card.amount_centi)} Commons`;
   }
   return `${formatCommons(card.amount_centi)} Commons`;
 }
