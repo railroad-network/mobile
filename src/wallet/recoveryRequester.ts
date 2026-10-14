@@ -62,8 +62,8 @@ export class RecoverySession {
     return encodeRequestQr(this.inner.requestPayload());
   }
 
-  /** The ceremony fingerprint (`xxxxx-xxxxx`); every holder must see this exact
-   * code on their screen. */
+  /** The ceremony fingerprint as the core renders it (four hyphen-joined
+   * groups); every holder must see this exact code on their screen. */
   fingerprint(): string {
     return this.inner.fingerprint();
   }

@@ -157,6 +157,19 @@ const hasText = (r: Renderer, text: string): boolean =>
     n => (n.type as unknown as string) === 'Text' && textOf(n).includes(text),
   ).length > 0;
 
+/** The rendered ceremony fingerprint: its whole text, its spoken label, and how
+ * many text runs (one per group) it is drawn in. */
+function shownFingerprint(r: Renderer): {text: string; label: string; runs: number} {
+  const [node] = r.root.findAll(
+    n => n.props.testID === 'ceremony-fingerprint' && typeof n.type === 'string',
+  );
+  const runs = node.findAll(n => (n.type as unknown as string) === 'Text');
+  for (const run of runs) {
+    expect(run.props.numberOfLines).toBeUndefined();
+  }
+  return {text: textOf(node), label: node.props.accessibilityLabel, runs: runs.length};
+}
+
 const byLabel = (r: Renderer, label: string): Instance =>
   r.root.find(n => n.props.accessibilityLabel === label);
 
@@ -247,8 +260,16 @@ describe('RecoverFromCircle', () => {
     const r = await startCeremony();
     expect(mockBegin).toHaveBeenCalledWith('rrn1lostidentity');
     expect(r.root.findAll(n => n.props.testID === 'qr-code').length).toBeGreaterThan(0);
-    expect(hasText(r, FINGERPRINT)).toBe(true);
+    // Shown exactly as the core rendered it, one run per group, read out group
+    // by group.
+    const shown = shownFingerprint(r);
+    expect(shown.text).toBe(FINGERPRINT);
+    expect(shown.runs).toBe(4);
+    expect(shown.label).toBe(`Ceremony fingerprint: ${FINGERPRINT.split('-').join(', ')}`);
     expect(hasText(r, 'must see this exact code')).toBe(true);
+    expect(hasText(r, 'scans this request from your screen, in person')).toBe(true);
+    expect(hasText(r, 'reads the code back to you by voice')).toBe(true);
+    expect(hasText(r, 'Never send the code with the request.')).toBe(true);
   });
 
   test('a malformed address does not start a ceremony', async () => {
@@ -436,6 +457,13 @@ describe('RecoverChoice', () => {
     expect(mockSetRecoveredWallet).toHaveBeenCalledWith(null);
     expect(navigation.navigate).toHaveBeenCalledWith('Passphrase');
   });
+
+  test('the circle option asks for holders in person or by voice', async () => {
+    const r = await render(<RecoverChoice navigation={nav()} route={{} as any} />);
+    expect(hasText(r, 'enough of them with you in person')).toBe(true);
+    expect(hasText(r, 'read a code back to you by voice')).toBe(true);
+    expect(hasText(r, 'on a call')).toBe(false);
+  });
 });
 
 describe('recovery fingerprint fixture', () => {
@@ -443,10 +471,20 @@ describe('recovery fingerprint fixture', () => {
   // (rrn-mobile-ffi's recovery_ceremony.rs). Here we only pin the copied file's
   // shape, so a hand-copy drift is visible on this side too.
   test('has the cross-platform shape the station contract produces', () => {
-    expect(fingerprintFixture.vectors).toHaveLength(3);
+    // Four groups of four Crockford base32 characters (no I, L, O, U).
+    const CODE = /^[0-9A-HJKMNP-TV-Z]{4}(-[0-9A-HJKMNP-TV-Z]{4}){3}$/;
+    expect(typeof fingerprintFixture.construction).toBe('string');
+    expect(fingerprintFixture.vectors).toHaveLength(5);
+    const codes = new Set<string>();
     for (const v of fingerprintFixture.vectors) {
+      expect(typeof v.label).toBe('string');
       expect(v.recovery_pubkey_hex).toMatch(/^[0-9a-f]{64}$/);
-      expect(v.fingerprint).toMatch(/^[0-9a-f]{5}-[0-9a-f]{5}$/);
+      expect(v.target_address).toMatch(/^rrn1[02-9ac-hj-np-z]+$/);
+      expect(v.request_hex).toMatch(/^([0-9a-f]{2})+$/);
+      expect(v.fingerprint).toMatch(CODE);
+      codes.add(v.fingerprint);
     }
+    // Same recovery key, different target → a different code.
+    expect(codes.size).toBe(fingerprintFixture.vectors.length);
   });
 });

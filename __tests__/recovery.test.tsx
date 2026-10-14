@@ -18,6 +18,7 @@ import ReactTestRenderer, {act} from 'react-test-renderer';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 
 import {ThemeProvider} from '../src/theme';
+import {RecoveryIntro} from '../src/screens/recovery/RecoveryIntro';
 import {RecoveryUnlock} from '../src/screens/recovery/RecoveryUnlock';
 import {ChooseHolders} from '../src/screens/recovery/ChooseHolders';
 import {RecoverySplit} from '../src/screens/recovery/RecoverySplit';
@@ -43,6 +44,7 @@ interface MockRecovery {
   delivered: Set<number>;
   markDelivered: jest.Mock;
   clear: jest.Mock;
+  isRefresh?: boolean;
 }
 
 function freshWallet(): MockWallet {
@@ -165,6 +167,7 @@ beforeEach(() => {
     holders: [],
     setHolders: jest.fn(),
     threshold: 3,
+    isRefresh: false,
     recoveryPackage: null,
     setRecoveryPackage: jest.fn(),
     delivered: new Set<number>(),
@@ -174,6 +177,25 @@ beforeEach(() => {
 });
 
 // --- RecoveryUnlock ---------------------------------------------------------
+
+describe('RecoveryIntro', () => {
+  test('refresh intro says old pieces still work', async () => {
+    mockRecovery.isRefresh = true;
+    const r = await renderScreen(<RecoveryIntro navigation={nav()} route={{} as any} />);
+
+    expect(hasText(r, 'Your old pieces still work')).toBe(true);
+    expect(hasText(r, 'keep working')).toBe(true);
+    expect(hasText(r, "the app can't take a piece back")).toBe(true);
+    expect(hasText(r, 'start a new identity instead')).toBe(true);
+    expect(hasText(r, 'stop working')).toBe(false);
+    expect(hasText(r, 'useless')).toBe(false);
+  });
+
+  test('a first setup shows no refresh warning', async () => {
+    const r = await renderScreen(<RecoveryIntro navigation={nav()} route={{} as any} />);
+    expect(hasText(r, 'Your old pieces still work')).toBe(false);
+  });
+});
 
 describe('RecoveryUnlock', () => {
   test('unlocks the wallet and advances to the intro', async () => {

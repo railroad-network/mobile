@@ -110,6 +110,19 @@ const hasText = (r: Renderer, text: string): boolean =>
     n => (n.type as unknown as string) === 'Text' && textOf(n).includes(text),
   ).length > 0;
 
+/** The rendered ceremony fingerprint: its whole text, its spoken label, and how
+ * many text runs (one per group) it is drawn in. */
+function shownFingerprint(r: Renderer): {text: string; label: string; runs: number} {
+  const [node] = r.root.findAll(
+    n => n.props.testID === 'ceremony-fingerprint' && typeof n.type === 'string',
+  );
+  const runs = node.findAll(n => (n.type as unknown as string) === 'Text');
+  for (const run of runs) {
+    expect(run.props.numberOfLines).toBeUndefined();
+  }
+  return {text: textOf(node), label: node.props.accessibilityLabel, runs: runs.length};
+}
+
 const button = (r: Renderer, name: string): Instance =>
   r.root.find(
     n =>
@@ -194,9 +207,18 @@ test('the confirm step shows the ceremony fingerprint and the verify-in-person c
 
   // The exact fingerprint the requester shows must appear for the holder to
   // read aloud and match (RRN-A-001 / RRN-M-002).
-  expect(hasText(r, FINGERPRINT)).toBe(true);
+  const shown = shownFingerprint(r);
+  expect(shown.text).toBe(FINGERPRINT);
+  expect(shown.runs).toBe(4);
+  expect(shown.label).toBe(`Ceremony fingerprint: ${FINGERPRINT.split('-').join(', ')}`);
   expect(hasText(r, 'Read this code aloud')).toBe(true);
+  expect(hasText(r, 'all four groups')).toBe(true);
+  expect(hasText(r, 'they are with you in person')).toBe(true);
+  expect(hasText(r, 'scanned this request from their own screen')).toBe(true);
+  expect(hasText(r, 'read the code back to them by voice')).toBe(true);
+  expect(hasText(r, 'A code sent along with the request proves nothing.')).toBe(true);
   expect(hasText(r, 'only as trustworthy as the person showing it')).toBe(true);
+  expect(hasText(r, 'channel you')).toBe(false);
 });
 
 test('unlocking contributes the held shard and shows a response QR', async () => {

@@ -31,3 +31,5 @@ export type {CountdownProps} from './Countdown';
 export {ScreenHeader, BackLink} from './ScreenHeader';
 export type {ScreenHeaderProps, BackLinkProps} from './ScreenHeader';
 export {ErrorBoundary} from './ErrorBoundary';
+export {CeremonyFingerprint} from './CeremonyFingerprint';
+export type {CeremonyFingerprintProps} from './CeremonyFingerprint';

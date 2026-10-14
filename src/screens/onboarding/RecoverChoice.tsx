@@ -65,7 +65,8 @@ export function RecoverChoice({
             <Heading level="headingSmall">From my recovery circle</Heading>
             <Text variant="body" color={theme.colors.textSecondary}>
               Rebuild your key with help from the people you gave recovery shards
-              to. You'll need enough of them together, in person or on a call.
+              to. You'll need enough of them with you in person, or able to read
+              a code back to you by voice.
             </Text>
           </Card>
         </Pressable>

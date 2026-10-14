@@ -26,7 +26,16 @@ import {Alert, StyleSheet, View} from 'react-native';
 import {useIsFocused, usePreventRemove} from '@react-navigation/native';
 import QRCode from 'react-native-qrcode-svg';
 
-import {Banner, Button, Card, Field, Heading, QRScanner, Text} from '../../components';
+import {
+  Banner,
+  Button,
+  Card,
+  CeremonyFingerprint,
+  Field,
+  Heading,
+  QRScanner,
+  Text,
+} from '../../components';
 import {isValidAddress} from '../../crypto/address';
 import {parseAddressQr} from '../../ledger/addressQr';
 import {useTheme} from '../../theme';
@@ -357,20 +366,20 @@ export function RecoverFromCircle({
             style={styles.centerText}>
             Ceremony fingerprint
           </Text>
-          <Text
-            variant="mono"
-            color={theme.colors.text}
-            selectable
+          <CeremonyFingerprint
+            code={session.fingerprint()}
+            fontSize={28}
             style={styles.fingerprint}
-            accessibilityLabel={`Ceremony fingerprint: ${session.fingerprint()}`}>
-            {session.fingerprint()}
-          </Text>
+          />
           <Text
             variant="body"
             color={theme.colors.textSecondary}
             style={[styles.centerText, {marginBottom: theme.spacing.md}]}>
-            Every holder must see this exact code on their own screen. Read it
-            aloud together — if it doesn't match, stop.
+            Every holder must see this exact code on their own screen, all four
+            groups. Read it aloud together — if it doesn't match, stop. Each
+            holder scans this request from your screen, in person; a holder who
+            gets it as a message reads the code back to you by voice. Never send
+            the code with the request.
           </Text>
 
           <View
@@ -439,11 +448,8 @@ const styles = StyleSheet.create({
   qrCard: {padding: 14, marginTop: 12, marginBottom: 16},
   qrFrame: {backgroundColor: '#FFFFFF', borderRadius: 12, padding: 12},
   fingerprint: {
-    fontSize: 28,
-    letterSpacing: 2,
     marginTop: 2,
     marginBottom: 12,
-    textAlign: 'center',
   },
   progress: {
     borderWidth: 1,

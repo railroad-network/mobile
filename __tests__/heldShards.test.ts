@@ -3,20 +3,28 @@
  *
  * Shards this device holds for others (T1.2.3). The store is a map keyed by the
  * wallet each shard helps recover; it must round-trip through SecureStore, hold
- * many wallets at once, replace a wallet's shard on re-receipt, forget on
- * request, report "none" when absent or unreadable, and never gate reads behind
- * biometrics (the payloads are already sealed ciphertext).
+ * many wallets at once, refuse to silently replace a held piece with a different
+ * one, forget on request, report "none" when absent or unreadable, and never
+ * gate reads behind biometrics (the payloads are already sealed ciphertext).
+ * `shardIsForKey` compares public-key bytes through the (faked) address FFI.
  */
 import {SecureStoreKeys} from '../src/crypto/constants';
 import type {SecureStore, SaveOptions} from '../src/crypto/SecureStore';
 import {
   deleteHeldShard,
+  HeldShardExistsError,
   loadHeldShards,
   saveHeldShard,
+  shardIsForKey,
   shardPayloadBytes,
   type HeldShard,
 } from '../src/wallet/heldShards';
 import {bytesToBase64} from '../src/crypto/base64';
+import {
+  registerRrnCryptoFfi,
+  type PublicKey,
+  type RrnCryptoFfi,
+} from '../src/crypto/ffi';
 
 /** An in-memory SecureStore capturing the last save options. */
 class FakeStore implements SecureStore {
@@ -74,13 +82,44 @@ describe('held-shard persistence', () => {
     expect(Object.keys(held).sort()).toEqual(['rrn1alice', 'rrn1bob']);
   });
 
-  test('re-receiving a wallet’s shard replaces the previous one', async () => {
+  test('a different payload for a held owner is refused without replace', async () => {
     const store = new FakeStore();
-    await saveHeldShard(shard('rrn1alice', {receivedAt: 1}), store);
-    await saveHeldShard(shard('rrn1alice', {receivedAt: 2}), store);
+    const original = shard('rrn1alice', {receivedAt: 1});
+    await saveHeldShard(original, store);
+    const forged = shard('rrn1alice', {
+      payload: bytesToBase64(Uint8Array.from([9, 9, 9])),
+      receivedAt: 2,
+    });
+
+    const attempt = saveHeldShard(forged, store);
+    await expect(attempt).rejects.toBeInstanceOf(HeldShardExistsError);
+    await expect(saveHeldShard(forged, store)).rejects.toMatchObject({
+      existing: original,
+    });
+    expect(await loadHeldShards(store)).toEqual({rrn1alice: original});
+  });
+
+  test('replace:true replaces; identical payload is unchanged', async () => {
+    const store = new FakeStore();
+    expect(await saveHeldShard(shard('rrn1alice', {receivedAt: 1}), store)).toBe(
+      'saved',
+    );
+
+    // The same payload again: nothing written, the first receipt time kept.
+    expect(await saveHeldShard(shard('rrn1alice', {receivedAt: 2}), store)).toBe(
+      'unchanged',
+    );
+    expect((await loadHeldShards(store)).rrn1alice.receivedAt).toBe(1);
+
+    // A different payload, explicitly confirmed: it replaces the held piece.
+    const fresh = shard('rrn1alice', {
+      payload: bytesToBase64(Uint8Array.from([5, 6, 7])),
+      receivedAt: 3,
+    });
+    expect(await saveHeldShard(fresh, store, {replace: true})).toBe('saved');
     const held = await loadHeldShards(store);
     expect(Object.keys(held)).toEqual(['rrn1alice']);
-    expect(held.rrn1alice.receivedAt).toBe(2);
+    expect(held.rrn1alice).toEqual(fresh);
   });
 
   test('forgets a held shard, leaving others intact', async () => {
@@ -114,5 +153,64 @@ describe('held-shard persistence', () => {
     const bytes = Uint8Array.from([9, 8, 7, 6]);
     const s = shard('rrn1alice', {payload: bytesToBase64(bytes)});
     expect(shardPayloadBytes(s)).toEqual(bytes);
+  });
+});
+
+// --- shardIsForKey ------------------------------------------------------------
+
+// A minimal address FFI: two known addresses map to fixed key bytes, and a
+// second spelling of the first maps to the same key (as a non-canonical but
+// valid encoding would). Everything else fails to parse.
+const KEY_ME = Uint8Array.from({length: 32}, (_, i) => i);
+const KEY_OTHER = Uint8Array.from({length: 32}, (_, i) => 255 - i);
+const keysByAddress = new Map<string, Uint8Array>([
+  ['rrn1me', KEY_ME],
+  ['RRN1ME', KEY_ME],
+  ['rrn1other', KEY_OTHER],
+]);
+
+function unused(): never {
+  throw new Error('not exercised by held-shard tests');
+}
+
+const fakeFfi = {
+  PublicKey: {
+    fromBytes: unused,
+    fromAddress: (address: string): PublicKey => {
+      const bytes = keysByAddress.get(address);
+      if (bytes === undefined) {
+        throw new Error('invalid address');
+      }
+      return {
+        toBytes: () => bytes,
+        toAddress: () => address,
+        verify: unused,
+        seal: unused,
+      };
+    },
+  },
+} as unknown as RrnCryptoFfi;
+
+describe('shardIsForKey', () => {
+  beforeAll(() => registerRrnCryptoFfi(fakeFfi));
+
+  test('matching key is true', () => {
+    expect(shardIsForKey('rrn1me', KEY_ME)).toBe(true);
+  });
+
+  test('another spelling of the same key is true (bytes, not strings)', () => {
+    expect(shardIsForKey('RRN1ME', KEY_ME)).toBe(true);
+  });
+
+  test('another key is false', () => {
+    expect(shardIsForKey('rrn1other', KEY_ME)).toBe(false);
+  });
+
+  test('an unparseable address is false', () => {
+    expect(shardIsForKey('not-an-address', KEY_ME)).toBe(false);
+  });
+
+  test('a key of a different length is false', () => {
+    expect(shardIsForKey('rrn1me', KEY_ME.slice(0, 31))).toBe(false);
   });
 });

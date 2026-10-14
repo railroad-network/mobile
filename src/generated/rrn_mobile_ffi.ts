@@ -298,6 +298,227 @@ export function outboxNextEntry(
   );
 }
 
+export function pairingCode(
+  stationPk: ArrayBuffer,
+  mobilePk: ArrayBuffer,
+  mobileNonce: ArrayBuffer,
+  stationNonce: ArrayBuffer,
+): string /*throws*/ {
+  return ((__rb: Uint8Array) => {
+    try {
+      return FfiConverterString.lift(__rb);
+    } finally {
+      nativeModule().rustbuffer_free(__rb);
+    }
+  })(
+    uniffiCaller.rustCallWithError(
+      /*liftError:*/ FfiConverterTypeCryptoError.lift.bind(
+        FfiConverterTypeCryptoError,
+      ),
+      /*caller:*/ callStatus => {
+        return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_func_pairing_code(
+          FfiConverterArrayBuffer.lower(
+            stationPk,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterArrayBuffer.lower(
+            mobilePk,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterArrayBuffer.lower(
+            mobileNonce,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterArrayBuffer.lower(
+            stationNonce,
+            nativeModule().rustbuffer_alloc,
+          ),
+          callStatus,
+        );
+      },
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+    ),
+  );
+}
+
+export function pairingCommitment(
+  mobilePk: ArrayBuffer,
+  mobileNonce: ArrayBuffer,
+): ArrayBuffer /*throws*/ {
+  return ((__rb: Uint8Array) => {
+    try {
+      return FfiConverterArrayBuffer.lift(__rb);
+    } finally {
+      nativeModule().rustbuffer_free(__rb);
+    }
+  })(
+    uniffiCaller.rustCallWithError(
+      /*liftError:*/ FfiConverterTypeCryptoError.lift.bind(
+        FfiConverterTypeCryptoError,
+      ),
+      /*caller:*/ callStatus => {
+        return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_func_pairing_commitment(
+          FfiConverterArrayBuffer.lower(
+            mobilePk,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterArrayBuffer.lower(
+            mobileNonce,
+            nativeModule().rustbuffer_alloc,
+          ),
+          callStatus,
+        );
+      },
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+    ),
+  );
+}
+
+export function pairingFinishSignedBytes(
+  stationPk: ArrayBuffer,
+  mobilePk: ArrayBuffer,
+  commitment: ArrayBuffer,
+  stationNonce: ArrayBuffer,
+  mobileNonce: ArrayBuffer,
+): ArrayBuffer /*throws*/ {
+  return ((__rb: Uint8Array) => {
+    try {
+      return FfiConverterArrayBuffer.lift(__rb);
+    } finally {
+      nativeModule().rustbuffer_free(__rb);
+    }
+  })(
+    uniffiCaller.rustCallWithError(
+      /*liftError:*/ FfiConverterTypeCryptoError.lift.bind(
+        FfiConverterTypeCryptoError,
+      ),
+      /*caller:*/ callStatus => {
+        return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_func_pairing_finish_signed_bytes(
+          FfiConverterArrayBuffer.lower(
+            stationPk,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterArrayBuffer.lower(
+            mobilePk,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterArrayBuffer.lower(
+            commitment,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterArrayBuffer.lower(
+            stationNonce,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterArrayBuffer.lower(
+            mobileNonce,
+            nativeModule().rustbuffer_alloc,
+          ),
+          callStatus,
+        );
+      },
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+    ),
+  );
+}
+
+export function pairingNonce(): ArrayBuffer {
+  return ((__rb: Uint8Array) => {
+    try {
+      return FfiConverterArrayBuffer.lift(__rb);
+    } finally {
+      nativeModule().rustbuffer_free(__rb);
+    }
+  })(
+    uniffiCaller.rustCall(
+      /*caller:*/ callStatus => {
+        return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_func_pairing_nonce(
+          callStatus,
+        );
+      },
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+    ),
+  );
+}
+
+export function pairingOfferSignedBytes(
+  stationPk: ArrayBuffer,
+  mobilePk: ArrayBuffer,
+  commitment: ArrayBuffer,
+  stationNonce: ArrayBuffer,
+): ArrayBuffer /*throws*/ {
+  return ((__rb: Uint8Array) => {
+    try {
+      return FfiConverterArrayBuffer.lift(__rb);
+    } finally {
+      nativeModule().rustbuffer_free(__rb);
+    }
+  })(
+    uniffiCaller.rustCallWithError(
+      /*liftError:*/ FfiConverterTypeCryptoError.lift.bind(
+        FfiConverterTypeCryptoError,
+      ),
+      /*caller:*/ callStatus => {
+        return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_func_pairing_offer_signed_bytes(
+          FfiConverterArrayBuffer.lower(
+            stationPk,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterArrayBuffer.lower(
+            mobilePk,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterArrayBuffer.lower(
+            commitment,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterArrayBuffer.lower(
+            stationNonce,
+            nativeModule().rustbuffer_alloc,
+          ),
+          callStatus,
+        );
+      },
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+    ),
+  );
+}
+
+export function pairingStartSignedBytes(
+  mobilePk: ArrayBuffer,
+  commitment: ArrayBuffer,
+  requestedAt: bigint,
+): ArrayBuffer /*throws*/ {
+  return ((__rb: Uint8Array) => {
+    try {
+      return FfiConverterArrayBuffer.lift(__rb);
+    } finally {
+      nativeModule().rustbuffer_free(__rb);
+    }
+  })(
+    uniffiCaller.rustCallWithError(
+      /*liftError:*/ FfiConverterTypeCryptoError.lift.bind(
+        FfiConverterTypeCryptoError,
+      ),
+      /*caller:*/ callStatus => {
+        return nativeModule().ubrn_uniffi_rrn_mobile_ffi_fn_func_pairing_start_signed_bytes(
+          FfiConverterArrayBuffer.lower(
+            mobilePk,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterArrayBuffer.lower(
+            commitment,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterInt64.lower(requestedAt, nativeModule().rustbuffer_alloc),
+          callStatus,
+        );
+      },
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+    ),
+  );
+}
+
 export function parseRecoveryRequest(
   requestPayload: ArrayBuffer,
 ): RecoveryRequestInfo /*throws*/ {
@@ -4363,6 +4584,54 @@ function uniffiEnsureInitialized() {
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       'uniffi_rrn_mobile_ffi_checksum_func_outbox_next_entry',
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_func_pairing_code() !==
+    30755
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_func_pairing_code',
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_func_pairing_commitment() !==
+    8773
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_func_pairing_commitment',
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_func_pairing_finish_signed_bytes() !==
+    39173
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_func_pairing_finish_signed_bytes',
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_func_pairing_nonce() !==
+    35852
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_func_pairing_nonce',
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_func_pairing_offer_signed_bytes() !==
+    36323
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_func_pairing_offer_signed_bytes',
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_rrn_mobile_ffi_checksum_func_pairing_start_signed_bytes() !==
+    48702
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      'uniffi_rrn_mobile_ffi_checksum_func_pairing_start_signed_bytes',
     );
   }
   if (
