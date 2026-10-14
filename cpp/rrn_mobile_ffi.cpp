@@ -389,6 +389,41 @@ extern "C" {
         int64_t authored_at, 
         RustCallStatus *uniffi_out_err
     );
+    RustBuffer uniffi_rrn_mobile_ffi_fn_func_pairing_code(
+        RustBuffer station_pk, 
+        RustBuffer mobile_pk, 
+        RustBuffer mobile_nonce, 
+        RustBuffer station_nonce, 
+        RustCallStatus *uniffi_out_err
+    );
+    RustBuffer uniffi_rrn_mobile_ffi_fn_func_pairing_commitment(
+        RustBuffer mobile_pk, 
+        RustBuffer mobile_nonce, 
+        RustCallStatus *uniffi_out_err
+    );
+    RustBuffer uniffi_rrn_mobile_ffi_fn_func_pairing_finish_signed_bytes(
+        RustBuffer station_pk, 
+        RustBuffer mobile_pk, 
+        RustBuffer commitment, 
+        RustBuffer station_nonce, 
+        RustBuffer mobile_nonce, 
+        RustCallStatus *uniffi_out_err
+    );
+    RustBuffer uniffi_rrn_mobile_ffi_fn_func_pairing_nonce(RustCallStatus *uniffi_out_err
+    );
+    RustBuffer uniffi_rrn_mobile_ffi_fn_func_pairing_offer_signed_bytes(
+        RustBuffer station_pk, 
+        RustBuffer mobile_pk, 
+        RustBuffer commitment, 
+        RustBuffer station_nonce, 
+        RustCallStatus *uniffi_out_err
+    );
+    RustBuffer uniffi_rrn_mobile_ffi_fn_func_pairing_start_signed_bytes(
+        RustBuffer mobile_pk, 
+        RustBuffer commitment, 
+        int64_t requested_at, 
+        RustCallStatus *uniffi_out_err
+    );
     RustBuffer uniffi_rrn_mobile_ffi_fn_func_parse_recovery_request(
         RustBuffer request_payload, 
         RustCallStatus *uniffi_out_err
@@ -631,6 +666,18 @@ extern "C" {
     uint16_t uniffi_rrn_mobile_ffi_checksum_func_offline_spend_verify(
     );
     uint16_t uniffi_rrn_mobile_ffi_checksum_func_outbox_next_entry(
+    );
+    uint16_t uniffi_rrn_mobile_ffi_checksum_func_pairing_code(
+    );
+    uint16_t uniffi_rrn_mobile_ffi_checksum_func_pairing_commitment(
+    );
+    uint16_t uniffi_rrn_mobile_ffi_checksum_func_pairing_finish_signed_bytes(
+    );
+    uint16_t uniffi_rrn_mobile_ffi_checksum_func_pairing_nonce(
+    );
+    uint16_t uniffi_rrn_mobile_ffi_checksum_func_pairing_offer_signed_bytes(
+    );
+    uint16_t uniffi_rrn_mobile_ffi_checksum_func_pairing_start_signed_bytes(
     );
     uint16_t uniffi_rrn_mobile_ffi_checksum_func_parse_recovery_request(
     );
@@ -2654,6 +2701,54 @@ NativeRrnMobileFfi::NativeRrnMobileFfi(
             return this->cpp_uniffi_rrn_mobile_ffi_fn_func_outbox_next_entry(rt, thisVal, args, count);
         }
     );
+    props["ubrn_uniffi_rrn_mobile_ffi_fn_func_pairing_code"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_fn_func_pairing_code"),
+        4,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_fn_func_pairing_code(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_rrn_mobile_ffi_fn_func_pairing_commitment"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_fn_func_pairing_commitment"),
+        2,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_fn_func_pairing_commitment(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_rrn_mobile_ffi_fn_func_pairing_finish_signed_bytes"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_fn_func_pairing_finish_signed_bytes"),
+        5,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_fn_func_pairing_finish_signed_bytes(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_rrn_mobile_ffi_fn_func_pairing_nonce"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_fn_func_pairing_nonce"),
+        0,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_fn_func_pairing_nonce(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_rrn_mobile_ffi_fn_func_pairing_offer_signed_bytes"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_fn_func_pairing_offer_signed_bytes"),
+        4,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_fn_func_pairing_offer_signed_bytes(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_rrn_mobile_ffi_fn_func_pairing_start_signed_bytes"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_fn_func_pairing_start_signed_bytes"),
+        3,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_fn_func_pairing_start_signed_bytes(rt, thisVal, args, count);
+        }
+    );
     props["ubrn_uniffi_rrn_mobile_ffi_fn_func_parse_recovery_request"] = jsi::Function::createFromHostFunction(
         rt,
         jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_fn_func_parse_recovery_request"),
@@ -2756,6 +2851,54 @@ NativeRrnMobileFfi::NativeRrnMobileFfi(
         0,
         [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
             return this->cpp_uniffi_rrn_mobile_ffi_checksum_func_outbox_next_entry(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_rrn_mobile_ffi_checksum_func_pairing_code"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_checksum_func_pairing_code"),
+        0,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_checksum_func_pairing_code(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_rrn_mobile_ffi_checksum_func_pairing_commitment"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_checksum_func_pairing_commitment"),
+        0,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_checksum_func_pairing_commitment(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_rrn_mobile_ffi_checksum_func_pairing_finish_signed_bytes"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_checksum_func_pairing_finish_signed_bytes"),
+        0,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_checksum_func_pairing_finish_signed_bytes(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_rrn_mobile_ffi_checksum_func_pairing_nonce"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_checksum_func_pairing_nonce"),
+        0,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_checksum_func_pairing_nonce(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_rrn_mobile_ffi_checksum_func_pairing_offer_signed_bytes"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_checksum_func_pairing_offer_signed_bytes"),
+        0,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_checksum_func_pairing_offer_signed_bytes(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_rrn_mobile_ffi_checksum_func_pairing_start_signed_bytes"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_rrn_mobile_ffi_checksum_func_pairing_start_signed_bytes"),
+        0,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_rrn_mobile_ffi_checksum_func_pairing_start_signed_bytes(rt, thisVal, args, count);
         }
     );
     props["ubrn_uniffi_rrn_mobile_ffi_checksum_func_parse_recovery_request"] = jsi::Function::createFromHostFunction(
@@ -3968,6 +4111,65 @@ jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_fn_func_outbox_next_ent
         
         return uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::toJs(rt, callInvoker, value);
 }
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_fn_func_pairing_code(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        RustCallStatus status = uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
+        auto value = uniffi_rrn_mobile_ffi_fn_func_pairing_code(uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[0]), uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[1]), uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[2]), uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[3]), 
+            &status
+        );
+        uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::copyIntoJs(rt, callInvoker, status, args[count - 1]);
+
+        
+        return uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_fn_func_pairing_commitment(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        RustCallStatus status = uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
+        auto value = uniffi_rrn_mobile_ffi_fn_func_pairing_commitment(uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[0]), uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[1]), 
+            &status
+        );
+        uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::copyIntoJs(rt, callInvoker, status, args[count - 1]);
+
+        
+        return uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_fn_func_pairing_finish_signed_bytes(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        RustCallStatus status = uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
+        auto value = uniffi_rrn_mobile_ffi_fn_func_pairing_finish_signed_bytes(uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[0]), uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[1]), uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[2]), uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[3]), uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[4]), 
+            &status
+        );
+        uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::copyIntoJs(rt, callInvoker, status, args[count - 1]);
+
+        
+        return uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_fn_func_pairing_nonce(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        RustCallStatus status = uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
+        auto value = uniffi_rrn_mobile_ffi_fn_func_pairing_nonce(&status
+        );
+        uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::copyIntoJs(rt, callInvoker, status, args[count - 1]);
+
+        
+        return uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_fn_func_pairing_offer_signed_bytes(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        RustCallStatus status = uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
+        auto value = uniffi_rrn_mobile_ffi_fn_func_pairing_offer_signed_bytes(uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[0]), uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[1]), uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[2]), uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[3]), 
+            &status
+        );
+        uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::copyIntoJs(rt, callInvoker, status, args[count - 1]);
+
+        
+        return uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_fn_func_pairing_start_signed_bytes(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        RustCallStatus status = uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
+        auto value = uniffi_rrn_mobile_ffi_fn_func_pairing_start_signed_bytes(uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[0]), uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[1]), uniffi_jsi::Bridging<int64_t>::fromJs(rt, callInvoker, args[2]), 
+            &status
+        );
+        uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::copyIntoJs(rt, callInvoker, status, args[count - 1]);
+
+        
+        return uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::toJs(rt, callInvoker, value);
+}
 jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_fn_func_parse_recovery_request(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
         RustCallStatus status = uniffi::rrn_mobile_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
         auto value = uniffi_rrn_mobile_ffi_fn_func_parse_recovery_request(uniffi::rrn_mobile_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[0]), 
@@ -4069,6 +4271,48 @@ jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_checksum_func_offline_s
 }
 jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_checksum_func_outbox_next_entry(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
         auto value = uniffi_rrn_mobile_ffi_checksum_func_outbox_next_entry(
+        );
+
+        
+        return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_checksum_func_pairing_code(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_rrn_mobile_ffi_checksum_func_pairing_code(
+        );
+
+        
+        return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_checksum_func_pairing_commitment(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_rrn_mobile_ffi_checksum_func_pairing_commitment(
+        );
+
+        
+        return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_checksum_func_pairing_finish_signed_bytes(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_rrn_mobile_ffi_checksum_func_pairing_finish_signed_bytes(
+        );
+
+        
+        return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_checksum_func_pairing_nonce(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_rrn_mobile_ffi_checksum_func_pairing_nonce(
+        );
+
+        
+        return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_checksum_func_pairing_offer_signed_bytes(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_rrn_mobile_ffi_checksum_func_pairing_offer_signed_bytes(
+        );
+
+        
+        return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeRrnMobileFfi::cpp_uniffi_rrn_mobile_ffi_checksum_func_pairing_start_signed_bytes(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_rrn_mobile_ffi_checksum_func_pairing_start_signed_bytes(
         );
 
         

@@ -82,6 +82,12 @@ class NativeRrnMobileFfi : public jsi::HostObject {
     jsi::Value cpp_uniffi_rrn_mobile_ffi_fn_func_is_valid_address(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_rrn_mobile_ffi_fn_func_offline_spend_verify(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_rrn_mobile_ffi_fn_func_outbox_next_entry(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
+    jsi::Value cpp_uniffi_rrn_mobile_ffi_fn_func_pairing_code(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
+    jsi::Value cpp_uniffi_rrn_mobile_ffi_fn_func_pairing_commitment(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
+    jsi::Value cpp_uniffi_rrn_mobile_ffi_fn_func_pairing_finish_signed_bytes(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
+    jsi::Value cpp_uniffi_rrn_mobile_ffi_fn_func_pairing_nonce(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
+    jsi::Value cpp_uniffi_rrn_mobile_ffi_fn_func_pairing_offer_signed_bytes(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
+    jsi::Value cpp_uniffi_rrn_mobile_ffi_fn_func_pairing_start_signed_bytes(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_rrn_mobile_ffi_fn_func_parse_recovery_request(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_rrn_mobile_ffi_fn_func_parse_shard_payload(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_rrn_mobile_ffi_fn_func_proposal_sign_with_certificate(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
@@ -95,6 +101,12 @@ class NativeRrnMobileFfi : public jsi::HostObject {
     jsi::Value cpp_uniffi_rrn_mobile_ffi_checksum_func_is_valid_address(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_rrn_mobile_ffi_checksum_func_offline_spend_verify(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_rrn_mobile_ffi_checksum_func_outbox_next_entry(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
+    jsi::Value cpp_uniffi_rrn_mobile_ffi_checksum_func_pairing_code(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
+    jsi::Value cpp_uniffi_rrn_mobile_ffi_checksum_func_pairing_commitment(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
+    jsi::Value cpp_uniffi_rrn_mobile_ffi_checksum_func_pairing_finish_signed_bytes(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
+    jsi::Value cpp_uniffi_rrn_mobile_ffi_checksum_func_pairing_nonce(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
+    jsi::Value cpp_uniffi_rrn_mobile_ffi_checksum_func_pairing_offer_signed_bytes(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
+    jsi::Value cpp_uniffi_rrn_mobile_ffi_checksum_func_pairing_start_signed_bytes(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_rrn_mobile_ffi_checksum_func_parse_recovery_request(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_rrn_mobile_ffi_checksum_func_parse_shard_payload(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_rrn_mobile_ffi_checksum_func_proposal_sign_with_certificate(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);

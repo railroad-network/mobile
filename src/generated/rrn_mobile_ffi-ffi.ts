@@ -273,6 +273,42 @@ interface NativeModuleInterface {
     authoredAt: bigint,
     uniffi_out_err: UniffiRustCallStatus,
   ): Uint8Array;
+  ubrn_uniffi_rrn_mobile_ffi_fn_func_pairing_code(
+    stationPk: Uint8Array,
+    mobilePk: Uint8Array,
+    mobileNonce: Uint8Array,
+    stationNonce: Uint8Array,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): Uint8Array;
+  ubrn_uniffi_rrn_mobile_ffi_fn_func_pairing_commitment(
+    mobilePk: Uint8Array,
+    mobileNonce: Uint8Array,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): Uint8Array;
+  ubrn_uniffi_rrn_mobile_ffi_fn_func_pairing_finish_signed_bytes(
+    stationPk: Uint8Array,
+    mobilePk: Uint8Array,
+    commitment: Uint8Array,
+    stationNonce: Uint8Array,
+    mobileNonce: Uint8Array,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): Uint8Array;
+  ubrn_uniffi_rrn_mobile_ffi_fn_func_pairing_nonce(
+    uniffi_out_err: UniffiRustCallStatus,
+  ): Uint8Array;
+  ubrn_uniffi_rrn_mobile_ffi_fn_func_pairing_offer_signed_bytes(
+    stationPk: Uint8Array,
+    mobilePk: Uint8Array,
+    commitment: Uint8Array,
+    stationNonce: Uint8Array,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): Uint8Array;
+  ubrn_uniffi_rrn_mobile_ffi_fn_func_pairing_start_signed_bytes(
+    mobilePk: Uint8Array,
+    commitment: Uint8Array,
+    requestedAt: bigint,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): Uint8Array;
   ubrn_uniffi_rrn_mobile_ffi_fn_func_parse_recovery_request(
     requestPayload: Uint8Array,
     uniffi_out_err: UniffiRustCallStatus,
@@ -465,6 +501,12 @@ interface NativeModuleInterface {
   ubrn_uniffi_rrn_mobile_ffi_checksum_func_is_valid_address(): number;
   ubrn_uniffi_rrn_mobile_ffi_checksum_func_offline_spend_verify(): number;
   ubrn_uniffi_rrn_mobile_ffi_checksum_func_outbox_next_entry(): number;
+  ubrn_uniffi_rrn_mobile_ffi_checksum_func_pairing_code(): number;
+  ubrn_uniffi_rrn_mobile_ffi_checksum_func_pairing_commitment(): number;
+  ubrn_uniffi_rrn_mobile_ffi_checksum_func_pairing_finish_signed_bytes(): number;
+  ubrn_uniffi_rrn_mobile_ffi_checksum_func_pairing_nonce(): number;
+  ubrn_uniffi_rrn_mobile_ffi_checksum_func_pairing_offer_signed_bytes(): number;
+  ubrn_uniffi_rrn_mobile_ffi_checksum_func_pairing_start_signed_bytes(): number;
   ubrn_uniffi_rrn_mobile_ffi_checksum_func_parse_recovery_request(): number;
   ubrn_uniffi_rrn_mobile_ffi_checksum_func_parse_shard_payload(): number;
   ubrn_uniffi_rrn_mobile_ffi_checksum_func_proposal_sign_with_certificate(): number;

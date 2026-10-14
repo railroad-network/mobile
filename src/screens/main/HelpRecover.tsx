@@ -26,6 +26,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {
   Button,
   Card,
+  CeremonyFingerprint,
   Field,
   Heading,
   QRScanner,
@@ -214,19 +215,15 @@ export function HelpRecover({navigation}: MainStackScreenProps<'HelpRecover'>) {
             <Text variant="caption" color={theme.colors.textSecondary}>
               Ceremony fingerprint
             </Text>
-            <Text
-              variant="mono"
-              color={theme.colors.text}
-              selectable
-              style={styles.fingerprint}
-              accessibilityLabel={`Ceremony fingerprint: ${target.fingerprint}`}>
-              {target.fingerprint}
-            </Text>
+            <CeremonyFingerprint code={target.fingerprint} style={styles.fingerprint} />
             <Text variant="caption" color={theme.colors.textSecondary}>
-              Only contribute if you've confirmed — in person, or on a channel you
-              already trust — that this is really them recovering their own key.
-              Read this code aloud together; it must match their screen exactly. A
-              recovery request is only as trustworthy as the person showing it.
+              Read this code aloud together, all four groups; it must match their
+              screen exactly. Only contribute if they are with you in person and
+              you scanned this request from their own screen — or, if the request
+              came to you as a message, you read the code back to them by voice,
+              on a number you already had for them. A code sent along with the
+              request proves nothing. A recovery request is only as trustworthy as
+              the person showing it.
             </Text>
           </Card>
 
@@ -310,7 +307,7 @@ export function HelpRecover({navigation}: MainStackScreenProps<'HelpRecover'>) {
 
 const styles = StyleSheet.create({
   scanner: {height: 320, overflow: 'hidden'},
-  fingerprint: {fontSize: 24, letterSpacing: 2},
+  fingerprint: {justifyContent: 'flex-start'},
   centerCol: {alignItems: 'center'},
   centerText: {textAlign: 'center'},
   qrCard: {padding: 14},
