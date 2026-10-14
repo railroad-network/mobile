@@ -63,9 +63,13 @@ export function RecoveryIntro({navigation}: RecoveryScreenProps<'RecoveryIntro'>
         {isRefresh && (
           <InlineNotice
             variant="warning"
-            title="Your old pieces stop working">
-            Updating re-splits your key from scratch, so every current holder’s
-            piece becomes useless. Hand out the new pieces to your updated circle.
+            title="Your old pieces still work">
+            Updating hands out new pieces of the same key. The pieces you gave out
+            before keep working — enough of your old holders together can still
+            rebuild your key, and the app can't take a piece back. Ask anyone you
+            remove to forget theirs (Settings → Shards you hold). If you no longer
+            trust enough of your old holders, a new circle won't protect you —
+            start a new identity instead.
           </InlineNotice>
         )}
         {points.map(p => (
