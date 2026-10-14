@@ -95,8 +95,9 @@ export interface ShardInfo {
   /** The `rrn1…` address of the identity this shard helps recover — the key the
    * holder app files the payload under. */
   originalAddress: string;
-  /** The `rrn1…` address this shard is sealed to; the receiver can check it
-   * matches their own identity ("is this shard for me?"). */
+  /** The address this shard claims to be sealed to. Unauthenticated metadata:
+   * the holder app refuses a payload naming another identity, but a forger can
+   * name this one, so the check stops mistakes, not forgeries. */
   holderAddress: string;
   /** `K` — how many holders must cooperate to reconstruct. */
   threshold: number;
@@ -109,17 +110,19 @@ export interface ShardInfo {
  * screen. During a recovery ceremony the recovering device mints an ephemeral
  * key and publishes a request naming the identity to be recovered; a holder
  * reads this off the scanned request to see whom they are being asked to help,
- * and confirms the {@link fingerprint} against the requester's screen
- * out-of-band, before contributing their piece (ADR-0016).
+ * and confirms the {@link fingerprint} against the requester's screen — in
+ * person, or read back by voice — before contributing their piece (ADR-0016).
  */
 export interface RecoveryRequestInfo {
   /** The `rrn1…` address of the identity this request seeks to recover. */
   targetAddress: string;
   /**
-   * The ceremony fingerprint (`xxxxx-xxxxx`) — a domain-tagged hash of this
-   * ceremony's ephemeral recovery key. Every holder must see the *same* code the
-   * requester is showing; two holders shown different codes are being played
-   * against each other (ADR-0016).
+   * The ceremony fingerprint, as the core renders it: four groups of four
+   * characters joined by hyphens, committing to the whole request (the
+   * ephemeral key and the target). Every holder must see the *same* code the
+   * requester is showing, all four groups; two holders shown different codes are
+   * being played against each other (ADR-0016). Displayed as given — the app
+   * never computes it.
    */
   fingerprint: string;
 }
@@ -136,8 +139,8 @@ export interface RecoveryRequestInfo {
 export interface RecoverySession {
   /** The request bytes to render as a `rrnrecover-req:<base64>` QR. */
   requestPayload(): Uint8Array;
-  /** The ceremony fingerprint (`xxxxx-xxxxx`) to show in large type; every
-   * holder must see this exact code. */
+  /** The ceremony fingerprint (four hyphen-joined groups, from the core) to show
+   * in large type; every holder must see this exact code. */
   fingerprint(): string;
   /**
    * Opens a scanned holder response and adds it, returning the count gathered so

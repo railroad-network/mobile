@@ -9,12 +9,15 @@
  * needing no unlock of your own wallet.
  *
  * A scanned QR is only accepted if it is a recovery-shard QR (the
- * `rrnrecovery:` scheme, distinct from a plain `rrn1…` address QR) and its
- * payload parses; anything else is rejected with an explanation rather than
- * stored. Reconstruction (handing the shard back during a friend's recovery) is
- * a later milestone — this screen only receives and lists.
+ * `rrnrecovery:` scheme, distinct from a plain `rrn1…` address QR), its payload
+ * parses, and it names this wallet's own key as its holder; anything else is
+ * rejected with an explanation rather than stored. A shard payload is not
+ * signed by its owner, so anyone can make one that claims to be a friend's: a
+ * *different* piece for someone already held is never filed without an explicit
+ * confirmation (the `confirmReplace` step), whose default keeps the current
+ * piece. Handing a piece back during a friend's recovery is {@link HelpRecover}.
  */
-import {useCallback, useState} from 'react';
+import {useCallback, useMemo, useState} from 'react';
 import {Pressable, ScrollView, StyleSheet, View} from 'react-native';
 import {useFocusEffect} from '@react-navigation/native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -28,15 +31,20 @@ import {
   Text,
 } from '../../components';
 import {bytesToBase64} from '../../crypto/base64';
+import {dayLabel, shortAddress} from '../../ledger/format';
 import {useTheme} from '../../theme';
 import type {MainStackScreenProps} from '../../navigation/types';
 import {decodeShardQr, parseShardPayload} from '../../wallet/recoveryShard';
 import {
   deleteHeldShard,
+  HeldShardExistsError,
   loadHeldShards,
   saveHeldShard,
+  shardIsForKey,
   type HeldShard,
 } from '../../wallet/heldShards';
+import {loadVouchNicknames, type VouchNicknames} from '../../wallet/vouchNicknames';
+import {useWalletSession} from '../../wallet/WalletSession';
 import {InlineNotice, type NoticeVariant} from '../recovery/InlineNotice';
 
 interface Notice {
@@ -45,19 +53,47 @@ interface Notice {
   body: string;
 }
 
+/** A scanned piece that differs from the one already held for its owner. */
+interface PendingReplace {
+  incoming: HeldShard;
+  existing: HeldShard;
+}
+
 export function HeldShards({navigation}: MainStackScreenProps<'HeldShards'>) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
 
+  const {wallet} = useWalletSession();
+
   const [shards, setShards] = useState<HeldShard[]>([]);
+  const [nicknames, setNicknames] = useState<VouchNicknames>({});
   const [scanning, setScanning] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [pending, setPending] = useState<PendingReplace | null>(null);
+
+  // This wallet's own public key, against which every shard's claimed holder is
+  // checked. `null` (no unlocked wallet) refuses every scan.
+  const ownKey = useMemo(() => {
+    if (wallet === null) {
+      return null;
+    }
+    try {
+      return wallet.publicKey().toBytes();
+    } catch {
+      return null;
+    }
+  }, [wallet]);
 
   const reload = useCallback(() => {
     loadHeldShards()
       .then(map => setShards(Object.values(map)))
       .catch(() => setShards([]));
+    loadVouchNicknames()
+      .then(setNicknames)
+      .catch(() => setNicknames({}));
   }, []);
+
+  const ownerName = (address: string) => nicknames[address] ?? shortAddress(address);
 
   // Re-read on focus so a shard received elsewhere (or a fresh install) shows.
   useFocusEffect(
@@ -91,27 +127,84 @@ export function HeldShards({navigation}: MainStackScreenProps<'HeldShards'>) {
       return;
     }
 
-    try {
-      await saveHeldShard({
-        originalAddress: info.originalAddress,
-        holderAddress: info.holderAddress,
-        threshold: info.threshold,
-        total: info.total,
-        payload: bytesToBase64(bytes),
-        receivedAt: Math.floor(Date.now() / 1000),
-      });
-      setNotice({
-        variant: 'success',
-        title: 'Shard saved',
-        body: `You’re now holding a recovery piece. If your friend ever needs it, any ${info.threshold} of their ${info.total} holders can bring them back.`,
-      });
-      reload();
-    } catch {
+    if (ownKey === null) {
       setNotice({
         variant: 'warning',
-        title: "Couldn't save the shard",
-        body: 'Something went wrong writing to secure storage. Try scanning again.',
+        title: "Couldn't check that piece",
+        body: 'Unlock the app and scan again, so it can check the piece is addressed to you. Nothing was saved.',
       });
+      return;
+    }
+    if (!shardIsForKey(info.holderAddress, ownKey)) {
+      setNotice({
+        variant: 'warning',
+        title: "This piece isn't addressed to you",
+        body: 'It was made for a different identity, so this device could never use it. Nothing was saved.',
+      });
+      return;
+    }
+
+    const incoming: HeldShard = {
+      originalAddress: info.originalAddress,
+      holderAddress: info.holderAddress,
+      threshold: info.threshold,
+      total: info.total,
+      payload: bytesToBase64(bytes),
+      receivedAt: Math.floor(Date.now() / 1000),
+    };
+
+    try {
+      const outcome = await saveHeldShard(incoming);
+      if (outcome === 'unchanged') {
+        setNotice({
+          variant: 'info',
+          title: 'You already hold this piece',
+          body: `Nothing changed — this is the same piece you’re keeping for ${ownerName(info.originalAddress)}.`,
+        });
+        return;
+      }
+      showSaved(incoming);
+    } catch (e) {
+      if (e instanceof HeldShardExistsError) {
+        setPending({incoming, existing: e.existing});
+        return;
+      }
+      showSaveFailed();
+    }
+  }
+
+  function showSaved(shard: HeldShard) {
+    setNotice({
+      variant: 'success',
+      title: `Piece saved for ${ownerName(shard.originalAddress)}`,
+      body: `You’re now holding a recovery piece for ${shard.originalAddress}. If your friend ever needs it, any ${shard.threshold} of their ${shard.total} holders can bring them back.`,
+    });
+    reload();
+  }
+
+  function showSaveFailed() {
+    setNotice({
+      variant: 'warning',
+      title: "Couldn't save the shard",
+      body: 'Something went wrong writing to secure storage. Try scanning again.',
+    });
+  }
+
+  function keepCurrent() {
+    setPending(null);
+  }
+
+  async function replaceHeld() {
+    if (pending === null) {
+      return;
+    }
+    const {incoming} = pending;
+    setPending(null);
+    try {
+      await saveHeldShard(incoming, undefined, {replace: true});
+      showSaved(incoming);
+    } catch {
+      showSaveFailed();
     }
   }
 
@@ -145,7 +238,39 @@ export function HeldShards({navigation}: MainStackScreenProps<'HeldShards'>) {
         </InlineNotice>
       )}
 
-      {scanning ? (
+      {pending !== null ? (
+        <Card style={{gap: theme.spacing.sm}}>
+          <Heading level="headingSmall">Replace your piece?</Heading>
+          {nicknames[pending.incoming.originalAddress] !== undefined && (
+            <Text variant="label" color={theme.colors.text}>
+              {nicknames[pending.incoming.originalAddress]}
+            </Text>
+          )}
+          <Text variant="mono" color={theme.colors.text} selectable>
+            {pending.incoming.originalAddress}
+          </Text>
+          <Text variant="caption" color={theme.colors.textSecondary}>
+            Piece you hold: received {dayLabel(pending.existing.receivedAt)},{' '}
+            {pending.existing.threshold}-of-{pending.existing.total} recovery
+          </Text>
+          <Text variant="caption" color={theme.colors.textSecondary}>
+            New piece: {pending.incoming.threshold}-of-{pending.incoming.total}{' '}
+            recovery
+          </Text>
+          <Text variant="body" color={theme.colors.textSecondary}>
+            You already hold a recovery piece for this person. Replace it only if
+            they asked you, in person, to take a new one. Anyone can make a code
+            that claims to be theirs — if this one is fake and you replace your
+            piece, they may not be able to recover.
+          </Text>
+          <Button variant="primary" size="lg" fullWidth onPress={keepCurrent}>
+            Keep my current piece
+          </Button>
+          <Button variant="danger" size="md" fullWidth onPress={replaceHeld}>
+            Replace it
+          </Button>
+        </Card>
+      ) : scanning ? (
         <Card padded={false} style={styles.scanner}>
           <QRScanner onScan={handleScan} isActive={scanning} />
           <View style={styles.scannerCancel}>
@@ -199,6 +324,11 @@ export function HeldShards({navigation}: MainStackScreenProps<'HeldShards'>) {
                 <Text variant="caption" color={theme.colors.textSecondary}>
                   {shard.threshold}-of-{shard.total} recovery
                 </Text>
+                {ownKey !== null && !shardIsForKey(shard.holderAddress, ownKey) && (
+                  <Text variant="caption" color={theme.colors.warning}>
+                    Sealed to a different identity — this device can’t use it.
+                  </Text>
+                )}
               </View>
               <Pressable
                 onPress={() => forget(shard.originalAddress)}
