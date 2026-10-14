@@ -308,6 +308,7 @@ describe('scanning a new piece for a held owner asks before replacing', () => {
     await press(button(r, 'Keep my current piece'));
     expect(mockSaveHeldShard).toHaveBeenCalledTimes(1);
     expect(hasText(r, 'Replace your piece?')).toBe(false);
+    expect(hasText(r, 'Kept your current piece')).toBe(true);
   });
 
   test('“Replace it” saves with replace:true and names the owner', async () => {

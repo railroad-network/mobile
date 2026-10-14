@@ -24,7 +24,8 @@ import {bytesToUtf8, utf8ToBytes} from '../crypto/utf8';
 export interface HeldShard {
   /** The `rrn1…` address of the wallet this shard helps recover — the map key. */
   originalAddress: string;
-  /** The `rrn1…` address the shard is sealed to (this device's identity). */
+  /** The `rrn1…` address the shard is sealed to — normally this device's
+   * identity; a row sealed elsewhere is kept and flagged, never used. */
   holderAddress: string;
   /** `K` — how many holders must cooperate to reconstruct the friend's wallet. */
   threshold: number;

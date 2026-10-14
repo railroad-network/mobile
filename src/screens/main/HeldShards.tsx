@@ -5,8 +5,9 @@
  * recovery and hands you one of their sealed shards, you scan it here and this
  * device files it (see {@link wallet/heldShards}). You are one of several holders
  * and the shard is sealed to you — you can never see their key alone — so this
- * is a low-ceremony "keep this safe for me" screen, reachable from Settings and
- * needing no unlock of your own wallet.
+ * is a low-ceremony "keep this safe for me" screen, reachable from Settings. A
+ * scan needs this session's unlocked wallet, whose public key the shard's
+ * claimed holder is checked against.
  *
  * A scanned QR is only accepted if it is a recovery-shard QR (the
  * `rrnrecovery:` scheme, distinct from a plain `rrn1…` address QR), its payload
@@ -94,6 +95,19 @@ export function HeldShards({navigation}: MainStackScreenProps<'HeldShards'>) {
   }, []);
 
   const ownerName = (address: string) => nicknames[address] ?? shortAddress(address);
+
+  // Held rows sealed to another identity — kept and flagged, never used here.
+  const sealedElsewhere = useMemo(
+    () =>
+      new Set(
+        ownKey === null
+          ? []
+          : shards
+              .filter(row => !shardIsForKey(row.holderAddress, ownKey))
+              .map(row => row.originalAddress),
+      ),
+    [shards, ownKey],
+  );
 
   // Re-read on focus so a shard received elsewhere (or a fresh install) shows.
   useFocusEffect(
@@ -191,6 +205,13 @@ export function HeldShards({navigation}: MainStackScreenProps<'HeldShards'>) {
   }
 
   function keepCurrent() {
+    if (pending !== null) {
+      setNotice({
+        variant: 'info',
+        title: 'Kept your current piece',
+        body: `Nothing changed — you still hold the same piece for ${ownerName(pending.existing.originalAddress)}.`,
+      });
+    }
     setPending(null);
   }
 
@@ -324,7 +345,7 @@ export function HeldShards({navigation}: MainStackScreenProps<'HeldShards'>) {
                 <Text variant="caption" color={theme.colors.textSecondary}>
                   {shard.threshold}-of-{shard.total} recovery
                 </Text>
-                {ownKey !== null && !shardIsForKey(shard.holderAddress, ownKey) && (
+                {sealedElsewhere.has(shard.originalAddress) && (
                   <Text variant="caption" color={theme.colors.warning}>
                     Sealed to a different identity — this device can’t use it.
                   </Text>
