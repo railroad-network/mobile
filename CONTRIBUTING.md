@@ -12,7 +12,7 @@ station, so most changes land in both repos together.
 What is genuinely useful right now:
 
 1. **Run a pilot** and report what confused people. The guides at
-   <https://railroad-network.github.io> are the runbook.
+   <https://railroadnetwork.org> are the runbook.
 2. **Report bugs**: open an issue with the app version (Settings), the phone
    model, and the text from **Settings → Advanced → Diagnostics** if the app
    recorded an error.
