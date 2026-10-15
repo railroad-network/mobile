@@ -85,8 +85,8 @@ android {
         // Sideload updates install over the old app only if versionCode strictly
         // increases — bump it by 1 for every release build you hand out.
         // versionName is the human label shown in Settings (bump on real changes).
-        versionCode 1
-        versionName "1.0"
+        versionCode 2
+        versionName "1.1"
     }
     // The release keystore is provided through Gradle properties, kept OUT of
     // the repo (put them in ~/.gradle/gradle.properties, not here) so neither the
