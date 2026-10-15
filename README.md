@@ -19,7 +19,7 @@ decentralized identity with social vouching and Shamir-based social recovery,
 a tiered oracle and dispute system for adjudicating real-world transactions,
 community governance, and, eventually, a federation protocol between
 communities. The plain-language documentation for members, organizers, and
-operators is at **<https://railroad-network.github.io>**.
+operators is at **<https://railroadnetwork.org>**.
 
 This repository, **`mobile`**, is the React Native + TypeScript client. It
 pairs with a local [`station`](https://github.com/railroad-network/station),
@@ -97,7 +97,7 @@ directly. [`SIDELOAD.md`](SIDELOAD.md) covers both halves: building and
 signing the APK as a maintainer, and installing or updating it as a user,
 including the battery-optimization exemption some phones need for background
 sync. The member-facing version is
-[Install the app](https://railroad-network.github.io/members/install-the-app.html)
+[Install the app](https://railroadnetwork.org/members/install-the-app.html)
 on the docs site. Standing up a whole community around it (station, pairing,
 founding Charter, backups) is the operator's runbook in the station repo,
 [`docs/community-setup.md`](https://github.com/railroad-network/station/blob/main/docs/community-setup.md);
